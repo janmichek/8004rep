@@ -1,7 +1,7 @@
 # 8004-check
 
 Simple read-only explorer for [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) agents, inspired by
-[8004scan](https://8004scan.io). A static single-page app: no backend, no wallet, no keys.
+[8004scan](https://8004scan.io). A static single-page 8004rep: no backend, no wallet, no keys.
 
 - Browse the agents registered on a network, newest first
 - Open an agent: owner, agent wallet, registration file, services, reputation and feedback
