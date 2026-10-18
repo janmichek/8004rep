@@ -266,7 +266,7 @@ function txChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
   const target: Check = {
     id: 'tx-target',
     label: 'Direct call',
-    rule: 'The transaction calls the reputation registry itself, or the client’s own contract account. Another target means a third contract wrote the feedback (batcher, relayer, 8004rep).',
+    rule: 'The transaction calls the reputation registry itself, or the client’s own contract account. Another target means a third contract wrote the feedback (batcher, relayer, app).',
     ...verdict(
       same(tx.to, ctx.reputation)
         ? { status: 'pass', detail: 'Calls the reputation registry directly.' }

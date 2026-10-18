@@ -6,6 +6,7 @@ import { identityAbi } from '../abi'
 import { addressExplorerUrl, findChainBySlug } from '../chains'
 import AgentRow from '../components/AgentRow.vue'
 import Skeleton from '../components/ui/Skeleton.vue'
+import Hint from '../components/ui/Hint.vue'
 import StatTiles, { type Tile } from '../components/ui/StatTiles.vue'
 import TableSkeleton from '../components/ui/TableSkeleton.vue'
 import { sourceFor } from '../data'
@@ -163,7 +164,7 @@ const tiles = computed<Tile[]>(() => {
               <th>Agent</th>
               <th class="num">ID</th>
               <th>Services</th>
-              <th class="num" title="Count and average of all feedback values, any tag">Feedback</th>
+              <Hint text="Count and average of all feedback values, any tag"><th class="num">Feedback</th></Hint>
               <th class="num">Created</th>
             </tr>
           </thead>

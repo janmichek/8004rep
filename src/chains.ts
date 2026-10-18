@@ -1,5 +1,5 @@
 import type { Address, Chain } from 'viem'
-import { arbitrumSepolia, baseSepolia, mantle, mantleSepoliaTestnet, sepolia } from 'viem/chains'
+import { arbitrum, arbitrumSepolia, baseSepolia, mantle, mantleSepoliaTestnet, sepolia } from 'viem/chains'
 
 export type ChainInfo = {
   chainId: number
@@ -70,6 +70,19 @@ export const CHAINS: ChainInfo[] = [
       421614,
       'https://api.studio.thegraph.com/query/1741985/erc-8004-arbitrum-testnet/version/latest',
     ),
+  },
+  {
+    ...MAINNET,
+    chainId: 42161,
+    name: 'Arbitrum',
+    shortName: 'Arbitrum',
+    slug: 'arbitrum',
+    explorerUrl: 'https://arbiscan.io',
+    explorerApiUrl: endpoint('EXPLORER_API', 42161, 'https://api.arbiscan.io/api'),
+    rpcUrl: endpoint('RPC', 42161, 'https://arb1.arbitrum.io/rpc')!,
+    viemChain: arbitrum,
+    logRange: 10_000_000n,
+    subgraphUrl: endpoint('SUBGRAPH', 42161),
   },
   {
     ...TESTNET,

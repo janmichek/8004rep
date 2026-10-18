@@ -87,13 +87,13 @@ function isSelf(address: string): boolean {
       <thead>
         <tr>
           <th>Reviewer</th>
-          <th class="num" title="Rows on this agent (revoked in brackets)">Rows</th>
-          <th title="Share of the authenticity weight — pull on the trusted score">Weight share</th>
-          <th class="num" title="Average of its non-revoked values here, with min–max">Avg here</th>
-          <th class="num" title="Raw average without this reviewer minus with it">Without it</th>
+          <Hint text="Rows on this agent (revoked in brackets)"><th class="num">Rows</th></Hint>
+          <Hint text="Share of the authenticity weight — pull on the trusted score"><th>Weight share</th></Hint>
+          <Hint text="Average of its non-revoked values here, with min–max"><th class="num">Avg here</th></Hint>
+          <Hint text="Raw average without this reviewer minus with it"><th class="num">Without it</th></Hint>
           <th>Flags here</th>
-          <th title="Its feedback on other agents, as far as the source reaches">Elsewhere</th>
-          <th title="Transactions sent, and who first sent it funds">Wallet</th>
+          <Hint text="Its feedback on other agents, as far as the source reaches"><th>Elsewhere</th></Hint>
+          <Hint text="Transactions sent, and who first sent it funds"><th>Wallet</th></Hint>
         </tr>
       </thead>
       <tbody>

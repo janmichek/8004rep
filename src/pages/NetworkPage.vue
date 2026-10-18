@@ -16,6 +16,7 @@ import { LABEL_INFO } from '../data/reviewerProfile'
 import { fetchScanStats } from '../data/scan'
 import { errorMessage, formatDate, formatNumber, formatPercent, formatScore, formatTimeline, shortAddress } from '../format'
 import { toDisplayUrl } from '../data/metadata'
+import FeedbackNote from '../components/FeedbackNote.vue'
 import { useAsync } from '../useAsync'
 
 const props = defineProps<{ slug: string }>()
@@ -225,6 +226,10 @@ function reviewerRoute(address: string) {
                 <td class="tags">
                   <span v-if="r.tag1" class="chip clip-chip" :title="r.tag1">{{ r.tag1 }}</span>
                   <span v-if="r.tag2" class="chip clip-chip" :title="r.tag2">{{ r.tag2 }}</span>
+                </td>
+                <td class="text-cell">
+                  <FeedbackNote v-if="r.feedbackURI" :uri="r.feedbackURI" />
+                  <span v-else class="muted">—</span>
                 </td>
                 <td class="nowrap">
                   <a v-if="toDisplayUrl(r.feedbackURI)" :href="toDisplayUrl(r.feedbackURI)" target="_blank" rel="noopener noreferrer" title="Feedback file (effchain file)">

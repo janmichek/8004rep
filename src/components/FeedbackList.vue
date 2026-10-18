@@ -39,11 +39,11 @@ function evidenceUrl(uri: string | undefined): string | undefined {
           <th>Reviewer</th>
           <th class="num">Value</th>
           <th>Tags</th>
-          <th v-if="hasNotes" title="The text (or comment) field of the off-chain feedback file">Text</th>
+          <Hint v-if="hasNotes" text="The text (or comment) field of the off-chain feedback file"><th>Text</th></Hint>
           <th>Endpoint</th>
-          <th v-if="hasStats" title="Authenticity weight (1 = full vote) and the rules that fired; hover a chip for its rule">Weight</th>
+          <Hint v-if="hasStats" text="Authenticity weight (1 = full vote) and the rules that fired; hover a chip for its rule"><th>Weight</th></Hint>
           <th>When</th>
-          <th title="appendResponse entries: agent replies, refunds, spam flags">Replies</th>
+          <Hint text="appendResponse entries: agent replies, refunds, spam flags"><th>Replies</th></Hint>
           <th v-if="$slots.detail"><span class="sr-only">Detail</span></th>
         </tr>
       </thead>

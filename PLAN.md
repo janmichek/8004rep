@@ -1,10 +1,10 @@
-# 8004-check — simple 8004scan-inspired ERC-8004 explorer
+# 8004rep — simple 8004scan-inspired ERC-8004 explorer
 
 ## Context
 
 `/Users/yeahboi/DEV/8004-web3-agent-chat` ("8004-chat") is heavy: Hono API, LangChain agents, MCP server, Web3Auth, wallets, private keys, IPFS pinning. It only *links out* to 8004scan to look at agents.
 
-`8004-check` is the opposite: a **read-only, backend-less static SPA** that browses ERC-8004 agents the way 8004scan does. No wallet, no keys, no server, no LLM. Open it, pick a chain, see agents, open one, see its identity, services and reputation.
+`8004rep` is the opposite: a **read-only, backend-less static SPA** that browses ERC-8004 agents the way 8004scan does. No wallet, no keys, no server, no LLM. Open it, pick a chain, see agents, open one, see its identity, services and reputation.
 
 Repo today is an empty scaffold (`index.js` with one `console.log`, stub `package.json`, no commits).
 
@@ -15,7 +15,7 @@ Repo today is an empty scaffold (`index.js` with one `console.log`, stub `packag
 | Scope | Read-only, no backend |
 | Stack | Vue 3 + Vite + TypeScript (same as chat frontend) |
 | Data | Subgraph where one works, RPC otherwise |
-| Chains v1 | Arbitrum Sepolia, Ethereum Sepolia, Base Sepolia, Mantle (+ Mantle Sepolia, free to add — same code path, chat 8004rep uses it) |
+| Chains v1 | Arbitrum Sepolia, Ethereum Sepolia, Base Sepolia, Mantle (+ Mantle Sepolia, free to add — same code path, chat app uses it) |
 
 **First execution step: save a copy of this plan as `PLAN.md` in the repo root** (user asked for the plan in root; plan mode could not write there).
 
@@ -69,7 +69,7 @@ index.js                      DELETE (placeholder)
 .gitignore                    node_modules, dist, .env*
 index.html
 vite.config.ts
-tsconfig.json  tsconfig.8004rep.json  tsconfig.node.json
+tsconfig.json  tsconfig.app.json  tsconfig.node.json
 src/main.ts
 src/App.vue                   shell: header, chain select, <RouterView>
 src/router.ts
@@ -240,7 +240,7 @@ Styling: one `style.css`, CSS variables, dark, dense table — 8004scan-like, no
   - **Ethereum Sepolia** — badge `subgraph`, lag shown if behind.
   - **Arbitrum Sepolia** — badge `rpc (subgraph unavailable)`; list shows newest ids first; total matches binary-search count.
   - **Mantle**, **Mantle Sepolia** — badge `rpc`; ids 0, 1, 50 open; id 500 shows not-found, not a crash.
-- Cross-check one agent created by the chat 8004rep (`8004-web3-agent-chat/agents/agent005/agent-config.json` holds its id) against `https://testnet.8004scan.io/agents/arbitrum-sepolia/<id>`: name, owner, agent wallet, services, feedback count agree.
+- Cross-check one agent created by the chat app (`8004-web3-agent-chat/agents/agent005/agent-config.json` holds its id) against `https://testnet.8004scan.io/agents/arbitrum-sepolia/<id>`: name, owner, agent wallet, services, feedback count agree.
 - Fallback drill: set `VITE_SUBGRAPH_URL_84532` to a dead URL → Base Sepolia still lists via RPC with the fallback badge.
 - Console clean: no CORS errors, no unhandled rejections when an IPFS gateway times out.
 

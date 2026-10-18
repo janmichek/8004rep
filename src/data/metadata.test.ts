@@ -134,6 +134,7 @@ describe('resolveAgentURI', () => {
     const fetchMock = vi
       .fn()
       .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(new Response('', { status: 502 })) // relay
       .mockResolvedValueOnce(jsonResponse({ name: 'back' }))
     vi.stubGlobal('fetch', fetchMock)
     expect(await resolveAgentURI('https://down.example/agent.json')).toBeNull()
@@ -171,10 +172,23 @@ describe('fetchJsonUri', () => {
     const fetchMock = vi
       .fn()
       .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(new Response('', { status: 502 })) // relay
       .mockResolvedValueOnce(jsonResponse({ a: 2 }))
     vi.stubGlobal('fetch', fetchMock)
-    await expect(fetchJsonUri('https://down.example/x.json')).rejects.toThrow('Failed to fetch')
+    await expect(fetchJsonUri('https://down.example/x.json')).rejects.toThrow('HTTP 502')
     expect(await fetchJsonUri('https://down.example/x.json')).toEqual({ a: 2 })
+  })
+})
+
+describe('CORS relay', () => {
+  it('retries a blocked https fetch through /api/fetch-json', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(jsonResponse({ comment: 'ok' }))
+    vi.stubGlobal('fetch', fetchMock)
+    expect(await fetchJsonUri('https://cors.example/f.json')).toEqual({ comment: 'ok' })
+    expect(String(fetchMock.mock.calls[1][0])).toContain('api/fetch-json?url=https%3A%2F%2Fcors.example%2Ff.json')
   })
 })
 

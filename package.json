@@ -1,5 +1,5 @@
 {
-  "name": "8004-check",
+  "name": "8004rep",
   "version": "0.1.0",
   "description": "Simple read-only ERC-8004 agent explorer, inspired by 8004scan.",
   "private": true,
@@ -21,6 +21,7 @@
     "vue-router": "^5.3.1"
   },
   "devDependencies": {
+    "@types/node": "^26.6.5",
     "@vitejs/plugin-vue": "^6.0.9",
     "typescript": "^6.0.3",
     "vite": "^8.3.2",

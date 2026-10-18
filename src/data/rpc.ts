@@ -156,7 +156,7 @@ export function createRpcSource(chain: ChainInfo, client: PublicClient = createR
   const reputation = { address: chain.reputation, abi: reputationAbi } as const
   const logs = chain.logsRpcUrl && chain.logsRpcUrl !== chain.rpcUrl ? createLogsClient(chain) : client
   // The last count is kept across visits so the search restarts next to the answer.
-  const countKey = `8004-check:count:${chain.chainId}`
+  const countKey = `8004rep:count:${chain.chainId}`
   let knownCount = storedCount(countKey)
   // Owner pages re-read the same set while paging; one scan serves every page.
   const ownedBy = new Map<string, Promise<bigint[]>>()

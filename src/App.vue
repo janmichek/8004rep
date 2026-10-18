@@ -19,7 +19,7 @@ const { data: resolved } = useAsync(async () => (chain.value ? sourceFor(chain.v
   <TooltipProvider :delay-duration="280" :skip-delay-duration="120">
     <header class="topbar">
       <RouterLink class="brand" :to="{ name: 'agents', params: { slug: (chain ?? DEFAULT_CHAIN).slug } }">
-        8004<span>check</span>
+        8004<span>rep</span>
       </RouterLink>
       <nav class="nav">
         <RouterLink :to="{ name: 'agents', params: { slug: (chain ?? DEFAULT_CHAIN).slug } }">Agents</RouterLink>

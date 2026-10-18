@@ -100,7 +100,16 @@ async function limited<T>(task: () => Promise<T>): Promise<T> {
 }
 
 async function fetchJson(url: string): Promise<unknown> {
-  const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+  let res: Response
+  try {
+    res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+  } catch (err) {
+    // A TypeError is how the browser reports a CORS block: retry via our relay.
+    if (!(err instanceof TypeError) || !/^https:/i.test(url)) throw err
+    res = await fetch(`${import.meta.env.BASE_URL}api/fetch-json?url=${encodeURIComponent(url)}`, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    })
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json()
 }
