@@ -26,6 +26,18 @@ npm run dev      # http://localhost:5174
 
 `dist/` can be hosted anywhere static; routing uses the URL hash, so no rewrite rules are needed.
 
+## Views
+
+| View | Path | Shows |
+|---|---|---|
+| Agents | `#/agents/:slug` | Agents registered on a network, newest first; search by token ID everywhere, by name on indexed networks |
+| Agent | `#/agents/:slug/:id` | One agent: owner, agent wallet, registration file, services, reputation and feedback; each feedback row opens the **Tx detail** |
+| Network | `#/network/:slug` | Network feedback health: stats, suspect reviewers, review rings, latest reviews |
+| Owner | `#/owners/:slug/:address` | All agents owned by an address |
+| Reviewer | `#/reviewers/:slug/:address` | One reviewer's profile: rules that fired, agents they rate, latest reviews |
+
+Tx detail opens as a container on an agent page and answers one question per feedback row: what would it have cost to fake this rating? — transaction, feedback file, cited proof of payment, and the reviewer, one check per line.
+
 ## Networks and data sources
 
 | Network | Chain ID | Source |
