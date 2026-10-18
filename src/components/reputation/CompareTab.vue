@@ -4,6 +4,7 @@ import { agentScanUrl, type ChainInfo } from '../../chains'
 import type { ScanScore } from '../../data/scan'
 import type { Feedback } from '../../data/types'
 import { formatNumber } from '../../format'
+import Skeleton from '../ui/Skeleton.vue'
 
 const props = defineProps<{
   chain: ChainInfo
@@ -57,7 +58,14 @@ const notes = computed(() => {
 </script>
 
 <template>
-  <p v-if="loading" class="muted">Asking 8004scan…</p>
+  <div v-if="loading" class="compare-head" aria-busy="true" aria-live="polite">
+    <span class="sr-only">Asking 8004scan</span>
+    <div v-for="i in 4" :key="i" class="skeleton-stack">
+      <Skeleton width="8em" height="0.7em" />
+      <Skeleton width="3.2em" height="1.5em" />
+      <Skeleton width="9em" height="0.7em" />
+    </div>
+  </div>
   <p v-else-if="error" class="notice">8004scan could not be reached: {{ error }}</p>
   <p v-else-if="!scan" class="muted">
     8004scan has not scored this agent.

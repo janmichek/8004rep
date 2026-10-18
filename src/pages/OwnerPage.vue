@@ -5,10 +5,13 @@ import { isAddress, type Address } from 'viem'
 import { identityAbi } from '../abi'
 import { addressExplorerUrl, findChainBySlug } from '../chains'
 import AgentRow from '../components/AgentRow.vue'
+import Skeleton from '../components/ui/Skeleton.vue'
+import StatTiles, { type Tile } from '../components/ui/StatTiles.vue'
+import TableSkeleton from '../components/ui/TableSkeleton.vue'
 import { sourceFor } from '../data'
 import { getScores } from '../data/rpc'
 import type { ReputationSummary } from '../data/types'
-import { shortAddress } from '../format'
+import { formatScore, shortAddress } from '../format'
 import { useAsync } from '../useAsync'
 
 const PAGE_SIZE = 25
@@ -59,13 +62,57 @@ watch(data, async (list) => {
     )
     if (run === scoreRun) scores.value = result
   } catch {
-    // Column stays "—" for this page.
+    if (run === scoreRun) scores.value = new Map()
   }
 })
 
 function pageLink(target: number) {
   return { query: target > 0 ? { page: target + 1 } : {} }
 }
+
+const owned = computed(() => data.value?.owned ?? 0)
+const scored = computed(() => {
+  const map = scores.value
+  if (!map) return null
+  let total = 0
+  let rated = 0
+  let sum = 0
+  map.forEach((s, _id) => {
+    if (s.count > 0) {
+      rated++
+      sum += s.average
+      total += s.count
+    }
+  })
+  return { rated, sum, total, avg: rated ? sum / rated : 0 }
+})
+
+const tiles = computed<Tile[]>(() => {
+  const s = scored.value
+  return [
+    {
+      label: 'Owned agents',
+      value: String(owned.value),
+      title: `Agents this address owns on ${chain.value.name}`,
+      tone: 'main',
+    },
+    {
+      label: 'Rated',
+      value: s ? String(s.rated) : '—',
+      hint: s ? `of ${owned.value} owned` : '',
+      title: 'Owned agents that have at least one feedback row',
+      loading: s === null,
+    },
+    {
+      label: 'Average rating',
+      value: s ? formatScore(s.avg) : '—',
+      hint: s ? `${s.total} rated rows across ${s.rated} agents` : '',
+      title: 'Simple average of each owned agent\'s on-chain average',
+      loading: s === null,
+      tone: s && s.avg >= 75 ? 'good' : s && s.avg > 0 ? undefined : 'quiet',
+    },
+  ]
+})
 </script>
 
 <template>
@@ -82,7 +129,8 @@ function pageLink(target: number) {
     <div class="page-head">
       <h1>
         Owner <span class="mono">{{ shortAddress(address) }}</span>
-        <small v-if="data?.owned !== undefined">{{ data.owned }} {{ data.owned === 1 ? 'agent' : 'agents' }}</small>
+        <small v-if="loading || !data"><Skeleton width="6em" height="0.75em" /></small>
+        <small v-else-if="data.owned !== undefined">{{ data.owned }} {{ data.owned === 1 ? 'agent' : 'agents' }}</small>
       </h1>
       <p class="meta">
         <span class="mono">{{ address }}</span>
@@ -90,11 +138,20 @@ function pageLink(target: number) {
       </p>
     </div>
 
+    <template v-if="data && !loading">
+      <StatTiles :tiles="tiles" />
+    </template>
+
     <section v-if="error" class="state">
       <p>Could not load agents: {{ error }}</p>
       <button @click="reload">Retry</button>
     </section>
-    <section v-else-if="loading || !data" class="state muted">Loading agents…</section>
+    <TableSkeleton
+      v-else-if="loading || !data"
+      label="Loading agents"
+      :headers="['Agent', 'ID', 'Services', 'Feedback', 'Created']"
+      :numeric="['ID', 'Feedback', 'Created']"
+    />
     <template v-else>
       <section v-if="data.items.length === 0" class="state muted">
         {{ page > 0 ? 'No more agents on this page.' : `This address owns no agents on ${chain.name}.` }}
@@ -117,6 +174,7 @@ function pageLink(target: number) {
               :agent="agent"
               :chain="chain"
               :score="scores?.get(agent.tokenId)"
+              :score-loading="scores === undefined"
               hide-owner
             />
           </tbody>

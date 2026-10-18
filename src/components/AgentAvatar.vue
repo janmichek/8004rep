@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { toDisplayUrl } from '../data/metadata'
 
-const props = defineProps<{ image?: string; label: string }>()
+const props = defineProps<{ image?: string; label: string; pending?: boolean }>()
 
 const src = computed(() => toDisplayUrl(props.image))
 const broken = ref(false)
@@ -10,7 +10,8 @@ watch(src, () => (broken.value = false))
 </script>
 
 <template>
-  <span class="avatar">
+  <span v-if="pending" class="avatar skeleton" aria-hidden="true" />
+  <span v-else class="avatar">
     <img
       v-if="src && !broken"
       :src="src"

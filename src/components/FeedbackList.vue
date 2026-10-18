@@ -6,6 +6,7 @@ import { FLAG_INFO, type RowStats } from '../data/feedbackStats'
 import { toDisplayUrl } from '../data/metadata'
 import type { Feedback } from '../data/types'
 import FeedbackNote from './FeedbackNote.vue'
+import Hint from './ui/Hint.vue'
 import { formatDate, formatNumber, formatScore, formatTimeline, shortAddress } from '../format'
 
 export type ListRow = { row: Feedback; stats?: RowStats; index: number }
@@ -17,7 +18,8 @@ const props = defineProps<{ rows: ListRow[]; chain: ChainInfo; reviewerRoute?: (
 const slots = useSlots()
 const open = ref<number>()
 const hasStats = computed(() => props.rows.some((r) => r.stats))
-const columns = computed(() => 6 + (hasStats.value ? 1 : 0) + (slots.detail ? 1 : 0))
+const hasNotes = computed(() => props.rows.some((r) => r.row.feedbackURI))
+const columns = computed(() => 6 + (hasNotes.value ? 1 : 0) + (hasStats.value ? 1 : 0) + (slots.detail ? 1 : 0))
 watch(
   () => props.rows,
   () => (open.value = undefined),
@@ -37,6 +39,7 @@ function evidenceUrl(uri: string | undefined): string | undefined {
           <th>Reviewer</th>
           <th class="num">Value</th>
           <th>Tags</th>
+          <th v-if="hasNotes" title="The text (or comment) field of the off-chain feedback file">Text</th>
           <th>Endpoint</th>
           <th v-if="hasStats" title="Authenticity weight (1 = full vote) and the rules that fired; hover a chip for its rule">Weight</th>
           <th>When</th>
@@ -64,15 +67,23 @@ function evidenceUrl(uri: string | undefined): string | undefined {
               <span v-if="row.tag1" class="chip clip-chip" :title="row.tag1">{{ row.tag1 }}</span>
               <span v-if="row.tag2" class="chip clip-chip" :title="row.tag2">{{ row.tag2 }}</span>
             </td>
+            <td v-if="hasNotes">
+              <FeedbackNote v-if="row.feedbackURI" :uri="row.feedbackURI" />
+              <span v-else class="muted">—</span>
+            </td>
             <td class="endpoint">
               <span v-if="row.endpoint" class="ellipsis" :title="row.endpoint">{{ row.endpoint }}</span>
               <span v-else class="muted">—</span>
             </td>
             <td v-if="hasStats" class="checks-cell">
               <template v-if="stats">
-                <span class="weight" :class="{ low: stats.weight < 0.5 }" title="Authenticity weight">{{ formatNumber(stats.weight, 2) }}</span>
+                <Hint text="Authenticity weight">
+                  <span class="weight" :class="{ low: stats.weight < 0.5 }">{{ formatNumber(stats.weight, 2) }}</span>
+                </Hint>
                 <template v-for="flag in stats.flags" :key="flag">
-                  <span v-if="flag !== 'revoked'" class="chip warn" :title="FLAG_INFO[flag].rule">{{ FLAG_INFO[flag].label }}</span>
+                  <Hint v-if="flag !== 'revoked'" :text="FLAG_INFO[flag].rule">
+                    <span class="chip warn">{{ FLAG_INFO[flag].label }}</span>
+                  </Hint>
                 </template>
               </template>
             </td>
@@ -109,7 +120,6 @@ function evidenceUrl(uri: string | undefined): string | undefined {
               </button>
             </td>
           </tr>
-          <FeedbackNote v-if="row.feedbackURI" :uri="row.feedbackURI" :colspan="columns" :open="open === index" />
           <tr v-if="$slots.detail && open === index" class="detail-row">
             <td :colspan="columns">
               <ul v-if="row.responses?.length" class="responses">

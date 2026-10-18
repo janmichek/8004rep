@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
 import { findChainBySlug } from '../chains'
+import ChartSkeleton from '../components/ui/ChartSkeleton.vue'
 import ColumnChart from '../components/ui/ColumnChart.vue'
+import Hint from '../components/ui/Hint.vue'
 import { COUNT_SERIES, WEIGHT_SERIES } from '../components/ui/palette'
 import StatTiles, { type Tile } from '../components/ui/StatTiles.vue'
+import TilesSkeleton from '../components/ui/TilesSkeleton.vue'
 import TabBar, { type Tab } from '../components/ui/TabBar.vue'
 import { sourceFor } from '../data'
 import { dailyColumns, valueHistogram } from '../data/chartData'
@@ -12,6 +15,7 @@ import { computeNetworkStats } from '../data/networkStats'
 import { LABEL_INFO } from '../data/reviewerProfile'
 import { fetchScanStats } from '../data/scan'
 import { errorMessage, formatDate, formatNumber, formatPercent, formatScore, formatTimeline, shortAddress } from '../format'
+import { toDisplayUrl } from '../data/metadata'
 import { useAsync } from '../useAsync'
 
 const props = defineProps<{ slug: string }>()
@@ -99,7 +103,7 @@ const tabs = computed<Tab[]>(() => [
   { id: 'suspects', label: 'Suspect reviewers', count: stats.value?.suspects.length ?? 0, ...(stats.value?.suspects.length ? { tone: 'warn' as const } : {}) },
   { id: 'lookalikes', label: 'Lookalike agents', count: stats.value?.lookalikes.length ?? 0 },
   { id: 'agents', label: 'Busiest agents', count: stats.value?.topAgents.length ?? 0 },
-  { id: 'latest', label: 'Latest rows' },
+  { id: 'latest', label: 'Latest Reviews' },
 ])
 
 function agentRoute(tokenId: bigint) {
@@ -119,7 +123,14 @@ function reviewerRoute(address: string) {
   </p>
 
   <p v-if="error" class="notice">Could not load the feed: {{ error }} <button @click="load()">Retry</button></p>
-  <p v-else-if="!stats" class="muted state">Loading the latest feedback…</p>
+  <div v-else-if="!stats" aria-busy="true" aria-live="polite">
+    <span class="sr-only">Loading the latest feedback</span>
+    <TilesSkeleton :count="6" />
+    <div class="chart-grid">
+      <ChartSkeleton />
+      <ChartSkeleton />
+    </div>
+  </div>
 
   <template v-if="stats && feed">
     <StatTiles :tiles="tiles" />
@@ -154,9 +165,11 @@ function reviewerRoute(address: string) {
                 <td class="num">{{ s.agents }}</td>
                 <td class="num">{{ formatNumber(s.average) }}</td>
                 <td>
-                  <span v-for="l in s.labels" :key="l" class="chip" :class="LABEL_INFO[l].tone === 'warn' ? 'warn' : ''" :title="LABEL_INFO[l].rule">
-                    {{ LABEL_INFO[l].label }}
-                  </span>
+                  <Hint v-for="l in s.labels" :key="l" :text="LABEL_INFO[l].rule">
+                    <span class="chip" :class="LABEL_INFO[l].tone === 'warn' ? 'warn' : ''">
+                      {{ LABEL_INFO[l].label }}
+                    </span>
+                  </Hint>
                 </td>
               </tr>
             </tbody>
@@ -203,7 +216,7 @@ function reviewerRoute(address: string) {
       <template #latest>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Agent</th><th>Reviewer</th><th class="num">Value</th><th>Tags</th><th>When</th></tr></thead>
+            <thead><tr><th>Agent</th><th>Reviewer</th><th class="num">Value</th><th>Tags</th><th>Text</th><th>File</th><th>When</th></tr></thead>
             <tbody>
               <tr v-for="(r, i) in feed.items.slice(0, 100)" :key="i" :class="{ revoked: r.revoked }">
                 <td><RouterLink :to="agentRoute(r.tokenId)">{{ r.agentName ?? `Agent #${r.tokenId}` }}</RouterLink></td>
@@ -212,6 +225,12 @@ function reviewerRoute(address: string) {
                 <td class="tags">
                   <span v-if="r.tag1" class="chip clip-chip" :title="r.tag1">{{ r.tag1 }}</span>
                   <span v-if="r.tag2" class="chip clip-chip" :title="r.tag2">{{ r.tag2 }}</span>
+                </td>
+                <td class="nowrap">
+                  <a v-if="toDisplayUrl(r.feedbackURI)" :href="toDisplayUrl(r.feedbackURI)" target="_blank" rel="noopener noreferrer" title="Feedback file (effchain file)">
+                    · file ↗
+                  </a>
+                  <span v-else class="muted">—</span>
                 </td>
                 <td class="nowrap">
                   <span v-if="r.createdAt" :title="formatDate(r.createdAt)">{{ formatTimeline(r.createdAt) }}</span>

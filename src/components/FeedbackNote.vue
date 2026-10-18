@@ -2,9 +2,10 @@
 import { ref, watch } from 'vue'
 import { resolveFeedbackText } from '../data/metadata'
 
-const props = defineProps<{ uri: string; colspan: number; open?: boolean }>()
+const props = defineProps<{ uri: string }>()
 
 const text = ref<string>()
+const settled = ref(false)
 
 watch(
   () => props.uri,
@@ -14,8 +15,11 @@ watch(
       current = false
     })
     text.value = undefined
+    settled.value = false
     void resolveFeedbackText(uri).then((value) => {
-      if (current) text.value = value
+      if (!current) return
+      text.value = value
+      settled.value = true
     })
   },
   { immediate: true },
@@ -23,12 +27,6 @@ watch(
 </script>
 
 <template>
-  <tr v-if="text" class="note-row" :class="{ open }">
-    <td :colspan="colspan">
-      <p class="feedback-note">
-        <span class="feedback-note-label" title="The text (or comment) field of the off-chain feedback file">Feedback text</span>
-        <span class="feedback-note-body" :title="text">“{{ text }}”</span>
-      </p>
-    </td>
-  </tr>
+  <span v-if="text" class="ellipsis" :title="text">“{{ text }}”</span>
+  <span v-else-if="settled" class="muted">—</span>
 </template>

@@ -78,7 +78,7 @@ const tiles = computed<Tile[]>(() => {
     },
     {
       label: '8004scan',
-      value: scan.loading.value ? '…' : scanScore ? formatNumber(scanScore.total) : '—',
+      value: scanScore ? formatNumber(scanScore.total) : '—',
       hint: scan.error.value
         ? 'unreachable'
         : scanScore?.feedback
@@ -88,18 +88,20 @@ const tiles = computed<Tile[]>(() => {
             : 'not scored there',
       title: "8004scan's overall score, read live from its public API — see the Compare tab",
       tone: 'quiet',
+      loading: scan.loading.value,
     },
-    ...(ecosystem.data.value
-      ? [
-          {
-            label: 'Ecosystem avg',
-            value: formatNumber(ecosystem.data.value.averageFeedback),
-            hint: `${ecosystem.data.value.totalFeedback.toLocaleString('en-US')} rows`,
-            title: 'Mean feedback value over every agent 8004scan indexes: what a typical rating looks like',
-            tone: 'quiet' as const,
-          },
-        ]
-      : []),
+    {
+      label: 'Ecosystem avg',
+      value: ecosystem.data.value ? formatNumber(ecosystem.data.value.averageFeedback) : '—',
+      hint: ecosystem.data.value
+        ? `${ecosystem.data.value.totalFeedback.toLocaleString('en-US')} rows`
+        : ecosystem.loading.value
+          ? ''
+          : 'unreachable',
+      title: 'Mean feedback value over every agent 8004scan indexes: what a typical rating looks like',
+      tone: 'quiet',
+      loading: ecosystem.loading.value,
+    },
   ]
 })
 

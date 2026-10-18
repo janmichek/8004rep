@@ -6,6 +6,7 @@ import type { LadderId, TrustReport } from '../../data/trustReport'
 import type { Feedback } from '../../data/types'
 import { formatNumber, formatPercent, formatSigned } from '../../format'
 import ColumnChart from '../ui/ColumnChart.vue'
+import Hint from '../ui/Hint.vue'
 import { COUNT_SERIES, WEIGHT_LABELS, WEIGHT_SERIES, weightClass } from '../ui/palette'
 
 const props = defineProps<{ feedback: Feedback[]; stats: FeedbackStats; report: TrustReport; ecosystemAverage?: number }>()
@@ -94,12 +95,13 @@ const coverage = computed(() => {
     <section class="panel">
       <h3>Evidence behind the rows</h3>
       <div v-if="ladderTotal" class="stack-bar" role="img" :aria-label="report.ladder.map((r) => `${r.label}: ${r.rows}`).join(', ')">
-        <span
+        <Hint
           v-for="rung in report.ladder.filter((r) => r.rows > 0)"
           :key="rung.id"
-          :style="{ flexGrow: rung.rows, background: LADDER_COLOR[rung.id] }"
-          :title="`${rung.label}: ${rung.rows} — ${rung.rule}`"
-        />
+          :text="`${rung.label}: ${rung.rows} — ${rung.rule}`"
+        >
+          <span :style="{ flexGrow: rung.rows, background: LADDER_COLOR[rung.id] }" />
+        </Hint>
       </div>
       <ul class="legend-list">
         <li v-for="rung in report.ladder" :key="rung.id">
@@ -108,12 +110,14 @@ const coverage = computed(() => {
         </li>
       </ul>
       <ul class="meters">
-        <li v-for="m in coverage" :key="m.label" :title="m.rule">
+        <Hint v-for="m in coverage" :key="m.label" :text="m.rule">
+        <li>
           <span class="bar-label">{{ m.label }}</span>
           <span class="bar-track" aria-hidden="true"><span :style="{ width: `${m.share * 100}%` }" /></span>
           <span class="bar-value">{{ formatPercent(m.share) }}</span>
           <span class="bar-note muted">{{ m.n }} of {{ stats.coverage.total }}</span>
         </li>
+        </Hint>
       </ul>
     </section>
   </div>

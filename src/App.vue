@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TooltipProvider } from 'reka-ui'
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { CHAINS, DEFAULT_CHAIN, findChainBySlug } from './chains'
@@ -15,34 +16,36 @@ const { data: resolved } = useAsync(async () => (chain.value ? sourceFor(chain.v
 </script>
 
 <template>
-  <header class="topbar">
-    <RouterLink class="brand" :to="{ name: 'agents', params: { slug: (chain ?? DEFAULT_CHAIN).slug } }">
-      8004<span>check</span>
-    </RouterLink>
-    <nav class="nav">
-      <RouterLink :to="{ name: 'agents', params: { slug: (chain ?? DEFAULT_CHAIN).slug } }">Agents</RouterLink>
-      <RouterLink :to="{ name: 'network', params: { slug: (chain ?? DEFAULT_CHAIN).slug } }">Network health</RouterLink>
-    </nav>
-    <div class="topbar-right">
-      <SourceBadge v-if="chain" :resolved="resolved" />
-      <ChainSelect :current="chain" />
-    </div>
-  </header>
+  <TooltipProvider :delay-duration="280" :skip-delay-duration="120">
+    <header class="topbar">
+      <RouterLink class="brand" :to="{ name: 'agents', params: { slug: (chain ?? DEFAULT_CHAIN).slug } }">
+        8004<span>check</span>
+      </RouterLink>
+      <nav class="nav">
+        <RouterLink :to="{ name: 'agents', params: { slug: (chain ?? DEFAULT_CHAIN).slug } }">Agents</RouterLink>
+        <RouterLink :to="{ name: 'network', params: { slug: (chain ?? DEFAULT_CHAIN).slug } }">Network health</RouterLink>
+      </nav>
+      <div class="topbar-right">
+        <SourceBadge v-if="chain" :resolved="resolved" />
+        <ChainSelect :current="chain" />
+      </div>
+    </header>
 
-  <main>
-    <section v-if="slug && !chain" class="state">
-      <h1>Unknown network “{{ slug }}”</h1>
-      <p>Supported networks:</p>
-      <ul class="plain">
-        <li v-for="c in CHAINS" :key="c.chainId">
-          <RouterLink :to="{ name: 'agents', params: { slug: c.slug } }">{{ c.name }}</RouterLink>
-        </li>
-      </ul>
-    </section>
-    <RouterView v-else />
-  </main>
+    <main>
+      <section v-if="slug && !chain" class="state">
+        <h1>Unknown network “{{ slug }}”</h1>
+        <p>Supported networks:</p>
+        <ul class="plain">
+          <li v-for="c in CHAINS" :key="c.chainId">
+            <RouterLink :to="{ name: 'agents', params: { slug: c.slug } }">{{ c.name }}</RouterLink>
+          </li>
+        </ul>
+      </section>
+      <RouterView v-else />
+    </main>
 
-  <footer>
-    Read-only: no wallet, no backend. Data comes straight from the ERC-8004 registries and public subgraphs.
-  </footer>
+    <footer>
+      Read-only: no wallet, no backend. Data comes straight from the ERC-8004 registries and public subgraphs.
+    </footer>
+  </TooltipProvider>
 </template>

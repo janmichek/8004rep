@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import Hint from './Hint.vue'
+import Skeleton from './Skeleton.vue'
+
 export type Tile = {
   label: string
   value: string
@@ -8,6 +11,8 @@ export type Tile = {
   tone?: 'main' | 'good' | 'warn' | 'bad' | 'quiet'
   /** Words rather than a number: set in smaller type. */
   word?: boolean
+  /** Value is still being fetched. */
+  loading?: boolean
 }
 
 defineProps<{ tiles: Tile[] }>()
@@ -15,10 +20,16 @@ defineProps<{ tiles: Tile[] }>()
 
 <template>
   <div class="tiles">
-    <div v-for="tile in tiles" :key="tile.label" class="tile" :class="tile.tone && `tone-${tile.tone}`" :title="tile.title">
-      <div class="tile-label">{{ tile.label }}</div>
-      <div class="tile-value" :class="{ word: tile.word }">{{ tile.value }}</div>
-      <div v-if="tile.hint" class="tile-hint">{{ tile.hint }}</div>
-    </div>
+    <Hint v-for="tile in tiles" :key="tile.label" :text="tile.title">
+      <div class="tile" :class="tile.tone && `tone-${tile.tone}`" :tabindex="tile.title ? 0 : undefined">
+        <div class="tile-label">{{ tile.label }}</div>
+        <div class="tile-value" :class="{ word: tile.word && !tile.loading }">
+          <Skeleton v-if="tile.loading" width="3.2em" height="1.25em" />
+          <template v-else>{{ tile.value }}</template>
+        </div>
+        <div v-if="tile.loading" class="tile-hint"><Skeleton width="72%" height="0.7em" /></div>
+        <div v-else-if="tile.hint" class="tile-hint">{{ tile.hint }}</div>
+      </div>
+    </Hint>
   </div>
 </template>

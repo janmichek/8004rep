@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import type { ResolvedSource } from '../data'
 import { formatDuration } from '../format'
+import Hint from './ui/Hint.vue'
+import Skeleton from './ui/Skeleton.vue'
 
 const props = defineProps<{ resolved?: ResolvedSource }>()
 
@@ -15,11 +17,15 @@ const lag = computed(() => {
 </script>
 
 <template>
-  <span v-if="!resolved" class="badge muted">checking source…</span>
-  <span v-else-if="resolved.source.kind === 'subgraph'" class="badge ok" title="Agents are read from the chain's subgraph">
-    subgraph<template v-if="lag"> · {{ lag }} behind</template>
-  </span>
-  <span v-else class="badge" :class="{ warn: resolved.note }" :title="resolved.note ?? 'Agents are read directly from the registry contracts'">
-    rpc<template v-if="resolved.note"> · no subgraph</template>
-  </span>
+  <Skeleton v-if="!resolved" width="7.5em" height="22px" radius="999px" />
+  <Hint v-else-if="resolved.source.kind === 'subgraph'" text="Agents are read from the chain's subgraph">
+    <span class="badge ok" tabindex="0">
+      subgraph<template v-if="lag"> · {{ lag }} behind</template>
+    </span>
+  </Hint>
+  <Hint v-else :text="resolved.note ?? 'Agents are read directly from the registry contracts'">
+    <span class="badge" :class="{ warn: resolved.note }" tabindex="0">
+      rpc<template v-if="resolved.note"> · no subgraph</template>
+    </span>
+  </Hint>
 </template>

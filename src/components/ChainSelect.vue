@@ -1,26 +1,29 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
 import { CHAINS, type ChainInfo } from '../chains'
+import SelectMenu from './ui/SelectMenu.vue'
 
 defineProps<{ current?: ChainInfo }>()
 
 const route = useRoute()
 const router = useRouter()
 
+const options = CHAINS.map((chain) => ({ value: chain.slug, label: chain.name }))
+
 // Token IDs and addresses are per chain. Network health has neither, so it stays.
-function select(event: Event): void {
-  const slug = (event.target as HTMLSelectElement).value
+function select(slug: string | undefined): void {
+  if (!slug) return
   const name = route.name === 'network' ? 'network' : 'agents'
   void router.push({ name, params: { slug } })
 }
 </script>
 
 <template>
-  <label class="chain-select">
-    <span class="sr-only">Network</span>
-    <select :value="current?.slug ?? ''" @change="select">
-      <option v-if="!current" value="" disabled>Select network</option>
-      <option v-for="chain in CHAINS" :key="chain.chainId" :value="chain.slug">{{ chain.name }}</option>
-    </select>
-  </label>
+  <SelectMenu
+    :model-value="current?.slug"
+    :options="options"
+    label="Network"
+    placeholder="Select network"
+    @update:model-value="select"
+  />
 </template>

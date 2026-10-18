@@ -10,6 +10,8 @@ import { LABEL_INFO } from '../../data/reviewerProfile'
 import { MIN_NONCE } from '../../data/txChecks'
 import type { AgentDetail } from '../../data/types'
 import { formatDate, formatNumber, formatPercent, formatSigned, shortAddress } from '../../format'
+import Hint from '../ui/Hint.vue'
+import Skeleton from '../ui/Skeleton.vue'
 
 const props = defineProps<{ agent: AgentDetail; chain: ChainInfo; stats: FeedbackStats; self: string[] }>()
 
@@ -115,7 +117,9 @@ function isSelf(address: string): boolean {
           </td>
           <td class="num">{{ formatSigned(r.shiftWithout) }}</td>
           <td>
-            <span v-for="flag in r.flags" :key="flag" class="chip warn" :title="FLAG_INFO[flag].rule">{{ FLAG_INFO[flag].label }}</span>
+            <Hint v-for="flag in r.flags" :key="flag" :text="FLAG_INFO[flag].rule">
+              <span class="chip warn">{{ FLAG_INFO[flag].label }}</span>
+            </Hint>
           </td>
           <td>
             <template v-if="insightOf(r.client)?.profile">
@@ -123,22 +127,25 @@ function isSelf(address: string): boolean {
                 {{ insightOf(r.client)!.profile!.agents }} agent{{ insightOf(r.client)!.profile!.agents === 1 ? '' : 's' }} ·
                 avg {{ formatNumber(insightOf(r.client)!.profile!.average) }}<template v-if="insightOf(r.client)!.truncated">+</template>
               </span>
-              <span
+              <Hint
                 v-for="label in insightOf(r.client)!.profile!.labels"
                 :key="label"
-                class="chip"
-                :class="LABEL_INFO[label].tone === 'warn' ? 'warn' : ''"
-                :title="LABEL_INFO[label].rule"
+                :text="LABEL_INFO[label].rule"
               >
-                {{ LABEL_INFO[label].label }}
-              </span>
+                <span class="chip" :class="LABEL_INFO[label].tone === 'warn' ? 'warn' : ''">
+                  {{ LABEL_INFO[label].label }}
+                </span>
+              </Hint>
             </template>
-            <span v-else-if="insightOf(r.client)" class="muted" :title="insightOf(r.client)!.errors.join('\n')">unavailable</span>
-            <span v-else-if="reviewers.indexOf(r) < LOOKUP && loading" class="muted">…</span>
+            <Hint v-else-if="insightOf(r.client)" :text="insightOf(r.client)!.errors.join('\n')">
+              <span class="muted">unavailable</span>
+            </Hint>
+            <Skeleton v-else-if="reviewers.indexOf(r) < LOOKUP && loading" width="8em" />
             <span v-else class="muted">open profile</span>
           </td>
           <td class="nowrap">
-            <template v-if="insightOf(r.client)">
+            <Skeleton v-if="!insightOf(r.client) && reviewers.indexOf(r) < LOOKUP && loading" width="6em" />
+            <template v-else-if="insightOf(r.client)">
               <span
                 v-if="insightOf(r.client)!.nonce !== undefined"
                 :class="{ 'chip warn': insightOf(r.client)!.nonce! < MIN_NONCE }"

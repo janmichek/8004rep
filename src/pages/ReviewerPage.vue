@@ -2,9 +2,12 @@
 import { computed, shallowRef, watch } from 'vue'
 import { isAddress, type Address } from 'viem'
 import { addressExplorerUrl, findChainBySlug, txExplorerUrl } from '../chains'
+import ChartSkeleton from '../components/ui/ChartSkeleton.vue'
 import ColumnChart from '../components/ui/ColumnChart.vue'
 import { COUNT_SERIES } from '../components/ui/palette'
+import Skeleton from '../components/ui/Skeleton.vue'
 import StatTiles, { type Tile } from '../components/ui/StatTiles.vue'
+import TilesSkeleton from '../components/ui/TilesSkeleton.vue'
 import { sourceFor } from '../data'
 import { dailyColumns, valueHistogram } from '../data/chartData'
 import { loadFeedWindow, type FeedWindow } from '../data/feed'
@@ -12,6 +15,8 @@ import { fetchFunding } from '../data/funding'
 import { buildReviewerProfile, LABEL_INFO } from '../data/reviewerProfile'
 import { MIN_NONCE } from '../data/txChecks'
 import { errorMessage, formatDate, formatNumber, formatPercent, formatScore, formatTimeline, shortAddress } from '../format'
+import { toDisplayUrl } from '../data/metadata'
+import FeedbackNote from '../components/FeedbackNote.vue'
 import { useAsync } from '../useAsync'
 
 const props = defineProps<{ slug: string; address: string }>()
@@ -87,10 +92,11 @@ const tiles = computed<Tile[]>(() => {
     { label: 'Busiest 24h', value: String(p.peakPerDay), hint: 'rows in one day', tone: p.labels.includes('bulk') ? 'warn' : undefined },
     {
       label: 'Wallet',
-      value: w?.nonce === undefined ? '…' : `${w.nonce} tx`,
+      value: w?.nonce === undefined ? '—' : `${w.nonce} tx`,
       hint: w?.kind ?? '',
       title: `Transactions sent. Under ${MIN_NONCE} is a fresh wallet.`,
       tone: w?.nonce !== undefined && w.nonce < MIN_NONCE ? 'warn' : undefined,
+      loading: wallet.loading.value,
     },
   ]
 })
@@ -121,7 +127,14 @@ const timeColumns = computed(() =>
     </div>
 
     <p v-if="feedError" class="notice">Could not load its feedback: {{ feedError }} <button @click="loadFeed()">Retry</button></p>
-    <p v-else-if="!profile" class="muted state">Loading its feedback…</p>
+    <div v-else-if="!profile" aria-busy="true" aria-live="polite">
+      <span class="sr-only">Loading its feedback</span>
+      <TilesSkeleton :count="6" />
+      <div class="chart-grid">
+        <ChartSkeleton />
+        <ChartSkeleton />
+      </div>
+    </div>
 
     <template v-if="profile">
       <StatTiles :tiles="tiles" />
@@ -144,6 +157,7 @@ const timeColumns = computed(() =>
             (<a :href="txExplorerUrl(chain, wallet.data.value.funding.txHash)" target="_blank" rel="noopener noreferrer">tx ↗</a>).
             Other reviewers funded by the same address show up as a shared funder on an agent's Reviewers tab.
           </template>
+          <Skeleton v-else-if="wallet.loading.value" width="18em" />
           <span v-else-if="!chain.explorerApiUrl" class="muted">Funding cannot be traced on {{ chain.name }} (no explorer API that allows browser calls).</span>
           <span v-else-if="wallet.data.value?.fundingError" class="muted">Funding lookup failed: {{ wallet.data.value.fundingError }}</span>
           <span v-else-if="wallet.data.value && wallet.data.value.funding === null" class="muted">No incoming transfer among its first transactions.</span>
@@ -184,11 +198,11 @@ const timeColumns = computed(() =>
       </section>
 
       <section class="panel">
-        <h3>Latest rows</h3>
+        <h3>Latest Reviews</h3>
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Agent</th><th class="num">Value</th><th>Tags</th><th>When</th></tr>
+              <tr><th>Agent</th><th class="num">Value</th><th>Tags</th><th>Text</th><th>File</th><th>When</th></tr>
             </thead>
             <tbody>
               <tr v-for="(r, i) in feed!.items.slice(0, 50)" :key="i" :class="{ revoked: r.revoked }">
@@ -201,6 +215,16 @@ const timeColumns = computed(() =>
                 <td class="tags">
                   <span v-if="r.tag1" class="chip clip-chip" :title="r.tag1">{{ r.tag1 }}</span>
                   <span v-if="r.tag2" class="chip clip-chip" :title="r.tag2">{{ r.tag2 }}</span>
+                </td>
+                <td class="text-cell">
+                  <FeedbackNote v-if="r.feedbackURI" :uri="r.feedbackURI" />
+                  <span v-else class="muted">—</span>
+                </td>
+                <td class="nowrap">
+                  <a v-if="toDisplayUrl(r.feedbackURI)" :href="toDisplayUrl(r.feedbackURI)" target="_blank" rel="noopener noreferrer" title="Feedback file (effchain file)">
+                    · file ↗
+                  </a>
+                  <span v-else class="muted">—</span>
                 </td>
                 <td class="nowrap">
                   <template v-if="r.createdAt">

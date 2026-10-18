@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { Column } from '../../data/chartData'
+import Disclosure from './Disclosure.vue'
 
 export type Series = { key: string; label: string; color: string }
 
@@ -150,8 +151,7 @@ const tooltip = computed(() => {
       </div>
       <div v-if="tooltip" class="chart-tip" :style="{ left: `${tooltip.left}%` }">{{ tooltip.text }}</div>
     </div>
-    <details v-if="columns.length" class="chart-table">
-      <summary>Table</summary>
+    <Disclosure v-if="columns.length" class="chart-table" label="Table">
       <table>
         <thead>
           <tr>
@@ -166,6 +166,6 @@ const tooltip = computed(() => {
           </tr>
         </tbody>
       </table>
-    </details>
+    </Disclosure>
   </figure>
 </template>

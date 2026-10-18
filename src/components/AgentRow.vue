@@ -5,12 +5,15 @@ import { resolveAgentURI } from '../data/metadata'
 import type { AgentSummary, RegistrationFile, ReputationSummary } from '../data/types'
 import { formatDate, formatScore, shortAddress } from '../format'
 import AgentAvatar from './AgentAvatar.vue'
+import Skeleton from './ui/Skeleton.vue'
 
 const props = defineProps<{
   agent: AgentSummary
   chain: ChainInfo
   /** On-chain count and average; absent while it loads or if the read failed. */
   score?: ReputationSummary
+  /** Scores for this page are still being read. */
+  scoreLoading?: boolean
   /** Owner page already is that address; the column would only repeat it. */
   hideOwner?: boolean
 }>()
@@ -47,13 +50,19 @@ const to = computed(() => ({
   <tr>
     <td>
       <div class="agent-cell">
-        <AgentAvatar :image="file?.image" :label="file?.name ?? ''" />
+        <AgentAvatar :pending="file === undefined" :image="file?.image" :label="file?.name ?? ''" />
         <div class="agent-name">
-          <RouterLink :to="to" :class="{ skeleton: file === undefined }">{{ name }}</RouterLink>
-          <small v-if="file?.description">{{ file.description }}</small>
-          <small v-else-if="file === null" class="muted">
-            {{ agent.agentURI ? 'metadata unreachable' : 'no metadata URI' }}
-          </small>
+          <template v-if="file === undefined">
+            <Skeleton width="9em" />
+            <Skeleton width="14em" height="0.65em" />
+          </template>
+          <template v-else>
+            <RouterLink :to="to">{{ name }}</RouterLink>
+            <small v-if="file?.description">{{ file.description }}</small>
+            <small v-else-if="file === null" class="muted">
+              {{ agent.agentURI ? 'metadata unreachable' : 'no metadata URI' }}
+            </small>
+          </template>
         </div>
       </div>
     </td>
@@ -67,13 +76,19 @@ const to = computed(() => ({
       <span v-else class="muted">—</span>
     </td>
     <td>
-      <span v-for="service in file?.services ?? []" :key="service.name + service.endpoint" class="chip">
-        {{ service.name }}
-      </span>
-      <span v-if="file?.x402Support" class="chip accent">x402</span>
+      <template v-if="file === undefined">
+        <Skeleton width="3.2em" height="1.35em" radius="999px" />
+      </template>
+      <template v-else>
+        <span v-for="service in file?.services ?? []" :key="service.name + service.endpoint" class="chip">
+          {{ service.name }}
+        </span>
+        <span v-if="file?.x402Support" class="chip accent">x402</span>
+      </template>
     </td>
     <td class="num" :title="score?.capped ? 'Count and average of the first 200 clients' : undefined">
-      <template v-if="feedbackLabel">{{ feedbackLabel }}</template>
+      <Skeleton v-if="scoreLoading" width="5.5em" />
+      <template v-else-if="feedbackLabel">{{ feedbackLabel }}</template>
       <span v-else class="muted">—</span>
     </td>
     <td class="num">{{ agent.createdAt ? formatDate(agent.createdAt) : '—' }}</td>

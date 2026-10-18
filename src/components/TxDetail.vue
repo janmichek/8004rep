@@ -8,6 +8,8 @@ import { loadTxFacts } from '../data/txDetail'
 import type { AgentDetail, Feedback } from '../data/types'
 import { shortAddress } from '../format'
 import { useAsync } from '../useAsync'
+import Hint from './ui/Hint.vue'
+import Skeleton from './ui/Skeleton.vue'
 
 // `index` is the position of `row` in `agent.feedback`, which `stats` is parallel to.
 const props = defineProps<{ chain: ChainInfo; agent: AgentDetail; row: Feedback; index: number; stats: FeedbackStats }>()
@@ -82,15 +84,22 @@ const segments = computed(() =>
       Could not load the tx detail: {{ error }}
       <button class="row-toggle" @click="reload">Retry</button>
     </p>
-    <p v-else-if="loading || !view" class="tx-detail-state muted">
-      Reading the transaction, the feedback file and the reviewer…
-    </p>
+    <div v-else-if="loading || !view" class="tx-detail-state" aria-busy="true" aria-live="polite">
+      <span class="sr-only">Reading the transaction, the feedback file and the reviewer</span>
+      <Skeleton width="42%" height="0.9em" />
+      <div class="tx-groups">
+        <div v-for="group in 4" :key="group" class="tx-group">
+          <Skeleton width="7em" height="0.7em" />
+          <div class="skeleton-stack">
+            <Skeleton v-for="line in 3" :key="line" block height="0.85em" :width="line === 2 ? '78%' : '100%'" />
+          </div>
+        </div>
+      </div>
+    </div>
 
     <template v-else>
-      <div
-        class="tx-band"
-        title="Checks that pass, out of all checks with a verdict. The upper end counts the unknown ones as passing: what could not be read from here may still hold."
-      >
+      <Hint text="Checks that pass, out of all checks with a verdict. The upper end counts the unknown ones as passing: what could not be read from here may still hold.">
+      <div class="tx-band" tabindex="0">
         <span>
           <b>
             {{ view.band.low }}<template v-if="view.band.high !== view.band.low">–{{ view.band.high }}</template>
@@ -105,18 +114,21 @@ const segments = computed(() =>
           {{ s.count }} {{ STATUS_LABEL[s.status] }}
         </span>
       </div>
+      </Hint>
 
       <div class="tx-groups">
         <div v-for="group in view.groups" :key="group.id" class="tx-group">
           <h5>{{ group.title }}</h5>
           <ul>
-            <li v-for="check in group.checks" :key="check.id" :title="check.rule">
+            <Hint v-for="check in group.checks" :key="check.id" :text="check.rule">
+            <li>
               <span class="tx-status" :class="`status-${check.status}`">{{ STATUS_LABEL[check.status] }}</span>
               <span class="tx-check">
                 <b>{{ check.label }}</b>
                 {{ check.detail }}
               </span>
             </li>
+            </Hint>
           </ul>
         </div>
       </div>

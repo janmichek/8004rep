@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
 import { useRoute, useRouter } from 'vue-router'
 
 export type Tab = { id: string; label: string; count?: number; tone?: 'warn' | 'bad' }
@@ -11,42 +12,26 @@ const router = useRouter()
 
 const current = computed(() => {
   const asked = route.query.tab
-  return props.tabs.find((t) => t.id === asked)?.id ?? props.tabs[0]?.id
+  return props.tabs.find((t) => t.id === asked)?.id ?? props.tabs[0]?.id ?? ''
 })
 
-function select(id: string): void {
-  void router.replace({ query: { ...route.query, tab: id === props.tabs[0]?.id ? undefined : id } })
-}
-
-/** Arrow keys move between tabs, as the ARIA tabs pattern expects. */
-function onKey(event: KeyboardEvent): void {
-  const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
-  if (!step) return
-  const i = props.tabs.findIndex((t) => t.id === current.value)
-  const next = props.tabs[(i + step + props.tabs.length) % props.tabs.length]
-  select(next.id)
-  void Promise.resolve().then(() => document.getElementById(`tab-${next.id}`)?.focus())
+function select(id: string | number): void {
+  const value = String(id)
+  if (!props.tabs.some((tab) => tab.id === value)) return
+  void router.replace({ query: { ...route.query, tab: value === props.tabs[0]?.id ? undefined : value } })
 }
 </script>
 
 <template>
-  <div class="tabbar" role="tablist" :aria-label="label" @keydown="onKey">
-    <button
-      v-for="tab in tabs"
-      :id="`tab-${tab.id}`"
-      :key="tab.id"
-      role="tab"
-      class="tab"
-      :class="{ active: tab.id === current }"
-      :aria-selected="tab.id === current"
-      :tabindex="tab.id === current ? 0 : -1"
-      @click="select(tab.id)"
-    >
-      {{ tab.label }}
-      <span v-if="tab.count !== undefined" class="tab-count" :class="tab.tone">{{ tab.count }}</span>
-    </button>
-  </div>
-  <div role="tabpanel" class="tabpanel" :aria-labelledby="`tab-${current}`">
-    <slot :name="current" />
-  </div>
+  <TabsRoot class="tabs" :model-value="current" @update:model-value="select">
+    <TabsList class="tabbar" :aria-label="label">
+      <TabsTrigger v-for="tab in tabs" :id="`tab-${tab.id}`" :key="tab.id" class="tab" :value="tab.id">
+        {{ tab.label }}
+        <span v-if="tab.count !== undefined" class="tab-count" :class="tab.tone">{{ tab.count }}</span>
+      </TabsTrigger>
+    </TabsList>
+    <TabsContent v-for="tab in tabs" :key="tab.id" class="tabpanel" :value="tab.id">
+      <slot :name="tab.id" />
+    </TabsContent>
+  </TabsRoot>
 </template>

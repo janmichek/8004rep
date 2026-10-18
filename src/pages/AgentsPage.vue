@@ -3,6 +3,8 @@ import { computed, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { findChainBySlug } from '../chains'
 import AgentRow from '../components/AgentRow.vue'
+import Skeleton from '../components/ui/Skeleton.vue'
+import TableSkeleton from '../components/ui/TableSkeleton.vue'
 import { sourceFor } from '../data'
 import { getScores } from '../data/rpc'
 import type { ReputationSummary } from '../data/types'
@@ -50,7 +52,7 @@ watch(data, async (list) => {
     )
     if (run === scoreRun) scores.value = result
   } catch {
-    // Column stays "—" for this page.
+    if (run === scoreRun) scores.value = new Map()
   }
 })
 
@@ -70,7 +72,12 @@ const searchIgnored = computed(() => Boolean(search.value) && !/^\d+$/.test(sear
 <template>
   <div class="page-head">
     <h1>
-      Agents <small>{{ chain.name }}<template v-if="data?.total !== undefined"> · {{ data.total }} registered</template></small>
+      Agents
+      <small>
+        {{ chain.name }}
+        <template v-if="loading || !data"> · <Skeleton width="8em" height="0.75em" /></template>
+        <template v-else-if="data.total !== undefined"> · {{ data.total }} registered</template>
+      </small>
     </h1>
     <form class="search" role="search" @submit.prevent="submit">
       <input v-model="input" type="search" placeholder="Search by name or token ID" aria-label="Search agents" />
@@ -87,7 +94,12 @@ const searchIgnored = computed(() => Boolean(search.value) && !/^\d+$/.test(sear
     <p>Could not load agents: {{ error }}</p>
     <button @click="reload">Retry</button>
   </section>
-  <section v-else-if="loading || !data" class="state muted">Loading agents…</section>
+  <TableSkeleton
+    v-else-if="loading || !data"
+    label="Loading agents"
+    :headers="['Agent', 'ID', 'Owner', 'Services', 'Feedback', 'Created']"
+    :numeric="['ID', 'Feedback', 'Created']"
+  />
   <section v-else-if="data.items.length === 0" class="state muted">
     {{ search ? `No agent matches “${search}”.` : 'No agents registered on this network yet.' }}
   </section>
@@ -111,6 +123,7 @@ const searchIgnored = computed(() => Boolean(search.value) && !/^\d+$/.test(sear
             :agent="agent"
             :chain="chain"
             :score="scores?.get(agent.tokenId)"
+            :score-loading="scores === undefined"
           />
         </tbody>
       </table>
