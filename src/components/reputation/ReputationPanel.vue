@@ -45,14 +45,12 @@ const tiles = computed<Tile[]>(() => {
       label: 'Trusted score',
       value: formatNumber(r.trusted),
       hint: r.lcb === null ? 'too few votes for a bound' : `95% bound ${formatNumber(r.lcb)}`,
-      title: 'Weighted average after every rule in “How the score is built”',
       tone: 'main',
     },
     {
       label: 'Evidence',
       value: r.strength.tier,
       hint: `${s.reviewers.length} reviewer${s.reviewers.length === 1 ? '' : 's'}`,
-      title: r.strength.reasons.join('\n'),
       tone: TIER_TONE[r.strength.tier],
       word: true,
     },
@@ -60,7 +58,6 @@ const tiles = computed<Tile[]>(() => {
       label: 'Risk',
       value: LEVEL[s.level].word,
       hint: s.signals.length ? `${s.signals.length} signal${s.signals.length === 1 ? '' : 's'}` : 'nothing flagged',
-      title: 'Worst level among the signals',
       tone: LEVEL[s.level].tone,
       word: true,
     },
@@ -68,7 +65,6 @@ const tiles = computed<Tile[]>(() => {
       label: 'Raw on-chain',
       value: formatNumber(onchain?.average ?? r.raw),
       hint: `n = ${onchain?.count ?? s.coverage.total}`,
-      title: "Plain mean of non-revoked rows, as the registry's getSummary reports it",
     },
     {
       label: '8004scan',
@@ -80,7 +76,6 @@ const tiles = computed<Tile[]>(() => {
           : scan.loading.value
             ? ''
             : 'not scored there',
-      title: "8004scan's overall score, read live from its public API",
       tone: 'quiet',
       loading: scan.loading.value,
     },
@@ -92,7 +87,6 @@ const tiles = computed<Tile[]>(() => {
         : ecosystem.loading.value
           ? ''
           : 'unreachable',
-      title: 'Mean feedback value over every agent 8004scan indexes: what a typical rating looks like',
       tone: 'quiet',
       loading: ecosystem.loading.value,
     },

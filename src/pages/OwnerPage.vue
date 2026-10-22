@@ -93,21 +93,18 @@ const tiles = computed<Tile[]>(() => {
     {
       label: 'Owned agents',
       value: String(owned.value),
-      title: `Agents this address owns on ${chain.value.name}`,
       tone: 'main',
     },
     {
       label: 'Rated',
       value: s ? String(s.rated) : '—',
       hint: s ? `of ${owned.value} owned` : '',
-      title: 'Owned agents that have at least one feedback review',
       loading: s === null,
     },
     {
       label: 'Average rating',
       value: s ? formatScore(s.avg) : '—',
       hint: s ? `${s.total} ${s.total === 1 ? 'review' : 'reviews'} across ${s.rated} ${s.rated === 1 ? 'agent' : 'agents'}` : '',
-      title: 'Simple average of each owned agent\'s on-chain average',
       loading: s === null,
       tone: s && s.avg >= 75 ? 'good' : s && s.avg > 0 ? undefined : 'quiet',
     },

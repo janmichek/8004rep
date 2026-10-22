@@ -71,7 +71,6 @@ const tiles = computed<Tile[]>(() => {
       value: formatPercent(s.perfectShare),
       hint: 'of non-revoked reviews',
       tone: (s.perfectShare ?? 0) > 0.7 ? 'warn' : undefined,
-      title: 'A network where most reviews are 100 cannot tell good agents from great ones',
     },
     { label: 'Suspect reviewers', value: String(s.suspects.length), hint: `${s.lookalikes.length} lookalike groups`, tone: s.suspects.length ? 'warn' : 'good' },
   ]
