@@ -2,8 +2,8 @@
 import { computed, shallowRef, watch } from 'vue'
 import { isAddress, type Address } from 'viem'
 import { addressExplorerUrl, findChainBySlug, txExplorerUrl } from '../chains'
+import Spinner from '../components/ui/Spinner.vue'
 import StatTiles, { type Tile } from '../components/ui/StatTiles.vue'
-import TilesSkeleton from '../components/ui/TilesSkeleton.vue'
 import { sourceFor } from '../data'
 import { loadFeedWindow, type FeedWindow } from '../data/feed'
 import { buildReviewerProfile } from '../data/reviewerProfile'
@@ -111,10 +111,7 @@ const tiles = computed<Tile[]>(() => {
     </div>
 
     <p v-if="feedError" class="notice">Could not load its feedback: {{ feedError }} <button @click="loadFeed()">Retry</button></p>
-    <div v-else-if="!profile" aria-busy="true" aria-live="polite">
-      <span class="sr-only">Loading its feedback</span>
-      <TilesSkeleton :count="6" />
-    </div>
+    <div v-else-if="!profile" class="loader"><Spinner large label="Loading its feedback" /></div>
 
     <template v-if="profile">
       <StatTiles :tiles="tiles" />

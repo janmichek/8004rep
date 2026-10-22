@@ -5,7 +5,6 @@ import { resolveAgentURI } from '../data/metadata'
 import type { AgentSummary, RegistrationFile, ReputationSummary } from '../data/types'
 import { formatDate, formatScore, shortAddress } from '../format'
 import AgentAvatar from './AgentAvatar.vue'
-import Skeleton from './ui/Skeleton.vue'
 
 const props = defineProps<{
   agent: AgentSummary
@@ -53,8 +52,7 @@ const to = computed(() => ({
         <AgentAvatar :pending="file === undefined" :image="file?.image" :label="file?.name ?? ''" />
         <div class="agent-name">
           <template v-if="file === undefined">
-            <Skeleton width="9em" />
-            <Skeleton width="14em" height="0.65em" />
+            <span class="muted">Loading…</span>
           </template>
           <template v-else>
             <RouterLink :to="to">{{ name }}</RouterLink>
@@ -76,9 +74,7 @@ const to = computed(() => ({
       <span v-else class="muted">—</span>
     </td>
     <td>
-      <template v-if="file === undefined">
-        <Skeleton width="3.2em" height="1.35em" radius="999px" />
-      </template>
+      <span v-if="file === undefined" class="muted">…</span>
       <template v-else>
         <span v-for="service in file?.services ?? []" :key="service.name + service.endpoint" class="chip">
           {{ service.name }}
@@ -87,7 +83,7 @@ const to = computed(() => ({
       </template>
     </td>
     <td class="num" :title="score?.capped ? 'Count and average of the first 200 clients' : undefined">
-      <Skeleton v-if="scoreLoading" width="5.5em" />
+      <span v-if="scoreLoading" class="muted">…</span>
       <template v-else-if="feedbackLabel">{{ feedbackLabel }}</template>
       <span v-else class="muted">—</span>
     </td>

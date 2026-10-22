@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Hint from './Hint.vue'
-import Skeleton from './Skeleton.vue'
+import Spinner from './Spinner.vue'
 
 export type Tile = {
   label: string
@@ -24,10 +24,10 @@ defineProps<{ tiles: Tile[] }>()
       <div class="tile" :class="tile.tone && `tone-${tile.tone}`" :tabindex="tile.title ? 0 : undefined">
         <div class="tile-label">{{ tile.label }}</div>
         <div class="tile-value" :class="{ word: tile.word && !tile.loading }">
-          <Skeleton v-if="tile.loading" width="3.2em" height="1.25em" />
+          <Spinner v-if="tile.loading" />
           <template v-else>{{ tile.value }}</template>
         </div>
-        <div v-if="tile.loading" class="tile-hint"><Skeleton width="72%" height="0.7em" /></div>
+        <div v-if="tile.loading" class="tile-hint">&nbsp;</div>
         <div v-else-if="tile.hint" class="tile-hint">{{ tile.hint }}</div>
       </div>
     </Hint>

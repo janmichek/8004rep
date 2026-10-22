@@ -33,6 +33,18 @@ export function toDisplayUrl(value: unknown): string | undefined {
   }
 }
 
+/** Candidate URLs for an image, in preference order: every IPFS gateway, then the single URL. */
+export function imageUrls(value: unknown): string[] {
+  if (typeof value !== 'string') return []
+  const s = value.trim()
+  if (s.startsWith('ipfs://')) {
+    const path = ipfsPath(s)
+    return IPFS_GATEWAYS.map((gateway) => gateway + path)
+  }
+  const url = toDisplayUrl(s)
+  return url ? [url] : []
+}
+
 function str(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value : undefined
 }

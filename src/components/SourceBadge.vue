@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import type { ResolvedSource } from '../data'
 import { formatDuration } from '../format'
 import Hint from './ui/Hint.vue'
-import Skeleton from './ui/Skeleton.vue'
+import Spinner from './ui/Spinner.vue'
 
 const props = defineProps<{ resolved?: ResolvedSource }>()
 
@@ -17,7 +17,7 @@ const lag = computed(() => {
 </script>
 
 <template>
-  <Skeleton v-if="!resolved" width="7.5em" height="22px" radius="999px" />
+  <Spinner v-if="!resolved" label="Loading source" />
   <Hint v-else-if="resolved.source.kind === 'subgraph'" text="Agents are read from the chain's subgraph">
     <span class="badge ok" tabindex="0">
       subgraph<template v-if="lag"> · {{ lag }} behind</template>

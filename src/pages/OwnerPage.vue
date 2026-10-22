@@ -5,10 +5,9 @@ import { isAddress, type Address } from 'viem'
 import { identityAbi } from '../abi'
 import { addressExplorerUrl, findChainBySlug } from '../chains'
 import AgentRow from '../components/AgentRow.vue'
-import Skeleton from '../components/ui/Skeleton.vue'
 import Hint from '../components/ui/Hint.vue'
+import Spinner from '../components/ui/Spinner.vue'
 import StatTiles, { type Tile } from '../components/ui/StatTiles.vue'
-import TableSkeleton from '../components/ui/TableSkeleton.vue'
 import { sourceFor } from '../data'
 import { getScores } from '../data/rpc'
 import type { ReputationSummary } from '../data/types'
@@ -130,7 +129,7 @@ const tiles = computed<Tile[]>(() => {
     <div class="page-head">
       <h1>
         Owner <span class="mono">{{ shortAddress(address) }}</span>
-        <small v-if="loading || !data"><Skeleton width="6em" height="0.75em" /></small>
+        <small v-if="loading || !data"><Spinner label="Loading count" /></small>
         <small v-else-if="data.owned !== undefined">{{ data.owned }} {{ data.owned === 1 ? 'agent' : 'agents' }}</small>
       </h1>
       <p class="meta">
@@ -147,12 +146,7 @@ const tiles = computed<Tile[]>(() => {
       <p>Could not load agents: {{ error }}</p>
       <button @click="reload">Retry</button>
     </section>
-    <TableSkeleton
-      v-else-if="loading || !data"
-      label="Loading agents"
-      :headers="['Agent', 'ID', 'Services', 'Feedback', 'Created']"
-      :numeric="['ID', 'Feedback', 'Created']"
-    />
+    <div v-else-if="loading || !data" class="loader"><Spinner large label="Loading agents" /></div>
     <template v-else>
       <section v-if="data.items.length === 0" class="state muted">
         {{ page > 0 ? 'No more agents on this page.' : `This address owns no agents on ${chain.name}.` }}

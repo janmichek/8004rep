@@ -206,24 +206,37 @@ footer {
   list-style: none;
 }
 
-.skeleton {
-  display: inline-block;
-  vertical-align: middle;
-  background: var(--line);
+.spinner-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.skeleton.block {
-  display: block;
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
 }
 
-.avatar.skeleton {
-  border-color: transparent;
+.spinner.large {
+  width: 28px;
+  height: 28px;
+  border-width: 3px;
 }
 
-.skeleton-stack {
-  display: grid;
-  gap: 8px;
-  margin-top: 10px;
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loader {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
 }
 
 .avatar {
@@ -263,11 +276,6 @@ footer {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.avatar.skeleton {
-  border-color: transparent;
-  background: var(--line);
 }
 
 /* Tables */
@@ -1742,7 +1750,7 @@ button:disabled {
   }
 }
 
-/* Radix primitives: select, tooltip, disclosure, skeleton charts */
+/* Radix primitives: select, tooltip, disclosure */
 
 .select-trigger {
   display: inline-flex;
@@ -1874,22 +1882,4 @@ button:disabled {
   font-size: 12px;
 }
 
-.tile .skeleton + .skeleton {
-  margin-top: 6px;
-}
 
-.chart-skel {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 150px;
-}
-
-.chart-skel .skeleton {
-  flex: 1;
-  min-width: 0;
-}
-
-.tx-detail-state .skeleton-stack {
-  margin-top: 8px;
-}

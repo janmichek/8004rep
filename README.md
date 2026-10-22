@@ -51,7 +51,7 @@ Production deployments also require a `production` environment in the repository
 |---|---|---|
 | Agents | `#/agents/:slug` | Agents registered on a network, newest first; search by token ID everywhere, by name on indexed networks |
 | Agent | `#/agents/:slug/:id` | One agent: owner, agent wallet, registration file, services and reputation cards |
-| Network | `#/network/:slug` | Network feedback health: stats, suspect reviewers, review rings, latest reviews |
+| Network | `#/network/:slug` | Network feedback health: stats cards and latest reviews |
 | Owner | `#/owners/:slug/:address` | All agents owned by an address |
 | Reviewer | `#/reviewers/:slug/:address` | One reviewer's stats cards and latest reviews |
 

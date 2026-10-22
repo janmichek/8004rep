@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   fetchJsonUri,
   fetchUriBytes,
+  imageUrls,
   normalizeRegistrationFile,
   resolveAgentURI,
   resolveFeedbackText,
@@ -31,6 +32,21 @@ describe('toDisplayUrl', () => {
     expect(toDisplayUrl('data:text/html,<script>1</script>')).toBeUndefined()
     expect(toDisplayUrl('not a url')).toBeUndefined()
     expect(toDisplayUrl(42)).toBeUndefined()
+  })
+})
+
+describe('imageUrls', () => {
+  it('offers every ipfs gateway as a fallback', () => {
+    const urls = imageUrls('ipfs://bafy/logo.png')
+    expect(urls[0]).toBe('https://ipfs.filebase.io/ipfs/bafy/logo.png')
+    expect(urls.length).toBeGreaterThan(1)
+    expect(urls.every((url) => url.endsWith('/ipfs/bafy/logo.png'))).toBe(true)
+  })
+
+  it('returns one URL for http and inline images', () => {
+    expect(imageUrls('https://example.com/a.png')).toEqual(['https://example.com/a.png'])
+    expect(imageUrls('data:image/png;base64,AAAA')).toEqual(['data:image/png;base64,AAAA'])
+    expect(imageUrls(undefined)).toEqual([])
   })
 })
 
