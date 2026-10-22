@@ -97,7 +97,7 @@ describe('transaction checks', () => {
     expect(status('tx-sender', facts({ tx: tx({ from: OWNER, to: A }) }))).toBe('fail')
   })
 
-  it('warns when a contract wrote the feedback or several rows share the transaction', () => {
+  it('warns when a contract wrote the feedback or several reviews share the transaction', () => {
     expect(status('tx-target', facts({ tx: tx({ to: RELAYER }) }))).toBe('warn')
     expect(check('tx-single', facts({ tx: tx({ feedbackLogs: 7 }) }))).toMatchObject({ status: 'warn' })
   })
@@ -113,7 +113,7 @@ function file(json: unknown, extra: Partial<FileFacts> = {}): FileFacts {
 }
 
 describe('feedback file checks', () => {
-  it('reports a bare row as missing its file and its interaction', () => {
+  it('reports a bare review as missing its file and its interaction', () => {
     const f = facts()
     expect(status('file-present', f)).toBe('missing')
     expect(status('file-interaction', f)).toBe('missing')
@@ -154,7 +154,7 @@ describe('feedback file checks', () => {
     expect(status('file-integrity', facts({ tx: null, file: file({}) }))).toBe('unknown')
   })
 
-  it('checks that the file restates the on-chain row', () => {
+  it('checks that the file restates the on-chain review', () => {
     const good = {
       agentRegistry: `eip155:84532:${IDENTITY.toLowerCase()}`,
       agentId: 22,
@@ -164,7 +164,7 @@ describe('feedback file checks', () => {
     }
     expect(check('file-consistent', facts({ file: file(good) }))).toMatchObject({
       status: 'pass',
-      detail: 'agentRegistry, agentId, clientAddress, value agree with the on-chain row.',
+      detail: 'agentRegistry, agentId, clientAddress, value agree with the on-chain review.',
     })
     const bad = check('file-consistent', facts({ file: file({ ...good, agentId: '23', value: 100, valueDecimals: 0 }) }))
     expect(bad.status).toBe('fail')
@@ -266,11 +266,11 @@ describe('payment checks', () => {
   it('fails a payment that other reviewers cite too, and warns when the same reviewer reuses it', () => {
     expect(check('pay-unique', facts({ file: file({}), payment: payment({ reusedByOthers: 2, reusedBySame: 1 }) }))).toMatchObject({
       status: 'fail',
-      detail: 'The same payment backs 2 rows of other reviewers on this agent.',
+      detail: 'The same payment backs 2 reviews of other reviewers on this agent.',
     })
     expect(check('pay-unique', facts({ file: file({}), payment: payment({ reusedBySame: 1 }) }))).toMatchObject({
       status: 'warn',
-      detail: 'The same payment backs 1 other row of this reviewer.',
+      detail: 'The same payment backs 1 other review of this reviewer.',
     })
   })
 })
@@ -296,7 +296,7 @@ describe('reviewer checks', () => {
       { tokenId: 9n, value: 90, revoked: false },
     ]
     const f = facts({ reviewer: { rows } })
-    expect(check('rev-breadth', f)).toMatchObject({ status: 'pass', detail: 'Rated 3 agents (all its rows).' })
+    expect(check('rev-breadth', f)).toMatchObject({ status: 'pass', detail: 'Rated 3 agents (all its reviews).' })
     expect(status('rev-varied', f)).toBe('pass')
     expect(status('rev-stands', f)).toBe('pass')
   })
@@ -304,9 +304,9 @@ describe('reviewer checks', () => {
   it('warns on a single-agent reviewer that always gives the same value and revokes a lot', () => {
     const rows = [100, 100, 100, 100].map((value, i) => ({ tokenId: 22n, value, revoked: i === 0 }))
     const f = facts({ reviewer: { rows: [...rows, { tokenId: 22n, value: 100, revoked: true }], rowsTruncated: true } })
-    expect(check('rev-breadth', f)).toMatchObject({ status: 'warn', detail: 'Only ever rated this agent (its latest 5 rows).' })
-    expect(check('rev-varied', f)).toMatchObject({ status: 'warn', detail: 'All 3 rows give the same value (100).' })
-    expect(check('rev-stands', f)).toMatchObject({ status: 'warn', detail: 'Revoked 2 of its 5 rows.' })
+    expect(check('rev-breadth', f)).toMatchObject({ status: 'warn', detail: 'Only ever rated this agent (its latest 5 reviews).' })
+    expect(check('rev-varied', f)).toMatchObject({ status: 'warn', detail: 'All 3 reviews give the same value (100).' })
+    expect(check('rev-stands', f)).toMatchObject({ status: 'warn', detail: 'Revoked 2 of its 5 reviews.' })
   })
 
   it('is unknown when the feed holds nothing from the reviewer', () => {
@@ -320,7 +320,7 @@ describe('checks within the agent', () => {
   it('measures concentration and the reviewer’s own share', () => {
     const f = facts()
     expect(check('agent-concentration', f)).toMatchObject({ status: 'pass', detail: 'HHI 0.25 (as if 4.0 equal reviewers) over 4 reviewers; the top 3 wrote 75%.' })
-    expect(check('agent-voice', f)).toMatchObject({ status: 'pass', detail: 'Wrote 1 of the 4 counted rows (25%).' })
+    expect(check('agent-voice', f)).toMatchObject({ status: 'pass', detail: 'Wrote 1 of the 4 counted reviews (25%).' })
 
     const farmed = [row(A, 90), row(A, 80), row(A, 70), row(B, 60)]
     expect(check('agent-concentration', facts(), context(farmed))).toMatchObject({ status: 'warn' })
@@ -328,7 +328,7 @@ describe('checks within the agent', () => {
     expect(status('agent-voice', facts(), context(farmed.slice(0, 2)))).toBe('unknown')
   })
 
-  it('carries the authenticity weight of the row', () => {
+  it('carries the authenticity weight of the review', () => {
     expect(status('agent-weight', facts())).toBe('pass')
     const duplicate = [row(B, 90), row(A, 90), row(C, 70)]
     expect(check('agent-weight', facts(), context(duplicate, { index: 1 }))).toMatchObject({

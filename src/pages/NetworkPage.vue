@@ -61,9 +61,9 @@ const tiles = computed<Tile[]>(() => {
   const s = stats.value
   if (!s) return []
   return [
-    { label: 'Rows in window', value: String(s.rows), hint: s.from && s.to ? daySpan(s.from, s.to) : '', tone: 'main' },
+    { label: 'Reviews in window', value: String(s.rows), hint: s.from && s.to ? daySpan(s.from, s.to) : '', tone: 'main' },
     { label: 'Agents rated', value: String(s.agents) },
-    { label: 'Reviewers', value: String(s.reviewers), hint: `${formatNumber(s.rows / Math.max(1, s.reviewers))} rows each` },
+    { label: 'Reviewers', value: String(s.reviewers), hint: `${formatNumber(s.rows / Math.max(1, s.reviewers))} reviews each` },
     {
       label: 'Average value',
       value: formatNumber(s.average),
@@ -77,9 +77,9 @@ const tiles = computed<Tile[]>(() => {
     {
       label: 'Perfect 100s',
       value: formatPercent(s.perfectShare),
-      hint: 'of non-revoked rows',
+      hint: 'of non-revoked reviews',
       tone: (s.perfectShare ?? 0) > 0.7 ? 'warn' : undefined,
-      title: 'A network where most rows are 100 cannot tell good agents from great ones',
+      title: 'A network where most reviews are 100 cannot tell good agents from great ones',
     },
     { label: 'Suspect reviewers', value: String(s.suspects.length), hint: `${s.lookalikes.length} lookalike groups`, tone: s.suspects.length ? 'warn' : 'good' },
   ]
@@ -137,7 +137,7 @@ function reviewerRoute(address: string) {
     <StatTiles :tiles="tiles" />
     <p class="muted note">
       Window: {{ stats.rows }} newest rows<template v-if="feed.since"> since {{ formatDate(feed.since) }}</template>.
-      <button v-if="feed.cursor" :disabled="loading" @click="load(true)">{{ loading ? 'Loading…' : 'Load older rows' }}</button>
+      <button v-if="feed.cursor" :disabled="loading" @click="load(true)">{{ loading ? 'Loading…' : 'Load older reviews' }}</button>
       <span v-else>That is everything the source holds.</span>
     </p>
 
@@ -157,7 +157,7 @@ function reviewerRoute(address: string) {
         <div v-else class="table-wrap">
           <table>
             <thead>
-              <tr><th>Reviewer</th><th class="num">Rows</th><th class="num">Agents</th><th class="num">Average</th><th>Why</th></tr>
+              <tr><th>Reviewer</th><th class="num">Reviews</th><th class="num">Agents</th><th class="num">Average</th><th>Why</th></tr>
             </thead>
             <tbody>
               <tr v-for="s in stats.suspects.slice(0, 50)" :key="s.client">
@@ -201,7 +201,7 @@ function reviewerRoute(address: string) {
       <template #agents>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Agent</th><th class="num">Rows</th><th class="num">Reviewers</th><th class="num">Average</th></tr></thead>
+            <thead><tr><th>Agent</th><th class="num">Reviews</th><th class="num">Reviewers</th><th class="num">Average</th></tr></thead>
             <tbody>
               <tr v-for="a in stats.topAgents" :key="a.tokenId.toString()">
                 <td><RouterLink :to="agentRoute(a.tokenId)">{{ a.agentName ?? `Agent #${a.tokenId}` }}</RouterLink> <small class="muted">#{{ a.tokenId }}</small></td>

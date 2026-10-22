@@ -31,7 +31,7 @@ function evidenceUrl(uri: string | undefined): string | undefined {
 </script>
 
 <template>
-  <p v-if="rows.length === 0" class="muted">No rows match.</p>
+  <p v-if="rows.length === 0" class="muted">No reviews match.</p>
   <div v-else class="table-wrap">
     <table class="feedback-table">
       <thead>
@@ -40,8 +40,8 @@ function evidenceUrl(uri: string | undefined): string | undefined {
           <th class="num">Value</th>
           <th>Tags</th>
           <Hint v-if="hasNotes" text="The text (or comment) field of the off-chain feedback file"><th>Text</th></Hint>
-          <th>Endpoint</th>
           <Hint v-if="hasStats" text="Authenticity weight (1 = full vote) and the rules that fired; hover a chip for its rule"><th>Weight</th></Hint>
+          <th>Link</th>
           <th>When</th>
           <Hint text="appendResponse entries: agent replies, refunds, spam flags"><th>Replies</th></Hint>
           <th v-if="$slots.detail"><span class="sr-only">Detail</span></th>
@@ -71,10 +71,6 @@ function evidenceUrl(uri: string | undefined): string | undefined {
               <FeedbackNote v-if="row.feedbackURI" :uri="row.feedbackURI" />
               <span v-else class="muted">—</span>
             </td>
-            <td class="endpoint">
-              <span v-if="row.endpoint" class="ellipsis" :title="row.endpoint">{{ row.endpoint }}</span>
-              <span v-else class="muted">—</span>
-            </td>
             <td v-if="hasStats" class="checks-cell">
               <template v-if="stats">
                 <Hint text="Authenticity weight">
@@ -87,23 +83,27 @@ function evidenceUrl(uri: string | undefined): string | undefined {
                 </template>
               </template>
             </td>
-            <td class="nowrap">
-              <template v-if="row.createdAt">
-                <a
-                  v-if="row.txHash"
-                  :href="txExplorerUrl(chain, row.txHash)"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  :title="`${formatDate(row.createdAt)} — open the transaction`"
-                >
-                  {{ formatTimeline(row.createdAt) }}
-                </a>
-                <span v-else :title="formatDate(row.createdAt)">{{ formatTimeline(row.createdAt) }}</span>
-              </template>
-              <span v-else class="muted" title="Older than the log scan window, or the source has no dates">—</span>
+            <td class="links">
+              <div class="link-row">
+              <a
+                v-if="row.txHash"
+                :href="txExplorerUrl(chain, row.txHash)"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Open the transaction"
+              >
+                tx ↗
+              </a>
+              <span v-else class="muted">—</span>
               <a v-if="evidenceUrl(row.feedbackURI)" :href="evidenceUrl(row.feedbackURI)" target="_blank" rel="noopener noreferrer" title="Feedback file (feedbackURI)">
                 · file ↗
               </a>
+              </div>
+              <span v-if="row.endpoint" class="endpoint ellipsis" :title="row.endpoint">{{ row.endpoint }}</span>
+            </td>
+            <td class="nowrap">
+              <span v-if="row.createdAt" :title="formatDate(row.createdAt)">{{ formatTimeline(row.createdAt) }}</span>
+              <span v-else class="muted" title="Older than the log scan window, or the source has no dates">—</span>
             </td>
             <td>
               <span

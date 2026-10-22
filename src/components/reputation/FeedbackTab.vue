@@ -50,7 +50,7 @@ function reviewerRoute(address: string) {
 
 <template>
   <div class="toolbar">
-    <Segmented v-model="filter" label="Filter rows" :segments="segments" />
+    <Segmented v-model="filter" label="Filter reviews" :segments="segments" />
     <label class="sort">
       Sort
       <SelectMenu v-model="sort" compact label="Sort feedback" :options="SORTS" />

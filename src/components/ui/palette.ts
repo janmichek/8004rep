@@ -13,7 +13,7 @@ export const WEIGHT_SERIES: Series[] = [
 ]
 
 /** Single-series magnitude (distributions, volumes). */
-export const COUNT_SERIES: Series[] = [{ key: 'count', label: 'rows', color: '#3987e5' }]
+export const COUNT_SERIES: Series[] = [{ key: 'count', label: 'reviews', color: '#3987e5' }]
 
 export type WeightClass = 'clean' | 'discounted' | 'zero' | 'revoked'
 

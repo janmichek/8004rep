@@ -9,7 +9,7 @@ export type Column = { label: string; segments: { key: string; value: number }[]
  * Values in tenths of the conventional 0–100 scale, with an extra bin on
  * either side only when values leave it.
  */
-export function valueHistogram(values: number[], unit = 'row'): Column[] {
+export function valueHistogram(values: number[], unit = 'review'): Column[] {
   const bins = Array.from({ length: 10 }, (_, i) => ({ from: i * 10, to: i * 10 + 10, count: 0 }))
   let below = 0
   let above = 0
@@ -64,7 +64,7 @@ export function dailyColumns<T>(
     return {
       label: start,
       segments,
-      title: `${step === 7 ? `Week of ${start}` : start} · ${total} row${total === 1 ? '' : 's'}${
+      title: `${step === 7 ? `Week of ${start}` : start} · ${total} review${total === 1 ? '' : 's'}${
         total ? ` · ${segments.map((s) => `${s.value} ${labels[s.key] ?? s.key}`).join(', ')}` : ''
       }`,
     }

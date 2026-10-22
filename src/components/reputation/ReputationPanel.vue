@@ -94,7 +94,7 @@ const tiles = computed<Tile[]>(() => {
       label: 'Ecosystem avg',
       value: ecosystem.data.value ? formatNumber(ecosystem.data.value.averageFeedback) : '—',
       hint: ecosystem.data.value
-        ? `${ecosystem.data.value.totalFeedback.toLocaleString('en-US')} rows`
+        ? `${ecosystem.data.value.totalFeedback.toLocaleString('en-US')} reviews`
         : ecosystem.loading.value
           ? ''
           : 'unreachable',

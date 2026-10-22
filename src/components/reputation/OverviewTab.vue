@@ -41,8 +41,8 @@ const coverage = computed(() => {
   const c = props.stats.coverage
   return [
     { label: 'Dated', n: c.dated, rule: 'Burst, surge and trend checks need a date.' },
-    { label: 'Transaction known', n: c.withTx, rule: 'Lets the Tx detail check who sent and paid for the row.' },
-    { label: 'Feedback file', n: c.withUri, rule: 'Comment, task or payment proof behind the row.' },
+    { label: 'Transaction known', n: c.withTx, rule: 'Lets the Tx detail check who sent and paid for the review.' },
+    { label: 'Feedback file', n: c.withUri, rule: 'Comment, task or payment proof behind the review.' },
     { label: 'Endpoint named', n: c.withEndpoint, rule: 'Says which service was rated.' },
   ].map((m) => ({ ...m, share: c.total ? m.n / c.total : 0 }))
 })
@@ -57,7 +57,7 @@ const coverage = computed(() => {
           <span class="signal-level">{{ signal.level }}</span> <span>{{ signal.text }}</span>
         </li>
       </ul>
-      <p v-else class="muted">No warning signs in these rows.</p>
+      <p v-else class="muted">No warning signs in these reviews.</p>
       <ul class="reasons">
         <li v-for="reason in report.strength.reasons" :key="reason">{{ reason }}</li>
       </ul>
@@ -85,7 +85,7 @@ const coverage = computed(() => {
             {{ step.id === 'all' ? '' : formatSigned(step.delta) }}
           </span>
           <span class="bar-note muted">
-            {{ step.id === 'all' ? `${step.rows} rows` : step.rows ? `${step.rows} row${step.rows === 1 ? '' : 's'} touched` : 'nothing found' }}
+            {{ step.id === 'all' ? `${step.rows} reviews` : step.rows ? `${step.rows} review${step.rows === 1 ? '' : 's'} touched` : 'nothing found' }}
           </span>
           <small class="bar-rule muted">{{ step.rule }}</small>
         </li>
@@ -93,7 +93,7 @@ const coverage = computed(() => {
     </section>
 
     <section class="panel">
-      <h3>Evidence behind the rows</h3>
+      <h3>Evidence behind the reviews</h3>
       <div v-if="ladderTotal" class="stack-bar" role="img" :aria-label="report.ladder.map((r) => `${r.label}: ${r.rows}`).join(', ')">
         <Hint
           v-for="rung in report.ladder.filter((r) => r.rows > 0)"

@@ -131,13 +131,13 @@ describe('markRevoked', () => {
     expect(marked[0].revoked).toBe(true)
   })
 
-  it('leaves rows alone without revocations', () => {
+  it('leaves reviews alone without revocations', () => {
     expect(markRevoked(rows, []).map((r) => r.revoked)).toEqual([false, false])
   })
 })
 
 describe('mergeFeedback', () => {
-  it('fills dates, endpoint, URI and tx on the matching row only', () => {
+  it('fills dates, endpoint, URI and tx on the matching review only', () => {
     const base = [
       { client: CLIENT, index: 0, value: 80, revoked: false },
       { client: '0x00000000000000000000000000000000000000b2' as Address, value: 90, revoked: false },

@@ -328,14 +328,14 @@ describe('loadTxFacts', () => {
     const facts = await loadTxFacts({ chain: CHAIN, client, source, tokenId: 22n, row, feedback: [row] })
     expect(facts).toEqual({
       tx: null,
-      txNote: 'This row is older than the log scan reaches, so its transaction is not known.',
+      txNote: 'This review is older than the log scan reaches, so its transaction is not known.',
       file: null,
       payment: null,
       reviewer: {},
     })
   })
 
-  it('finds the transaction of a dated row that carries no hash, and its URI with it', async () => {
+  it('finds the transaction of a dated review that carries no hash, and its URI with it', async () => {
     const uri = dataUri({ text: 'ok' })
     const row: Feedback = { client: A, index: 3, value: 90, revoked: false, createdAt: 1_000_000 + 2 * 4_321 }
     const seen: { fromBlock?: bigint; toBlock?: bigint } = {}

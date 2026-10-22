@@ -48,7 +48,7 @@ describe('scoreWaterfall', () => {
     expect(pattern.average).toBeCloseTo(computeScores(feedback).weighted!, 9)
   })
 
-  it('reports a null average once every row is gone', () => {
+  it('reports a null average once every review is gone', () => {
     const steps = scoreWaterfall([row(OWNER, 100)], [OWNER])
     expect(steps.find((s) => s.id === 'self')!.average).toBeNull()
     expect(steps.at(-1)!.average).toBeNull()
@@ -95,7 +95,7 @@ describe('buildTrustReport', () => {
     expect(r.headline).toMatch(/70/)
   })
 
-  it('climbs the evidence ladder by what each row carries', () => {
+  it('climbs the evidence ladder by what each review carries', () => {
     const r = report([
       row(addr(1), 80),
       row(addr(2), 80, { tag1: 'starred', endpoint: 'https://x' }),

@@ -34,7 +34,7 @@ describe('computeWeights', () => {
     expect(flaggedMonotonous).toBe(3)
   })
 
-  it('revoked rows weigh nothing', () => {
+  it('revoked reviews weigh nothing', () => {
     const fb = [{ ...row(A, 100), revoked: true }]
     expect(computeWeights(fb).weights[0]).toBe(0)
   })

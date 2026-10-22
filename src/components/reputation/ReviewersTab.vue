@@ -87,7 +87,7 @@ function isSelf(address: string): boolean {
       <thead>
         <tr>
           <th>Reviewer</th>
-          <Hint text="Rows on this agent (revoked in brackets)"><th class="num">Rows</th></Hint>
+          <Hint text="Reviews on this agent (revoked in brackets)"><th class="num">Reviews</th></Hint>
           <Hint text="Share of the authenticity weight — pull on the trusted score"><th>Weight share</th></Hint>
           <Hint text="Average of its non-revoked values here, with min–max"><th class="num">Avg here</th></Hint>
           <Hint text="Raw average without this reviewer minus with it"><th class="num">Without it</th></Hint>
@@ -106,7 +106,7 @@ function isSelf(address: string): boolean {
           </td>
           <td class="num">{{ r.rows }}<span v-if="r.revoked" class="muted"> ({{ r.revoked }})</span></td>
           <td>
-            <span class="inline-meter" :title="`${formatPercent(r.weightShare)} of the weight, ${formatPercent(r.share)} of counted rows`">
+            <span class="inline-meter" :title="`${formatPercent(r.weightShare)} of the weight, ${formatPercent(r.share)} of counted reviews`">
               <span class="bar-track" aria-hidden="true"><span :style="{ width: `${(r.weightShare ?? 0) * 100}%` }" /></span>
               {{ formatPercent(r.weightShare) }}
             </span>

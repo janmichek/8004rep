@@ -31,7 +31,7 @@ npm run dev      # http://localhost:5174
 | View | Path | Shows |
 |---|---|---|
 | Agents | `#/agents/:slug` | Agents registered on a network, newest first; search by token ID everywhere, by name on indexed networks |
-| Agent | `#/agents/:slug/:id` | One agent: owner, agent wallet, registration file, services, reputation and feedback; each feedback row opens the **Tx detail** |
+| Agent | `#/agents/:slug/:id` | One agent: owner, agent wallet, registration file, services, reputation and feedback; each feedback review opens the **Tx detail** |
 | Network | `#/network/:slug` | Network feedback health: stats, suspect reviewers, review rings, latest reviews |
 | Owner | `#/owners/:slug/:address` | All agents owned by an address |
 | Reviewer | `#/reviewers/:slug/:address` | One reviewer's profile: rules that fired, agents they rate, latest reviews |
@@ -78,7 +78,7 @@ account, then prints one line per check with a status. Hover a line for the rule
 | Group | Checks |
 |---|---|
 | Transaction | sent by the reviewer (not a relayer, not the agent's owner) · calls the registry directly · one feedback per transaction · fee paid |
-| Feedback file | readable · cannot be rewritten (`data:` / IPFS / `feedbackHash` = `keccak256` of the bytes or of their canonical JSON) · restates the on-chain row · names an endpoint, tool, task or skill |
+| Feedback file | readable · cannot be rewritten (`data:` / IPFS / `feedbackHash` = `keccak256` of the bytes or of their canonical JSON) · restates the on-chain review · names an endpoint, tool, task or skill |
 | Proof of payment | cited · exists and did not revert · moves value from the reviewer to the agent's owner or wallet · older than the feedback · not cited by another row · amount |
 | Reviewer | not the agent itself · established wallet (nonce) · rates other agents · ratings vary (entropy) · stands by its feedback (revocations) |
 | Within this agent | authenticity weight · the reviewer's share of rows · reviewer concentration (Herfindahl index) · not left right after registration · leave-one-out pull on the weighted score |

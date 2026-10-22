@@ -73,7 +73,7 @@ describe('resolveSource', () => {
       })
     })
 
-    it('keeps the RPC rows when the subgraph query fails', async () => {
+    it('keeps the RPC reviews when the subgraph query fails', async () => {
       const sg = stale(async () => {
         throw new Error('timeout')
       })

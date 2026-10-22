@@ -25,19 +25,19 @@ const notes = computed(() => {
   if (engagement && score.feedback) {
     const ramp =
       score.feedback.weight !== undefined && score.feedback.weight < 1
-        ? `, counted at ${Math.round(score.feedback.weight * 100)}% because there are few rows`
+        ? `, counted at ${Math.round(score.feedback.weight * 100)}% because there are few reviews`
         : ''
     notes.push(
-      `Feedback reaches 8004scan only through Engagement (${Math.round(engagement.weight * 100)}% of the total), as the plain average ${formatNumber(score.feedback.average)} of ${score.feedback.count} rows${ramp}. Stars and page views share that dimension.`,
+      `Feedback reaches 8004scan only through Engagement (${Math.round(engagement.weight * 100)}% of the total), as the plain average ${formatNumber(score.feedback.average)} of ${score.feedback.count} reviews${ramp}. Stars and page views share that dimension.`,
     )
-    notes.push('No reviewer is discounted there: self-reviews, duplicates and bursts count in full, and more rows push the score up.')
+    notes.push('No reviewer is discounted there: self-reviews, duplicates and bursts count in full, and more reviews push the score up.')
     if (props.raw !== null && Math.abs(score.feedback.average - props.raw) >= 5) {
       const valid = props.feedback.filter((f) => !f.revoked)
       const starred = valid.filter((f) => f.tag1?.toLowerCase() === 'starred').length
       notes.push(
         `Its feedback average ${formatNumber(score.feedback.average)} is far from the on-chain mean ${formatNumber(props.raw)}.` +
           (starred < valid.length
-            ? ` Only ${starred} of ${valid.length} rows here are tagged “starred”; 8004scan appears to score only rows on a tag it knows and to read the rest as no score.`
+            ? ` Only ${starred} of ${valid.length} reviews here are tagged “starred”; 8004scan appears to score only reviews on a tag it knows and to read the rest as no score.`
             : ''),
       )
     }
@@ -51,7 +51,7 @@ const notes = computed(() => {
   }
   if (score.band) notes.push(`Final scores are squeezed into ${formatNumber(score.band.floor)}–${formatNumber(score.band.ceiling)}, so many agents tie.`)
   if (score.feedback && score.feedback.count !== props.feedback.length) {
-    notes.push(`8004scan counts ${score.feedback.count} rows; this page read ${props.feedback.length} (indexer lag or scan window).`)
+    notes.push(`8004scan counts ${score.feedback.count} reviews; this page read ${props.feedback.length} (indexer lag or scan window).`)
   }
   return notes
 })

@@ -187,8 +187,8 @@ async function loadTx(
       tx: null,
       txNote:
         row.createdAt === undefined
-          ? 'This row is older than the log scan reaches, so its transaction is not known.'
-          : 'No NewFeedback log of this row was found at its date.',
+          ? 'This review is older than the log scan reaches, so its transaction is not known.'
+          : 'No NewFeedback log of this review was found at its date.',
     }
   }
   try {

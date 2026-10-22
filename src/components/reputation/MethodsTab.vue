@@ -14,15 +14,15 @@ const s = computed(() => computeScores(props.feedback, { self: props.self }))
 
 const alternatives = computed<Tile[]>(() => [
   { label: 'Weighted', value: formatNumber(s.value.weighted), hint: `${formatNumber(s.value.effectiveCount)} full votes`, title: 'Σ w·x / Σ w — the trusted score', tone: 'main' },
-  { label: 'Median', value: formatNumber(s.value.median), hint: `trimmed mean ${formatNumber(s.value.trimmed)}`, title: 'Middle valid value; one extreme row cannot move it' },
+  { label: 'Median', value: formatNumber(s.value.median), hint: `trimmed mean ${formatNumber(s.value.trimmed)}`, title: 'Middle valid value; one extreme review cannot move it' },
   { label: 'Bayesian', value: formatNumber(s.value.bayes), hint: 'prior 0, weight 5', title: '(W·weighted + 5·0)/(W+5): few votes pull toward 0' },
-  { label: 'Time-decayed', value: formatNumber(s.value.timeWeighted), hint: '90-day half-life', title: 'Weights fade by exp(−λ·age): old rows count less' },
+  { label: 'Time-decayed', value: formatNumber(s.value.timeWeighted), hint: '90-day half-life', title: 'Weights fade by exp(−λ·age): old reviews count less' },
   { label: '95% bound', value: formatNumber(s.value.lcb), hint: 'rank by this', title: 'weighted − 1.96·sd/√W, floored at the lowest value; needs 2 full votes' },
 ])
 
 const shape = computed(() => [
-  { label: 'Gap raw − trusted', value: formatSigned(s.value.gap), rule: 'Large and positive = the rules removed inflated rows.' },
-  { label: 'Trust mass', value: formatPercent(s.value.trustMass), rule: 'Full votes / rows. Near 100% clean, near 0 farmed.' },
+  { label: 'Gap raw − trusted', value: formatSigned(s.value.gap), rule: 'Large and positive = the rules removed inflated reviews.' },
+  { label: 'Trust mass', value: formatPercent(s.value.trustMass), rule: 'Full votes / reviews. Near 100% clean, near 0 farmed.' },
   { label: 'Independent voices', value: formatNumber(s.value.clientsEff), rule: 'exp(entropy of weight per reviewer). 1 = one reviewer holds it all.' },
   { label: 'Consensus', value: formatPercent(s.value.consensus), rule: '1 − variance / max variance for the observed range.' },
   { label: 'Polarization', value: formatPercent(s.value.polarization), rule: '0 = united, 100% = two opposite camps.' },
@@ -36,7 +36,7 @@ const labels = Object.entries(LABEL_INFO).map(([id, info]) => ({ id, ...info }))
 
 <template>
   <section class="panel">
-    <h3>Other ways to score the same rows</h3>
+    <h3>Other ways to score the same reviews</h3>
     <StatTiles :tiles="alternatives" />
     <dl class="metric-list">
       <template v-for="m in shape" :key="m.label">
@@ -50,7 +50,7 @@ const labels = Object.entries(LABEL_INFO).map(([id, info]) => ({ id, ...info }))
     <h3>By tag <small class="muted">different tags can mean different scales — compare within a tag</small></h3>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>tag1</th><th class="num">Rows</th><th class="num">Weighted avg</th></tr></thead>
+        <thead><tr><th>tag1</th><th class="num">Reviews</th><th class="num">Weighted avg</th></tr></thead>
         <tbody>
           <tr v-for="t in s.perTag" :key="t.tag">
             <td><span class="chip clip-chip" :title="t.tag">{{ t.tag }}</span></td>
@@ -63,7 +63,7 @@ const labels = Object.entries(LABEL_INFO).map(([id, info]) => ({ id, ...info }))
   </section>
 
   <section class="panel">
-    <h3>Rules on a row</h3>
+    <h3>Rules on a review</h3>
     <dl class="metric-list">
       <template v-for="f in flags" :key="f.id">
         <dt><span class="chip warn">{{ f.label }}</span></dt>
@@ -86,7 +86,7 @@ const labels = Object.entries(LABEL_INFO).map(([id, info]) => ({ id, ...info }))
     <h3>Evidence levels</h3>
     <dl class="metric-list">
       <dt>none</dt>
-      <dd>No row carries weight.</dd>
+      <dd>No review carries weight.</dd>
       <dt>thin</dt>
       <dd>Under {{ THIN_REVIEWERS }} independent voices or under {{ THIN_REVIEWERS }} full votes.</dd>
       <dt>moderate</dt>

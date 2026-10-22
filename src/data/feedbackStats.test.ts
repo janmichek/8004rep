@@ -19,7 +19,7 @@ function codes(feedback: Feedback[], context: Parameters<typeof computeFeedbackS
   return computeFeedbackStats(feedback, { now: NOW, ...context }).signals.map((s) => s.code)
 }
 
-describe('computeFeedbackStats rows', () => {
+describe('computeFeedbackStats reviews', () => {
   it('is clean and empty without feedback', () => {
     const stats = computeFeedbackStats([])
     expect(stats.rows).toEqual([])
@@ -27,7 +27,7 @@ describe('computeFeedbackStats rows', () => {
     expect(stats.level).toBe('clean')
   })
 
-  it('flags and zero-weights rows from the owner or agent wallet, case-insensitively', () => {
+  it('flags and zero-weights reviews from the owner or agent wallet, case-insensitively', () => {
     const feedback = [row(OWNER.toLowerCase() as Address, 100), row(A, 60)]
     const stats = computeFeedbackStats(feedback, { owner: OWNER, now: NOW })
     expect(stats.rows[0]).toMatchObject({ weight: 0, flags: ['self'] })
@@ -52,7 +52,7 @@ describe('computeFeedbackStats rows', () => {
     expect(rows[2].flags).not.toContain('outlier')
   })
 
-  it('does not judge spread on fewer than five rows', () => {
+  it('does not judge spread on fewer than five reviews', () => {
     const { rows } = computeFeedbackStats([row(A, 1), row(B, 2), row(C, 1000)], { now: NOW })
     expect(rows.every((r) => r.deviation === null)).toBe(true)
   })
@@ -69,14 +69,14 @@ describe('computeFeedbackStats rows', () => {
     expect(unknown.rows.some((r) => r.flags.includes('unlisted-endpoint'))).toBe(false)
   })
 
-  it('counts how many rows each client left', () => {
+  it('counts how many reviews each client left', () => {
     const { rows } = computeFeedbackStats([row(A, 1), row(B, 2), row(A, 3)], { now: NOW })
     expect(rows.map((r) => r.clientRows)).toEqual([2, 1, 2])
   })
 })
 
 describe('computeFeedbackStats reviewers', () => {
-  it('breaks feedback down per client, most rows first', () => {
+  it('breaks feedback down per client, most reviews first', () => {
     const feedback = [
       row(A, 100, { createdAt: NOW - 50 * DAY }),
       row(B, 0, { createdAt: NOW - 40 * DAY }),
@@ -109,7 +109,7 @@ describe('computeFeedbackStats reviewers', () => {
 })
 
 describe('computeFeedbackStats signals', () => {
-  it('reports one client holding most of the counted rows', () => {
+  it('reports one client holding most of the counted reviews', () => {
     const feedback = [row(A, 90), row(A, 91), row(A, 92), row(A, 93), row(B, 50)]
     const stats = computeFeedbackStats(feedback, { now: NOW })
     const signal = stats.signals.find((s) => s.code === 'concentration')
@@ -145,7 +145,7 @@ describe('computeFeedbackStats signals', () => {
     )
   })
 
-  it('reports a high revocation rate and undated rows', () => {
+  it('reports a high revocation rate and undated reviews', () => {
     const feedback = [row(A, 90, { revoked: true }), row(B, 80, { revoked: true }), row(C, 70)]
     expect(codes(feedback)).toEqual(expect.arrayContaining(['revocations', 'undated']))
   })

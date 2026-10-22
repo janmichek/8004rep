@@ -51,7 +51,7 @@ describe('findCount', () => {
 })
 
 describe('zipFeedback', () => {
-  it('builds rows and applies value decimals', () => {
+  it('builds reviews and applies value decimals', () => {
     const rows = zipFeedback([
       ['0x00000000000000000000000000000000000000a1', '0x00000000000000000000000000000000000000b2'],
       [1n, 1n],
@@ -100,7 +100,7 @@ describe('getScores', () => {
     expect(scores.has(9n)).toBe(false)
   })
 
-  it('caps the client list and marks the row', async () => {
+  it('caps the client list and marks the review', async () => {
     const many = Array.from({ length: 250 }, (_, i) => `0x${String(i + 1).padStart(40, '0')}` as Address)
     let seen: unknown[] = []
     const client = {

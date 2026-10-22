@@ -80,16 +80,16 @@ const tiles = computed<Tile[]>(() => {
   const w = wallet.data.value
   if (!p) return []
   return [
-    { label: 'Rows', value: String(p.rows), hint: p.revoked ? `${p.revoked} revoked` : 'none revoked', tone: 'main' },
+    { label: 'Reviews', value: String(p.rows), hint: p.revoked ? `${p.revoked} revoked` : 'none revoked', tone: 'main' },
     { label: 'Agents rated', value: String(p.agents), hint: p.perAgent[0] ? `most on #${p.perAgent[0].tokenId} (${p.perAgent[0].rows})` : '' },
-    { label: 'Average given', value: formatNumber(p.average), hint: 'non-revoked rows' },
+    { label: 'Average given', value: formatNumber(p.average), hint: 'non-revoked reviews' },
     {
       label: 'Most common value',
       value: p.mode ? formatScore(p.mode.value) : '—',
-      hint: p.mode ? `${formatPercent(p.mode.share)} of rows` : '',
+      hint: p.mode ? `${formatPercent(p.mode.share)} of reviews` : '',
       tone: p.labels.includes('rubber-stamp') ? 'warn' : undefined,
     },
-    { label: 'Busiest 24h', value: String(p.peakPerDay), hint: 'rows in one day', tone: p.labels.includes('bulk') ? 'warn' : undefined },
+    { label: 'Busiest 24h', value: String(p.peakPerDay), hint: 'reviews in one day', tone: p.labels.includes('bulk') ? 'warn' : undefined },
     {
       label: 'Wallet',
       value: w?.nonce === undefined ? '—' : `${w.nonce} tx`,
@@ -103,7 +103,7 @@ const tiles = computed<Tile[]>(() => {
 
 const valueColumns = computed(() => valueHistogram((feed.value?.items ?? []).filter((r) => !r.revoked).map((r) => r.value)))
 const timeColumns = computed(() =>
-  dailyColumns(feed.value?.items ?? [], (r) => r.createdAt, () => 'count', ['count'], { count: 'rows' }),
+  dailyColumns(feed.value?.items ?? [], (r) => r.createdAt, () => 'count', ['count'], { count: 'reviews' }),
 )
 </script>
 
@@ -170,7 +170,7 @@ const timeColumns = computed(() =>
 
       <div class="chart-grid">
         <ColumnChart title="Values it gave" :columns="valueColumns" :series="COUNT_SERIES" />
-        <ColumnChart title="Rows over time" :columns="timeColumns" :series="COUNT_SERIES" />
+        <ColumnChart title="Reviews over time" :columns="timeColumns" :series="COUNT_SERIES" />
       </div>
 
       <section class="panel">
@@ -178,7 +178,7 @@ const timeColumns = computed(() =>
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Agent</th><th class="num">Rows</th><th class="num">Average</th><th class="num">Revoked</th></tr>
+              <tr><th>Agent</th><th class="num">Reviews</th><th class="num">Average</th><th class="num">Revoked</th></tr>
             </thead>
             <tbody>
               <tr v-for="a in profile.perAgent" :key="a.tokenId.toString()">

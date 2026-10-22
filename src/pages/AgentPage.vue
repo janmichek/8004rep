@@ -83,7 +83,7 @@ const rawJson = computed(() => (file.value ? JSON.stringify(file.value.raw, null
 
   <template v-else>
     <div class="agent-head">
-      <AgentAvatar class="large" :pending="file === undefined" :image="file?.image" :label="file?.name ?? ''" />
+      <AgentAvatar class="large" :pending="file === undefined" :image="file?.image" :label="file?.name ?? ''" :seed="`${chain.chainId}:${agent.tokenId}`" />
       <div>
         <h1>
           <Skeleton v-if="file === undefined" width="12em" height="1.2em" />

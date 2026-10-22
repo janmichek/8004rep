@@ -230,8 +230,8 @@ function txChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
         id: 'tx-found',
         label: 'Transaction',
         status: 'unknown',
-        detail: facts.txNote ?? 'The transaction that wrote this row is not known.',
-        rule: 'The row is traced back to the transaction that wrote it.',
+        detail: facts.txNote ?? 'The transaction that wrote this review is not known.',
+        rule: 'The review is traced back to the transaction that wrote it.',
       },
     ]
   }
@@ -283,7 +283,7 @@ function txChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
     ...verdict(tx.feedbackLogs === 1
       ? { status: 'pass', detail: 'The only feedback written by this transaction.' }
       : tx.feedbackLogs > 1
-        ? { status: 'warn', detail: `${tx.feedbackLogs} feedback rows were written by this one transaction.` }
+        ? { status: 'warn', detail: `${tx.feedbackLogs} feedback reviews were written by this one transaction.` }
         : { status: 'unknown', detail: 'The receipt holds no NewFeedback log of the registry.' }),
   }
 
@@ -292,7 +292,7 @@ function txChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
     label: 'Cost to write',
     status: 'info',
     detail: `${formatAmount(tx.feeWei, 18)} ${ctx.nativeSymbol} in fees.`,
-    rule: 'Gas used × effective gas price (plus the L1 data fee where reported): what this row cost its sender, a floor on the cost of faking it.',
+    rule: 'Gas used × effective gas price (plus the L1 data fee where reported): what this review cost its sender, a floor on the cost of faking it.',
   }
 
   return [sender, target, single, fee]
@@ -367,9 +367,9 @@ function fileChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
   const interaction: Check = {
     id: 'file-interaction',
     label: 'Names the interaction',
-    rule: 'The row or its file says what was used: an endpoint, an MCP tool, an A2A task or a skill. The endpoint must be one the registration file advertises.',
+    rule: 'The review or its file says what was used: an endpoint, an MCP tool, an A2A task or a skill. The endpoint must be one the registration file advertises.',
     ...verdict(named.length === 0
-      ? { status: 'missing', detail: 'No endpoint, tool, task or skill: nothing ties the row to a specific interaction.' }
+      ? { status: 'missing', detail: 'No endpoint, tool, task or skill: nothing ties the review to a specific interaction.' }
       : unlisted
         ? { status: 'warn', detail: `Names ${named.join(', ')} — an endpoint the agent does not advertise.` }
         : { status: 'pass', detail: `Names ${named.join(', ')}.` }),
@@ -381,8 +381,8 @@ function fileChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
         id: 'file-present',
         label: 'Feedback file',
         status: 'missing',
-        detail: 'No feedbackURI: the row is a bare value with nothing behind it.',
-        rule: 'The row points to an off-chain feedback file (optional in the ERC).',
+        detail: 'No feedbackURI: the review is a bare value with nothing behind it.',
+        rule: 'The review points to an off-chain feedback file (optional in the ERC).',
       },
       interaction,
     ]
@@ -447,12 +447,12 @@ function fileChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
     const { agree, differ } = compareFields(file.json, row, ctx)
     consistent = {
       id: 'file-consistent',
-      label: 'Restates the row',
-      rule: 'agentRegistry, agentId, clientAddress, value, tags and endpoint in the file equal the on-chain row.',
+      label: 'Restates the review',
+      rule: 'agentRegistry, agentId, clientAddress, value, tags and endpoint in the file equal the on-chain review.',
       ...verdict(differ.length
-        ? { status: 'fail', detail: `Differs from the on-chain row: ${differ.join(', ')}.` }
+        ? { status: 'fail', detail: `Differs from the on-chain review: ${differ.join(', ')}.` }
         : agree.length
-          ? { status: 'pass', detail: `${agree.join(', ')} agree with the on-chain row.` }
+          ? { status: 'pass', detail: `${agree.join(', ')} agree with the on-chain review.` }
           : { status: 'missing', detail: 'The file states none of agentRegistry, agentId, clientAddress or value.' }),
     }
   }
@@ -547,9 +547,9 @@ function paymentChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
       label: 'Payment used once',
       rule: 'No other feedback file of this agent cites the same payment transaction. Another reviewer citing it fails; the same reviewer citing it again warns (one paid call can be rated on several tags).',
       ...verdict(payment.reusedByOthers > 0
-        ? { status: 'fail', detail: `The same payment backs ${plural(payment.reusedByOthers, 'row')} of other reviewers on this agent.` }
+        ? { status: 'fail', detail: `The same payment backs ${plural(payment.reusedByOthers, 'review')} of other reviewers on this agent.` }
         : payment.reusedBySame > 0
-          ? { status: 'warn', detail: `The same payment backs ${plural(payment.reusedBySame, 'other row')} of this reviewer.` }
+          ? { status: 'warn', detail: `The same payment backs ${plural(payment.reusedBySame, 'other review')} of this reviewer.` }
           : {
               status: 'pass',
               detail: payment.comparedFiles
@@ -564,7 +564,7 @@ function paymentChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
         label: 'Amount paid',
         status: 'info',
         detail: `${formatTransfer(moved, ctx.nativeSymbol)}.`,
-        rule: 'What the cited transaction moved: the economic weight behind this row.',
+        rule: 'What the cited transaction moved: the economic weight behind this review.',
       })
     }
   }
@@ -620,8 +620,8 @@ function reviewerChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
   const reach = reviewer.rowsSince
     ? `since ${formatDate(reviewer.rowsSince)}`
     : reviewer.rowsTruncated
-      ? `its latest ${reviewer.rows?.length ?? 0} rows`
-      : 'all its rows'
+      ? `its latest ${reviewer.rows?.length ?? 0} reviews`
+      : 'all its reviews'
   const rows = reviewer.rows
   const unread = rows === undefined ? 'Its feedback on other agents could not be loaded.' : `No feedback from this address in the scanned window (${reach}).`
 
@@ -633,12 +633,12 @@ function reviewerChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
   const pattern = {
     id: 'rev-varied',
     label: 'Ratings vary',
-    rule: `Over the client’s non-revoked rows on any agent (at least ${MIN_FOR_PATTERN}): more than one distinct value. A reviewer that always gives the same value carries no information.`,
+    rule: `Over the client’s non-revoked reviews on any agent (at least ${MIN_FOR_PATTERN}): more than one distinct value. A reviewer that always gives the same value carries no information.`,
   }
   const stands = {
     id: 'rev-stands',
     label: 'Stands by its feedback',
-    rule: 'Fewer than 2 revoked rows, or less than 20% of its rows revoked.',
+    rule: 'Fewer than 2 revoked reviews, or less than 20% of its reviews revoked.',
   }
   if (!rows || rows.length === 0) {
     for (const check of [breadth, pattern, stands]) checks.push({ ...check, status: 'unknown', detail: unread })
@@ -657,12 +657,12 @@ function reviewerChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
     checks.push({
       ...pattern,
       ...verdict(values.length < MIN_FOR_PATTERN
-        ? { status: 'unknown', detail: `${plural(values.length, 'counted row')}: too few to see a pattern.` }
+        ? { status: 'unknown', detail: `${plural(values.length, 'counted review')}: too few to see a pattern.` }
         : distinct === 1
-          ? { status: 'warn', detail: `All ${values.length} rows give the same value (${formatScore(values[0])}).` }
+          ? { status: 'warn', detail: `All ${values.length} reviews give the same value (${formatScore(values[0])}).` }
           : {
               status: 'pass',
-              detail: `${values.length} rows, ${distinct} distinct values, entropy ${entropyBits(values).toFixed(2)} of ${Math.log2(values.length).toFixed(2)} bits.`,
+              detail: `${values.length} reviews, ${distinct} distinct values, entropy ${entropyBits(values).toFixed(2)} of ${Math.log2(values.length).toFixed(2)} bits.`,
             }),
     })
 
@@ -670,8 +670,8 @@ function reviewerChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
     checks.push({
       ...stands,
       ...verdict(revoked >= 2 && revoked / rows.length >= 0.2
-        ? { status: 'warn', detail: `Revoked ${revoked} of its ${rows.length} rows.` }
-        : { status: 'pass', detail: `${revoked} of its ${plural(rows.length, 'row')} revoked.` }),
+        ? { status: 'warn', detail: `Revoked ${revoked} of its ${rows.length} reviews.` }
+        : { status: 'pass', detail: `${revoked} of its ${plural(rows.length, 'review')} revoked.` }),
     })
   }
   return checks
@@ -696,7 +696,7 @@ function agentChecks(ctx: TxDetailContext): Check[] {
   checks.push({
     id: 'agent-weight',
     label: 'Counts as a full vote',
-    rule: 'Authenticity weight of the row: 1 unless a self, duplicate, burst, monotonous or hyperactive rule fired (see the Weight column).',
+    rule: 'Authenticity weight of the review: 1 unless a self, duplicate, burst, monotonous or hyperactive rule fired (see the Weight column).',
     ...verdict(weight === 1
       ? { status: 'pass', detail: 'Weight 1: no discount rule fired.' }
       : weight === 0
@@ -710,19 +710,19 @@ function agentChecks(ctx: TxDetailContext): Check[] {
   const voice = {
     id: 'agent-voice',
     label: 'One voice among many',
-    rule: 'The client wrote less than half of the agent’s counted (non-revoked) rows; judged from 3 rows up.',
+    rule: 'The client wrote less than half of the agent’s counted (non-revoked) reviews; judged from 3 reviews up.',
   }
   const concentration = {
     id: 'agent-concentration',
     label: 'Reviewers are spread',
-    rule: `Herfindahl index of the reviewers’ shares of counted rows, Σ share². Above ${HHI_CONCENTRATED} (fewer than ${1 / HHI_CONCENTRATED} equal reviewers) a few addresses decide the score; 1 = a single reviewer. Judged from 3 rows up.`,
+    rule: `Herfindahl index of the reviewers’ shares of counted reviews, Σ share². Above ${HHI_CONCENTRATED} (fewer than ${1 / HHI_CONCENTRATED} equal reviewers) a few addresses decide the score; 1 = a single reviewer. Judged from 3 reviews up.`,
   }
   if (valid.length < 3) {
-    const few = `${plural(valid.length, 'counted row')} on this agent: too few to judge.`
+    const few = `${plural(valid.length, 'counted review')} on this agent: too few to judge.`
     checks.push({ ...voice, status: 'unknown', detail: few }, { ...concentration, status: 'unknown', detail: few })
   } else {
     const share = own?.share ?? 0
-    const written = `Wrote ${Math.round(share * valid.length)} of the ${valid.length} counted rows (${percent(share)}).`
+    const written = `Wrote ${Math.round(share * valid.length)} of the ${valid.length} counted reviews (${percent(share)}).`
     checks.push({ ...voice, status: share >= 0.5 ? 'warn' : 'pass', detail: written })
     const hhi = herfindahl(shares)
     const top3 = [...shares].sort((a, b) => b - a).slice(0, 3).reduce((a, b) => a + b, 0)
@@ -744,7 +744,7 @@ function agentChecks(ctx: TxDetailContext): Check[] {
       status: 'unknown',
       detail:
         row.createdAt === undefined
-          ? 'This row has no date.'
+          ? 'This review has no date.'
           : 'The registration date is not known here (only indexed networks carry it).',
     })
   } else {
@@ -766,12 +766,12 @@ function agentChecks(ctx: TxDetailContext): Check[] {
     id: 'agent-influence',
     label: 'Pull on the score',
     status: 'info' as const,
-    rule: 'Weighted score without this row minus the weighted score with it (weights as in the Weight column).',
+    rule: 'Weighted score without this review minus the weighted score with it (weights as in the Weight column).',
   }
   if (weight === 0 || total === 0) {
     checks.push({ ...influence, detail: 'Weighs 0: removing it changes nothing.' })
   } else if (rest <= 0) {
-    checks.push({ ...influence, detail: `It is the only row with weight: the weighted score is its value, ${formatScore(row.value)}.` })
+    checks.push({ ...influence, detail: `It is the only review with weight: the weighted score is its value, ${formatScore(row.value)}.` })
   } else {
     const withRow = sum / total
     const without = (sum - weight * row.value) / rest

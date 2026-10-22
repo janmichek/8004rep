@@ -20,13 +20,13 @@ export type ReviewerLabel = 'rubber-stamp' | 'single-agent' | 'bulk' | 'mass' | 
 export const LABEL_INFO: Record<ReviewerLabel, { label: string; rule: string; tone: 'warn' | 'info' }> = {
   'rubber-stamp': {
     label: 'rubber stamp',
-    rule: `${MIN_PATTERN_ROWS}+ rows and at least ${STAMP_SHARE * 100}% of them carry the same value.`,
+    rule: `${MIN_PATTERN_ROWS}+ reviews and at least ${STAMP_SHARE * 100}% of them carry the same value.`,
     tone: 'warn',
   },
-  'single-agent': { label: 'one agent only', rule: '3+ rows, every one on the same agent.', tone: 'warn' },
-  bulk: { label: 'bulk writer', rule: `${BULK_PER_DAY}+ rows within one 24h window.`, tone: 'warn' },
+  'single-agent': { label: 'one agent only', rule: '3+ reviews, every one on the same agent.', tone: 'warn' },
+  bulk: { label: 'bulk writer', rule: `${BULK_PER_DAY}+ reviews within one 24h window.`, tone: 'warn' },
   mass: { label: 'mass reviewer', rule: `Rated ${MASS_AGENTS}+ different agents.`, tone: 'info' },
-  harsh: { label: 'harsh', rule: `${MIN_PATTERN_ROWS}+ rows averaging ${HARSH_AVERAGE} or less.`, tone: 'info' },
+  harsh: { label: 'harsh', rule: `${MIN_PATTERN_ROWS}+ reviews averaging ${HARSH_AVERAGE} or less.`, tone: 'info' },
 }
 
 export type AgentShare = { tokenId: bigint; agentName?: string; rows: number; average: number | null; revoked: number }

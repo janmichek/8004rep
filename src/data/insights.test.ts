@@ -37,7 +37,7 @@ describe('responses', () => {
     transactionHash: HASH,
   })
 
-  it('groups ResponseAppended logs by row, oldest first, and attaches them', () => {
+  it('groups ResponseAppended logs by review, oldest first, and attaches them', () => {
     const map = groupResponses([log(addr(1), 2n, 20n, addr(9), 'ipfs://b'), log(addr(1), 2n, 10n, addr(8), 'ipfs://a')])
     const rows: Feedback[] = [
       { client: addr(1), index: 2, value: 90, revoked: false },
@@ -48,7 +48,7 @@ describe('responses', () => {
     expect(out[1].responses).toBeUndefined()
   })
 
-  it('carries an indexed row’s responses through mergeFeedback', () => {
+  it('carries an indexed review’s responses through mergeFeedback', () => {
     const bare: Feedback[] = [{ client: addr(1), index: 1, value: 50, revoked: false }]
     const indexed: Feedback[] = [{ ...bare[0], responses: [{ responder: addr(2) }] }]
     expect(mergeFeedback(bare, indexed)[0].responses).toEqual([{ responder: addr(2) }])
@@ -56,7 +56,7 @@ describe('responses', () => {
 })
 
 describe('buildReviewerProfile', () => {
-  it('labels a reviewer that gives one value to many rows a rubber stamp', () => {
+  it('labels a reviewer that gives one value to many reviews a rubber stamp', () => {
     const rows = [1, 2, 3, 4, 5].map((t) => ev(addr(1), t, 100))
     const p = buildReviewerProfile(addr(1), rows)
     expect(p.mode).toEqual({ value: 100, share: 1 })
@@ -74,7 +74,7 @@ describe('buildReviewerProfile', () => {
     expect(suspicionOf(p.labels)).toBe(5)
   })
 
-  it('stays unlabelled with few varied rows', () => {
+  it('stays unlabelled with few varied reviews', () => {
     const p = buildReviewerProfile(addr(1), [ev(addr(1), 1, 80), ev(addr(1), 2, 60)])
     expect(p.labels).toEqual([])
     expect(p.average).toBe(70)
@@ -171,7 +171,7 @@ describe('chart data', () => {
     const items = [{ t: 0, k: 'a' }, { t: 2 * DAY + 5, k: 'b' }, { t: 2 * DAY + 9, k: 'a' }]
     const cols = dailyColumns(items, (i) => i.t, (i) => i.k, ['a', 'b'], { a: 'A', b: 'B' })
     expect(cols.map((c) => c.segments)).toEqual([[{ key: 'a', value: 1 }], [], [{ key: 'a', value: 1 }, { key: 'b', value: 1 }]])
-    expect(cols[2].title).toBe('1970-01-03 · 2 rows · 1 A, 1 B')
+    expect(cols[2].title).toBe('1970-01-03 · 2 reviews · 1 A, 1 B')
     const long = dailyColumns([{ t: 0 }, { t: 200 * DAY }], (i) => i.t, () => 'a', ['a'], {})
     expect(long).toHaveLength(29)
     expect(long[0].title).toMatch(/^Week of/)
@@ -179,7 +179,7 @@ describe('chart data', () => {
 })
 
 describe('loadFeedWindow', () => {
-  it('pages until enough rows, then extends from the cursor', async () => {
+  it('pages until enough reviews, then extends from the cursor', async () => {
     const { loadFeedWindow } = await import('./feed')
     const calls: (string | undefined)[] = []
     const source = {
