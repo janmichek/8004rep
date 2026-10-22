@@ -33,7 +33,7 @@ Deploys run on Vercel through GitHub Actions:
 - `Deploy production` — on every push to `main` or `master`: typechecks, tests, builds, then deploys to production.
 - `Deploy preview` — on every pull request: typechecks, tests, builds, deploys a preview, and comments its URL on the PR.
 
-The `api/_fetchJson.ts` CORS relay is deployed as a Vercel function.
+The `api/fetch-json.ts` CORS relay is deployed as a Vercel function.
 
 Set these repository secrets before the first run:
 

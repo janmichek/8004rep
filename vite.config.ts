@@ -1,6 +1,6 @@
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vitest/config'
-import relay from './api/_fetchJson'
+import relay from './api/fetch-json'
 
 export default defineConfig({
   plugins: [

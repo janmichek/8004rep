@@ -5,7 +5,7 @@
   "outputDirectory": "dist",
   "installCommand": "npm ci",
   "functions": {
-    "api/_fetchJson.ts": {
+    "api/fetch-json.ts": {
       "maxDuration": 10
     }
   }
