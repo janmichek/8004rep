@@ -26,6 +26,25 @@ npm run dev      # http://localhost:5174
 
 `dist/` can be hosted anywhere static; routing uses the URL hash, so no rewrite rules are needed.
 
+## Deployment
+
+Deploys run on Vercel through GitHub Actions:
+
+- `Deploy production` — on every push to `main` or `master`: typechecks, tests, builds, then deploys to production.
+- `Deploy preview` — on every pull request: typechecks, tests, builds, deploys a preview, and comments its URL on the PR.
+
+The `api/_fetchJson.ts` CORS relay is deployed as a Vercel function.
+
+Set these repository secrets before the first run:
+
+| Secret | Where to find it |
+|---|---|
+| `VERCEL_TOKEN` | Vercel account settings → Tokens |
+| `VERCEL_ORG_ID` | `.vercel/project.json` after `vercel link`, or the Vercel project settings |
+| `VERCEL_PROJECT_ID` | `.vercel/project.json` after `vercel link`, or the Vercel project settings |
+
+Production deployments also require a `production` environment in the repository settings (the workflow uses it for the deployment URL).
+
 ## Views
 
 | View | Path | Shows |
