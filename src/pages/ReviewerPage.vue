@@ -121,7 +121,7 @@ const tiles = computed<Tile[]>(() => {
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Agent</th><th class="num">Value</th><th>Tags</th><th>Text</th><th>When</th></tr>
+              <tr><th>Agent</th><th class="num">Value</th><th>Text</th><th>When</th></tr>
             </thead>
             <tbody>
               <tr v-for="(r, i) in feed!.items.slice(0, 50)" :key="i" :class="{ revoked: r.revoked }">
@@ -131,10 +131,6 @@ const tiles = computed<Tile[]>(() => {
                   </RouterLink>
                 </td>
                 <td class="num"><b>{{ formatScore(r.value) }}</b> <span v-if="r.revoked" class="chip">revoked</span></td>
-                <td class="tags">
-                  <span v-if="r.tag1" class="chip clip-chip" :title="r.tag1">{{ r.tag1 }}</span>
-                  <span v-if="r.tag2" class="chip clip-chip" :title="r.tag2">{{ r.tag2 }}</span>
-                </td>
                 <td class="text-cell">
                   <FeedbackNote v-if="r.feedbackURI" :uri="r.feedbackURI" />
                   <span v-else class="muted">—</span>
