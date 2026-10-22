@@ -3,7 +3,6 @@ import { computed, ref, watch } from 'vue'
 import { addressExplorerUrl, agentScanUrl, findChainBySlug } from '../chains'
 import AgentAvatar from '../components/AgentAvatar.vue'
 import ReputationPanel from '../components/reputation/ReputationPanel.vue'
-import Disclosure from '../components/ui/Disclosure.vue'
 import Skeleton from '../components/ui/Skeleton.vue'
 import { sourceFor } from '../data'
 import { resolveAgentURI, toDisplayUrl } from '../data/metadata'
@@ -42,7 +41,6 @@ const uriLink = computed(() => {
   const uri = agent.value?.agentURI
   return uri && !/^data:/i.test(uri) ? toDisplayUrl(uri) : undefined
 })
-const rawJson = computed(() => (file.value ? JSON.stringify(file.value.raw, null, 2) : undefined))
 </script>
 
 <template>
@@ -83,7 +81,7 @@ const rawJson = computed(() => (file.value ? JSON.stringify(file.value.raw, null
 
   <template v-else>
     <div class="agent-head">
-      <AgentAvatar class="large" :pending="file === undefined" :image="file?.image" :label="file?.name ?? ''" :seed="`${chain.chainId}:${agent.tokenId}`" />
+      <AgentAvatar class="large" :pending="file === undefined" :image="file?.image" :label="file?.name ?? ''" />
       <div>
         <h1>
           <Skeleton v-if="file === undefined" width="12em" height="1.2em" />
@@ -187,9 +185,5 @@ const rawJson = computed(() => (file.value ? JSON.stringify(file.value.raw, null
     </div>
 
     <ReputationPanel :agent="agent" :chain="chain" :file="file" />
-
-    <Disclosure v-if="rawJson" label="Raw registration file">
-      <pre>{{ rawJson }}</pre>
-    </Disclosure>
   </template>
 </template>

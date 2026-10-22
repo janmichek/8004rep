@@ -50,7 +50,7 @@ const to = computed(() => ({
   <tr>
     <td>
       <div class="agent-cell">
-        <AgentAvatar :pending="file === undefined" :image="file?.image" :label="file?.name ?? ''" :seed="`${chain.chainId}:${agent.tokenId}`" />
+        <AgentAvatar :pending="file === undefined" :image="file?.image" :label="file?.name ?? ''" />
         <div class="agent-name">
           <template v-if="file === undefined">
             <Skeleton width="9em" />

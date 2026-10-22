@@ -8,12 +8,6 @@ import type { AgentDetail, RegistrationFile } from '../../data/types'
 import { formatDate, formatNumber } from '../../format'
 import { useAsync } from '../../useAsync'
 import StatTiles, { type Tile } from '../ui/StatTiles.vue'
-import TabBar, { type Tab } from '../ui/TabBar.vue'
-import CompareTab from './CompareTab.vue'
-import FeedbackTab from './FeedbackTab.vue'
-import MethodsTab from './MethodsTab.vue'
-import OverviewTab from './OverviewTab.vue'
-import ReviewersTab from './ReviewersTab.vue'
 
 const props = defineProps<{ agent: AgentDetail; chain: ChainInfo; file?: RegistrationFile | null }>()
 
@@ -51,7 +45,7 @@ const tiles = computed<Tile[]>(() => {
       label: 'Trusted score',
       value: formatNumber(r.trusted),
       hint: r.lcb === null ? 'too few votes for a bound' : `95% bound ${formatNumber(r.lcb)}`,
-      title: 'Weighted average after every rule in “How the score is built” (Overview tab)',
+      title: 'Weighted average after every rule in “How the score is built”',
       tone: 'main',
     },
     {
@@ -66,7 +60,7 @@ const tiles = computed<Tile[]>(() => {
       label: 'Risk',
       value: LEVEL[s.level].word,
       hint: s.signals.length ? `${s.signals.length} signal${s.signals.length === 1 ? '' : 's'}` : 'nothing flagged',
-      title: 'Worst level among the signals on the Overview tab',
+      title: 'Worst level among the signals',
       tone: LEVEL[s.level].tone,
       word: true,
     },
@@ -86,7 +80,7 @@ const tiles = computed<Tile[]>(() => {
           : scan.loading.value
             ? ''
             : 'not scored there',
-      title: "8004scan's overall score, read live from its public API — see the Compare tab",
+      title: "8004scan's overall score, read live from its public API",
       tone: 'quiet',
       loading: scan.loading.value,
     },
@@ -104,20 +98,6 @@ const tiles = computed<Tile[]>(() => {
     },
   ]
 })
-
-const flagged = computed(() => stats.value.rows.filter((r) => !r.flags.includes('revoked') && r.weight < 1).length)
-const tabs = computed<Tab[]>(() => [
-  { id: 'overview', label: 'Overview' },
-  { id: 'feedback', label: 'Feedback', count: props.agent.feedback.length },
-  {
-    id: 'reviewers',
-    label: 'Reviewers',
-    count: stats.value.reviewers.length,
-    ...(stats.value.signals.some((s) => s.code === 'concentration' || s.code === 'self') ? { tone: 'warn' as const } : {}),
-  },
-  { id: 'methods', label: 'Methods' },
-  { id: 'compare', label: 'vs 8004scan' },
-])
 </script>
 
 <template>
@@ -127,47 +107,7 @@ const tabs = computed<Tab[]>(() => [
       <small v-if="agent.feedbackSince">feedback dated back to {{ formatDate(agent.feedbackSince) }} (log scan window)</small>
     </h2>
 
-    <template v-if="agent.feedback.length === 0">
-      <p class="muted">No feedback yet. Nothing to score.</p>
-    </template>
-    <template v-else>
-      <StatTiles :tiles="tiles" />
-      <p class="headline">
-        {{ report.headline }}
-        <span v-if="flagged" class="muted">{{ flagged }} of {{ agent.feedback.length }} rows count less than a full vote.</span>
-      </p>
-
-      <TabBar :tabs="tabs" label="Reputation views">
-        <template #overview>
-          <OverviewTab
-            :feedback="agent.feedback"
-            :stats="stats"
-            :report="report"
-            :ecosystem-average="ecosystem.data.value?.averageFeedback"
-          />
-        </template>
-        <template #feedback>
-          <FeedbackTab :agent="agent" :chain="chain" :stats="stats" />
-        </template>
-        <template #reviewers>
-          <ReviewersTab :agent="agent" :chain="chain" :stats="stats" :self="self" />
-        </template>
-        <template #methods>
-          <MethodsTab :feedback="agent.feedback" :self="self" />
-        </template>
-        <template #compare>
-          <CompareTab
-            :chain="chain"
-            :token-id="agent.tokenId"
-            :feedback="agent.feedback"
-            :raw="report.raw"
-            :trusted="report.trusted"
-            :scan="scan.data.value"
-            :loading="scan.loading.value"
-            :error="scan.error.value"
-          />
-        </template>
-      </TabBar>
-    </template>
+    <p v-if="agent.feedback.length === 0" class="muted">No feedback yet. Nothing to score.</p>
+    <StatTiles v-else :tiles="tiles" />
   </section>
 </template>

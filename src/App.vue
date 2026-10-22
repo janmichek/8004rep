@@ -41,7 +41,7 @@ const { data: resolved } = useAsync(async () => (chain.value ? sourceFor(chain.v
           </li>
         </ul>
       </section>
-      <div v-else :key="route.path" class="page"><RouterView /></div>
+      <div v-else class="page"><RouterView /></div>
     </main>
 
     <footer>

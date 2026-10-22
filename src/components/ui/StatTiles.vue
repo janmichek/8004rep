@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import CountUp from './CountUp.vue'
 import Hint from './Hint.vue'
 import Skeleton from './Skeleton.vue'
 
@@ -26,7 +25,7 @@ defineProps<{ tiles: Tile[] }>()
         <div class="tile-label">{{ tile.label }}</div>
         <div class="tile-value" :class="{ word: tile.word && !tile.loading }">
           <Skeleton v-if="tile.loading" width="3.2em" height="1.25em" />
-          <CountUp v-else :value="tile.value" />
+          <template v-else>{{ tile.value }}</template>
         </div>
         <div v-if="tile.loading" class="tile-hint"><Skeleton width="72%" height="0.7em" /></div>
         <div v-else-if="tile.hint" class="tile-hint">{{ tile.hint }}</div>
