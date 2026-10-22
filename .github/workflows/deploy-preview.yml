@@ -44,6 +44,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Check Vercel token
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::VERCEL_TOKEN is not set. Create one at https://vercel.com/account/tokens and save it as a repository secret."
+            exit 1
+          fi
       - run: npx vercel@latest pull --yes --environment=preview --token="$VERCEL_TOKEN"
       - run: npx vercel@latest build --token="$VERCEL_TOKEN"
       - id: deploy

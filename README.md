@@ -39,11 +39,24 @@ Set these repository secrets before the first run:
 
 | Secret | Where to find it |
 |---|---|
-| `VERCEL_TOKEN` | Vercel account settings → Tokens |
+| `VERCEL_TOKEN` | Create one at <https://vercel.com/account/tokens> |
 | `VERCEL_ORG_ID` | `.vercel/project.json` after `vercel link`, or the Vercel project settings |
 | `VERCEL_PROJECT_ID` | `.vercel/project.json` after `vercel link`, or the Vercel project settings |
 
-Production deployments also require a `production` environment in the repository settings (the workflow uses it for the deployment URL).
+To create the token:
+
+1. Open <https://vercel.com/account/tokens>.
+2. Choose **Create Token**, give it a name such as `8004rep GitHub Actions`, pick an expiration, and copy the value once.
+3. Run `vercel link` in the repo, then read the two IDs from `.vercel/project.json`.
+4. Add the three values under **Settings → Secrets and variables → Actions → New repository secret**, or with the CLI:
+
+```bash
+gh secret set VERCEL_TOKEN
+gh secret set VERCEL_ORG_ID
+gh secret set VERCEL_PROJECT_ID
+```
+
+`.env.example` lists the same variables for reference. Production deployments also require a `production` environment in the repository settings (the workflow uses it for the deployment URL).
 
 ## Views
 
