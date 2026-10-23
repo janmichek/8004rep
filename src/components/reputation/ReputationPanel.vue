@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { ChainInfo } from '../../chains'
+import { txExplorerUrl, type ChainInfo } from '../../chains'
 import { computeFeedbackStats } from '../../data/feedbackStats'
 import { fetchScanScore, fetchScanStats } from '../../data/scan'
 import { buildTrustReport, type StrengthTier } from '../../data/trustReport'
 import type { AgentDetail, RegistrationFile } from '../../data/types'
-import { formatDate, formatNumber } from '../../format'
+import { formatDate, formatNumber, formatScore, formatTimeline, shortAddress } from '../../format'
 import { useAsync } from '../../useAsync'
+import FeedbackNote from '../FeedbackNote.vue'
 import StatTiles, { type Tile } from '../ui/StatTiles.vue'
 
 const props = defineProps<{ agent: AgentDetail; chain: ChainInfo; file?: RegistrationFile | null }>()
@@ -102,6 +103,49 @@ const tiles = computed<Tile[]>(() => {
     </h2>
 
     <p v-if="agent.feedback.length === 0" class="muted">No feedback yet. Nothing to score.</p>
-    <StatTiles v-else :tiles="tiles" />
+    <template v-else>
+      <StatTiles :tiles="tiles" />
+
+      <section class="panel">
+        <h3>Feedback <small>{{ agent.feedback.length }}</small></h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Reviewer</th><th class="num">Value</th><th>Text</th><th>When</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, i) in agent.feedback" :key="`${row.client}:${row.index ?? i}`" :class="{ revoked: row.revoked }">
+                <td class="nowrap">
+                  <RouterLink
+                    :to="{ name: 'reviewer', params: { slug: chain.slug, address: row.client } }"
+                    class="mono"
+                    :title="row.client"
+                  >
+                    {{ shortAddress(row.client) }}
+                  </RouterLink>
+                </td>
+                <td class="num">
+                  <b>{{ formatScore(row.value) }}</b>
+                  <span v-if="row.revoked" class="chip">revoked</span>
+                </td>
+                <td class="text-cell">
+                  <FeedbackNote v-if="row.feedbackURI" :uri="row.feedbackURI" />
+                  <span v-else class="muted">—</span>
+                </td>
+                <td class="nowrap">
+                  <template v-if="row.createdAt">
+                    <a v-if="row.txHash" :href="txExplorerUrl(chain, row.txHash)" target="_blank" rel="noopener noreferrer" :title="formatDate(row.createdAt)">
+                      {{ formatTimeline(row.createdAt) }}
+                    </a>
+                    <span v-else :title="formatDate(row.createdAt)">{{ formatTimeline(row.createdAt) }}</span>
+                  </template>
+                  <span v-else class="muted">—</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </template>
   </section>
 </template>

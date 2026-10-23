@@ -12,7 +12,7 @@ import { useAsync } from '../useAsync'
 
 const PAGE_SIZE = 25
 /** Agents kept at the top of the first page, in this order. */
-const PINNED = [184n, 279n, 204n, 281n, 214n]
+const PINNED = [279n, 204n, 281n, 214n]
 
 const props = defineProps<{ slug: string }>()
 const route = useRoute()
@@ -134,6 +134,7 @@ const searchIgnored = computed(() => Boolean(search.value) && !/^\d+$/.test(sear
             :chain="chain"
             :score="scores?.get(agent.tokenId)"
             :score-loading="scores === undefined"
+            :bookmarked="PINNED.includes(agent.tokenId)"
           />
         </tbody>
       </table>

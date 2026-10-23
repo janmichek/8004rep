@@ -15,6 +15,8 @@ const props = defineProps<{
   scoreLoading?: boolean
   /** Owner page already is that address; the column would only repeat it. */
   hideOwner?: boolean
+  /** Kept at the top of the list by hand. */
+  bookmarked?: boolean
 }>()
 
 // undefined while the registration file is being fetched.
@@ -55,7 +57,19 @@ const to = computed(() => ({
             <span class="muted">Loading…</span>
           </template>
           <template v-else>
-            <RouterLink :to="to">{{ name }}</RouterLink>
+            <RouterLink :to="to">
+              <svg
+                v-if="bookmarked"
+                class="bookmark"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                role="img"
+                aria-label="Pinned"
+              >
+                <path d="M6 3.75A1.75 1.75 0 0 1 7.75 2h8.5A1.75 1.75 0 0 1 18 3.75V21l-6-4.25L6 21V3.75Z" />
+              </svg>
+              {{ name }}
+            </RouterLink>
             <small v-if="file?.description">{{ file.description }}</small>
             <small v-else-if="file === null" class="muted">
               {{ agent.agentURI ? 'metadata unreachable' : 'no metadata URI' }}

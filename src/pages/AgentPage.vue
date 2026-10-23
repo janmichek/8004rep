@@ -79,12 +79,8 @@ const uriLink = computed(() => {
 
     <p v-if="file === undefined" class="muted">Loading metadata…</p>
     <p v-else-if="file?.description" class="description">{{ file.description }}</p>
-    <p v-else-if="file === null" class="notice">
-      {{
-        agent.agentURI
-          ? 'The registration file could not be loaded (unreachable host, blocked by CORS, or not JSON). On-chain data is shown below.'
-          : 'This agent has no metadata URI set. On-chain data is shown below.'
-      }}
+    <p v-else-if="file === null && !agent.agentURI" class="notice">
+      This agent has no metadata URI set. On-chain data is shown below.
     </p>
 
     <div class="facts">

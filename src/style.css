@@ -379,6 +379,14 @@ tr.revoked td {
   text-overflow: ellipsis;
 }
 
+.bookmark {
+  width: 13px;
+  height: 13px;
+  margin-right: 4px;
+  color: var(--accent);
+  vertical-align: -2px;
+}
+
 .pager {
   display: flex;
   justify-content: center;
