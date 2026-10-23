@@ -141,15 +141,6 @@ main {
   padding: 24px 16px 48px;
 }
 
-footer {
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: 16px;
-  border-top: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 12px;
-}
-
 /* Pieces */
 
 .badge,

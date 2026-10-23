@@ -36,9 +36,5 @@ const chain = computed(() => (slug.value ? findChainBySlug(slug.value) : undefin
       </section>
       <div v-else class="page"><RouterView /></div>
     </main>
-
-    <footer>
-      Read-only: no wallet, no backend. Data comes straight from the ERC-8004 registries and public subgraphs.
-    </footer>
   </TooltipProvider>
 </template>
