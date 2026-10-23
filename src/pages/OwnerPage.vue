@@ -154,7 +154,6 @@ const tiles = computed<Tile[]>(() => {
             <tr>
               <th>Agent</th>
               <th class="num">ID</th>
-              <th>Services</th>
               <Hint text="Count and average of all feedback values, any tag"><th class="num">Feedback</th></Hint>
               <th class="num">Created</th>
             </tr>

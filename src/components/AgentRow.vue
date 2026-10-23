@@ -73,15 +73,6 @@ const to = computed(() => ({
       </RouterLink>
       <span v-else class="muted">—</span>
     </td>
-    <td>
-      <span v-if="file === undefined" class="muted">…</span>
-      <template v-else>
-        <span v-for="service in file?.services ?? []" :key="service.name + service.endpoint" class="chip">
-          {{ service.name }}
-        </span>
-        <span v-if="file?.x402Support" class="chip accent">x402</span>
-      </template>
-    </td>
     <td class="num" :title="score?.capped ? 'Count and average of the first 200 clients' : undefined">
       <span v-if="scoreLoading" class="muted">…</span>
       <template v-else-if="feedbackLabel">{{ feedbackLabel }}</template>

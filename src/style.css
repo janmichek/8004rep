@@ -130,6 +130,11 @@ button:hover {
   margin-left: auto;
 }
 
+.chain-name {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 main {
   max-width: 1120px;
   margin: 0 auto;

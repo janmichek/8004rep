@@ -13,11 +13,26 @@ import {
   type PublicClient,
 } from 'viem'
 import { newFeedbackEvent } from '../abi'
-import { CHAINS } from '../chains'
+import type { ChainInfo } from '../chains'
 import { bracketTimestamp, canonicalJson, loadTxFacts, schemeOf, transfersOf, windowAt, type BlockRef } from './txDetail'
 import type { DataSource, Feedback } from './types'
 
-const CHAIN = CHAINS.find((c) => c.chainId === 84532)!
+/** Base Sepolia: a 1,000-block log limit and a creation block to scan from. */
+const CHAIN: ChainInfo = {
+  chainId: 84532,
+  name: 'Base Sepolia',
+  shortName: 'Base Sepolia',
+  slug: 'base-sepolia',
+  testnet: true,
+  explorerUrl: 'https://sepolia.basescan.org',
+  scanUrl: 'https://testnet.8004scan.io',
+  rpcUrl: 'https://sepolia.base.org',
+  viemChain: {} as ChainInfo['viemChain'],
+  identity: '0x8004A818BFB912233c491871b3d84c89A494BD9e',
+  reputation: '0x8004B663056A597Dffe9eCcC1965A193B7388713',
+  logRange: 1_000n,
+  reputationFromBlock: 36_304_146n,
+}
 const A = '0x00000000000000000000000000000000000000a1' as Address
 const B = '0x00000000000000000000000000000000000000b2' as Address
 const WALLET = '0x00000000000000000000000000000000000000f1' as Address

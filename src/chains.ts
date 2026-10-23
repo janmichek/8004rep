@@ -1,5 +1,5 @@
 import type { Address, Chain } from 'viem'
-import { arbitrum, arbitrumSepolia, baseSepolia, mantle, mantleSepoliaTestnet, sepolia } from 'viem/chains'
+import { arbitrumSepolia } from 'viem/chains'
 
 export type ChainInfo = {
   chainId: number
@@ -39,13 +39,6 @@ const TESTNET = {
   reputation: '0x8004B663056A597Dffe9eCcC1965A193B7388713',
 } as const
 
-const MAINNET = {
-  testnet: false,
-  scanUrl: 'https://8004scan.io',
-  identity: '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432',
-  reputation: '0x8004BAa17C55a88189AE136b182e5fdA19dE9b63',
-} as const
-
 const env = import.meta.env as Record<string, string | undefined>
 
 /** `VITE_<KIND>_URL_<chainId>` replaces the built-in endpoint (kinds: RPC, LOGS_RPC, SUBGRAPH, EXPLORER_API). */
@@ -70,83 +63,6 @@ export const CHAINS: ChainInfo[] = [
       421614,
       'https://api.studio.thegraph.com/query/1741985/erc-8004-arbitrum-testnet/version/latest',
     ),
-  },
-  {
-    ...MAINNET,
-    chainId: 42161,
-    name: 'Arbitrum',
-    shortName: 'Arbitrum',
-    slug: 'arbitrum',
-    explorerUrl: 'https://arbiscan.io',
-    explorerApiUrl: endpoint('EXPLORER_API', 42161, 'https://api.arbiscan.io/api'),
-    rpcUrl: endpoint('RPC', 42161, 'https://arb1.arbitrum.io/rpc')!,
-    viemChain: arbitrum,
-    logRange: 10_000_000n,
-    subgraphUrl: endpoint('SUBGRAPH', 42161),
-  },
-  {
-    ...TESTNET,
-    chainId: 11155111,
-    name: 'Ethereum Sepolia',
-    shortName: 'Eth Sepolia',
-    slug: 'sepolia',
-    explorerUrl: 'https://sepolia.etherscan.io',
-    explorerApiUrl: endpoint('EXPLORER_API', 11155111, 'https://eth-sepolia.blockscout.com/api'),
-    rpcUrl: endpoint('RPC', 11155111, 'https://ethereum-sepolia-rpc.publicnode.com')!,
-    viemChain: sepolia,
-    logRange: 50_000n,
-    subgraphUrl: endpoint(
-      'SUBGRAPH',
-      11155111,
-      'https://gateway.thegraph.com/api/00a452ad3cd1900273ea62c1bf283f93/subgraphs/id/6wQRC7geo9XYAhckfmfo8kbMRLeWU8KQd3XsJqFKmZLT',
-    ),
-  },
-  {
-    ...TESTNET,
-    chainId: 84532,
-    name: 'Base Sepolia',
-    shortName: 'Base Sepolia',
-    slug: 'base-sepolia',
-    explorerUrl: 'https://sepolia.basescan.org',
-    explorerApiUrl: endpoint('EXPLORER_API', 84532, 'https://base-sepolia.blockscout.com/api'),
-    rpcUrl: endpoint('RPC', 84532, 'https://sepolia.base.org')!,
-    viemChain: baseSepolia,
-    logRange: 1_000n,
-    reputationFromBlock: 36_304_146n,
-    subgraphUrl: endpoint(
-      'SUBGRAPH',
-      84532,
-      'https://gateway.thegraph.com/api/536c6d8572876cabea4a4ad0fa49aa57/subgraphs/id/4yYAvQLFjBhBtdRCY7eUWo181VNoTSLLFd5M7FXQAi6u',
-    ),
-  },
-  {
-    ...MAINNET,
-    chainId: 5000,
-    name: 'Mantle',
-    shortName: 'Mantle',
-    slug: 'mantle',
-    explorerUrl: 'https://mantlescan.io',
-    explorerApiUrl: endpoint('EXPLORER_API', 5000, 'https://api.routescan.io/v2/network/mainnet/evm/5000/etherscan/api'),
-    rpcUrl: endpoint('RPC', 5000, 'https://rpc.mantle.xyz')!,
-    viemChain: mantle,
-    logRange: 10_000n,
-    // publicnode allows browser calls (CORS *) and a 5x wider log range.
-    logsRpcUrl: endpoint('LOGS_RPC', 5000, 'https://mantle-rpc.publicnode.com'),
-    logsLogRange: 50_000n,
-    reputationFromBlock: 91_333_848n,
-    subgraphUrl: endpoint('SUBGRAPH', 5000),
-  },
-  {
-    ...TESTNET,
-    chainId: 5003,
-    name: 'Mantle Sepolia',
-    shortName: 'Mnt Sepolia',
-    slug: 'mantle-sepolia',
-    explorerUrl: 'https://sepolia.mantlescan.io',
-    rpcUrl: endpoint('RPC', 5003, 'https://rpc.sepolia.mantle.xyz')!,
-    viemChain: mantleSepoliaTestnet,
-    logRange: 10_000n,
-    subgraphUrl: endpoint('SUBGRAPH', 5003),
   },
 ]
 

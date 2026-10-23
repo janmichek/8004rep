@@ -7,10 +7,12 @@ import Hint from '../components/ui/Hint.vue'
 import Spinner from '../components/ui/Spinner.vue'
 import { sourceFor } from '../data'
 import { getScores } from '../data/rpc'
-import type { ReputationSummary } from '../data/types'
+import type { AgentSummary, DataSource, ReputationSummary } from '../data/types'
 import { useAsync } from '../useAsync'
 
 const PAGE_SIZE = 25
+/** Agents kept at the top of the first page, in this order. */
+const PINNED = [184n, 279n, 204n, 281n, 214n]
 
 const props = defineProps<{ slug: string }>()
 const route = useRoute()
@@ -22,11 +24,25 @@ const chain = computed(() => findChainBySlug(props.slug)!)
 const page = computed(() => Math.max(0, Math.trunc(Number(route.query.page) || 1) - 1))
 const search = computed(() => (typeof route.query.q === 'string' ? route.query.q.trim() : ''))
 
+async function pinnedItems(source: DataSource): Promise<AgentSummary[]> {
+  const results = await Promise.allSettled(
+    PINNED.map((tokenId) => source.listAgents({ page: 0, pageSize: 1, search: String(tokenId) })),
+  )
+  return results.flatMap((result) => (result.status === 'fulfilled' ? result.value.items : []))
+}
+
 const { data, error, loading, reload } = useAsync(
   async () => {
     const { source } = await sourceFor(chain.value)
     const result = await source.listAgents({ page: page.value, pageSize: PAGE_SIZE, search: search.value })
-    return { ...result, textSearch: source.supportsTextSearch }
+    if (page.value > 0 || search.value) return { ...result, textSearch: source.supportsTextSearch }
+    const pinned = await pinnedItems(source)
+    const pinnedIds = new Set(pinned.map((agent) => agent.tokenId))
+    return {
+      ...result,
+      items: [...pinned, ...result.items.filter((agent) => !pinnedIds.has(agent.tokenId))],
+      textSearch: source.supportsTextSearch,
+    }
   },
   () => [chain.value, page.value, search.value],
 )
@@ -106,7 +122,6 @@ const searchIgnored = computed(() => Boolean(search.value) && !/^\d+$/.test(sear
             <th>Agent</th>
             <th class="num">ID</th>
             <th>Owner</th>
-            <th>Services</th>
             <Hint text="Count and average of all feedback values, any tag"><th class="num">Feedback</th></Hint>
             <th class="num">Created</th>
           </tr>

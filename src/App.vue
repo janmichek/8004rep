@@ -3,16 +3,10 @@ import { TooltipProvider } from 'reka-ui'
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { CHAINS, DEFAULT_CHAIN, findChainBySlug } from './chains'
-import ChainSelect from './components/ChainSelect.vue'
-import SourceBadge from './components/SourceBadge.vue'
-import { sourceFor } from './data'
-import { useAsync } from './useAsync'
 
 const route = useRoute()
 const slug = computed(() => (typeof route.params.slug === 'string' ? route.params.slug : undefined))
 const chain = computed(() => (slug.value ? findChainBySlug(slug.value) : undefined))
-
-const { data: resolved } = useAsync(async () => (chain.value ? sourceFor(chain.value) : undefined), chain)
 </script>
 
 <template>
@@ -26,8 +20,7 @@ const { data: resolved } = useAsync(async () => (chain.value ? sourceFor(chain.v
         <RouterLink :to="{ name: 'network', params: { slug: (chain ?? DEFAULT_CHAIN).slug } }">Network health</RouterLink>
       </nav>
       <div class="topbar-right">
-        <SourceBadge v-if="chain" :resolved="resolved" />
-        <ChainSelect :current="chain" />
+        <span class="chain-name">{{ (chain ?? DEFAULT_CHAIN).name }}</span>
       </div>
     </header>
 
