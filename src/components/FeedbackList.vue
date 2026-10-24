@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import { addressExplorerUrl, txExplorerUrl, type ChainInfo } from '../chains'
 import { FLAG_INFO, type RowStats } from '../data/feedbackStats'
+import { KIND_INFO } from '../data/reputation/kinds'
 import { toDisplayUrl } from '../data/metadata'
 import type { Feedback } from '../data/types'
 import FeedbackNote from './FeedbackNote.vue'
@@ -85,6 +86,12 @@ function evidenceUrl(uri: string | undefined): string | undefined {
             <td class="num">
               <b>{{ formatScore(row.value) }}</b>
               <FlagChip v-if="row.revoked" flag="revoked" />
+              <Hint v-if="stats && stats.kind !== 'rating'" :text="KIND_INFO[stats.kind].rule">
+                <span class="chip">{{ KIND_INFO[stats.kind].label }}</span>
+              </Hint>
+              <Hint v-else-if="stats && stats.rating === null" text="A rating whose value fits no inferred scale; listed, never scored.">
+                <span class="chip warn">off-scale</span>
+              </Hint>
             </td>
             <td class="tags">
               <span v-if="row.tag1" class="chip clip-chip" :title="row.tag1">{{ row.tag1 }}</span>

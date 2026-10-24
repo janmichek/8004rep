@@ -146,7 +146,7 @@ const tiles = computed<Tile[]>(() => {
       label: 'Average rating',
       value: s ? formatScore(s.avg) : '—',
       hint: s ? `${s.total} ${s.total === 1 ? 'review' : 'reviews'} across ${s.rated} ${s.rated === 1 ? 'agent' : 'agents'}` : '',
-      title: 'Simple average of each owned agent\'s on-chain average',
+      title: 'Simple average of each owned agent\'s raw on-chain mean. It mixes ratings with telemetry; open an agent for its robust score.',
       loading: s === null,
       tone: s && s.avg >= 75 ? 'good' : s && s.avg > 0 ? undefined : 'quiet',
     },

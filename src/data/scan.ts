@@ -24,6 +24,16 @@ export type ScanScore = {
   feedback?: { average: number; count: number; weight?: number }
   /** Range the leaderboard policy squeezes scores into. */
   band?: { floor: number; ceiling: number }
+  /** How the headline is actually built, as the API reports it. */
+  policy?: {
+    proofWeight: number
+    supportWeight: number
+    proofScore: number
+    supportScore: number
+    merit: number
+    evidenceTier?: string
+    integrityTier?: string
+  }
   algorithm?: string
   scoredAt?: string
 }
@@ -123,6 +133,14 @@ export function parseScanScore(data: unknown): ScanScore | null {
   const bandRaw = isRecord(policy.score_band) ? policy.score_band : {}
   const floor = num(bandRaw.floor)
   const ceiling = num(bandRaw.ceiling)
+  const weights = isRecord(policy.weights) ? policy.weights : {}
+  const proofWeight = num(weights.proof)
+  const supportWeight = num(weights.support)
+  const proofScore = num(policy.proof_score)
+  const supportScore = num(policy.support_score)
+  const merit = num(policy.merit_score)
+  const evidenceTier = typeof policy.evidence_tier === 'string' ? policy.evidence_tier : undefined
+  const integrityTier = typeof policy.integrity_tier === 'string' ? policy.integrity_tier : undefined
   const algorithm = typeof breakdown.algorithm === 'string' ? breakdown.algorithm : undefined
   const version = typeof breakdown.version === 'string' ? breakdown.version : undefined
   const scoredAt = isRecord(data.scores) && typeof data.scores.last_scored_at === 'string' ? data.scores.last_scored_at : undefined
@@ -134,6 +152,23 @@ export function parseScanScore(data: unknown): ScanScore | null {
       ? { feedback: { average, count, ...(feedbackWeight !== undefined ? { weight: feedbackWeight } : {}) } }
       : {}),
     ...(floor !== undefined && ceiling !== undefined ? { band: { floor, ceiling } } : {}),
+    ...(proofWeight !== undefined &&
+    supportWeight !== undefined &&
+    proofScore !== undefined &&
+    supportScore !== undefined &&
+    merit !== undefined
+      ? {
+          policy: {
+            proofWeight,
+            supportWeight,
+            proofScore,
+            supportScore,
+            merit,
+            ...(evidenceTier ? { evidenceTier } : {}),
+            ...(integrityTier ? { integrityTier } : {}),
+          },
+        }
+      : {}),
     ...(algorithm ? { algorithm: version ? `${algorithm} v${version}` : algorithm } : {}),
     ...(scoredAt ? { scoredAt } : {}),
   }

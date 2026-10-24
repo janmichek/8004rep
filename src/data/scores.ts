@@ -86,16 +86,20 @@ function trimmedMean(xs: number[], frac = 0.1): number | null {
   return mean(s.slice(k, s.length - k || s.length))
 }
 
-/** Normalized duplicate key from what is available on-chain (no text yet). */
+/**
+ * Normalized duplicate key from what is available on-chain (no text yet). The
+ * client is part of it: two reviewers giving the same value agree, they do
+ * not duplicate each other.
+ */
 export function dupKey(f: Feedback): string {
-  return [String(f.value), (f.tag1 ?? '').toLowerCase().trim(), (f.tag2 ?? '').toLowerCase().trim(), (f.endpoint ?? '').toLowerCase().trim()].join('|')
+  return [f.client.toLowerCase(), String(f.value), (f.tag1 ?? '').toLowerCase().trim(), (f.tag2 ?? '').toLowerCase().trim(), (f.endpoint ?? '').toLowerCase().trim()].join('|')
 }
 
 /**
  * Authenticity weights from on-chain signals only.
  * w = valid · w_self · w_dup · w_burst · w_trust, each in [0,1].
  * - w_self: rows from one of the `self` addresses → 0.
- * - w_dup: second+ exact (value,tags,endpoint) repeat → 0.
+ * - w_dup: second+ exact (value,tags,endpoint) repeat by the same client → 0.
  * - w_burst: exp(−max(0,N−2)) where N = same-client rows within 24h.
  * - w_trust: 0.4 when a client left ≥3 identical scores, 0.7 when
  *   hyperactive (>5 rows), else 1. Revoked → 0.

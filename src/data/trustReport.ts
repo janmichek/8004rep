@@ -21,7 +21,7 @@ export type WaterfallStep = {
 const STEPS: { id: Exclude<WaterfallStepId, 'all'>; label: string; rule: string }[] = [
   { id: 'revoked', label: 'Drop revoked', rule: 'Reviews their author revoked count nowhere.' },
   { id: 'self', label: 'Drop self-reviews', rule: 'Reviews from the agent owner or agent wallet weigh 0.' },
-  { id: 'duplicate', label: 'Drop duplicates', rule: 'A repeat of an earlier (value, tag1, tag2, endpoint) weighs 0.' },
+  { id: 'duplicate', label: 'Drop duplicates', rule: 'A client repeating its own earlier (value, tag1, tag2, endpoint) weighs 0.' },
   { id: 'burst', label: 'Discount bursts', rule: 'More than 2 reviews from one client within 24h: × exp(−(N−2)).' },
   {
     id: 'pattern',

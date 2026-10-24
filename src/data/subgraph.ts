@@ -12,8 +12,10 @@ import type {
 } from './types'
 
 const QUERY_TIMEOUT_MS = 15000
-/** Feedback rows loaded per agent (newest first). */
-const FEEDBACK_LIMIT = 100
+/** Feedback rows loaded per page for one agent (newest first). */
+const FEEDBACK_PAGE = 500
+/** Upper bound on rows loaded for one agent, so a farm cannot freeze the tab. */
+export const FEEDBACK_CEILING = 5000
 /** Feed rows per page (newest first). */
 const FEEDBACK_FEED_LIMIT = 25
 
@@ -128,6 +130,10 @@ export function mapAgent(chainId: number, row: AgentRow): AgentSummary {
   }
 }
 
+function numberOrNull(value: string | null | undefined): number | null {
+  return value != null && /^\d+$/.test(value) ? Number(value) : null
+}
+
 export function mapFeedback(row: FeedbackRow): Feedback {
   return {
     client: row.clientAddress as Address,
@@ -226,16 +232,27 @@ export function createSubgraphSource(chain: ChainInfo & { subgraphUrl: string })
 
     async getAgent(tokenId): Promise<AgentDetail | null> {
       const id = `${chain.chainId}:${tokenId}`
-      const data = await gql<{ agent: AgentRow | null; feedbacks: FeedbackRow[] }>(
-        url,
-        `query Agent($id: ID!, $where: Feedback_filter, $first: Int!) {
-          agent(id: $id) {${AGENT_FIELDS}}
-          feedbacks(where: $where, first: $first, orderBy: createdAt, orderDirection: desc) {${FEEDBACK_FIELDS}}
-        }`,
-        { id, where: { agent: id }, first: FEEDBACK_LIMIT },
-      )
+      const where = { agent: id }
+      const data = await gql<{ agent: AgentRow | null }>(url, `query Agent($id: ID!) { agent(id: $id) {${AGENT_FIELDS}} }`, { id })
       if (!data.agent) return null
-      const feedback = data.feedbacks.map(mapFeedback)
+      // The old query read only the newest 100 rows, so every metric on a busy
+      // agent described a sample. Page until the indexer is exhausted or the
+      // ceiling is reached.
+      const total = numberOrNull(data.agent.totalFeedback)
+      const rows: FeedbackRow[] = []
+      for (let skip = 0; skip < FEEDBACK_CEILING; skip += FEEDBACK_PAGE) {
+        const page = await gql<{ feedbacks: FeedbackRow[] }>(
+          url,
+          `query AgentFeedback($where: Feedback_filter, $first: Int!, $skip: Int!) {
+            feedbacks(where: $where, first: $first, skip: $skip, orderBy: createdAt, orderDirection: desc) {${FEEDBACK_FIELDS}}
+          }`,
+          { where, first: Math.min(FEEDBACK_PAGE, FEEDBACK_CEILING - skip), skip },
+        )
+        rows.push(...page.feedbacks)
+        if (page.feedbacks.length < FEEDBACK_PAGE) break
+        if (total !== null && rows.length >= total) break
+      }
+      const feedback = rows.map(mapFeedback)
       const counted = feedback.filter((f) => !f.revoked)
       return {
         ...mapAgent(chain.chainId, data.agent),

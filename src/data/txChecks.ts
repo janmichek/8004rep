@@ -786,8 +786,8 @@ function agentChecks(ctx: TxDetailContext): Check[] {
     id: 'agent-validation',
     label: 'Validated work',
     status: 'info',
-    detail: 'No ERC-8004 validation registry is deployed yet, so no validator result exists to hold this rating against.',
-    rule: 'Feedback and a validator’s response for the same work agree (Validation Registry). Not computable until that registry ships.',
+    detail: 'This explorer does not read the ERC-8004 Validation Registry yet, so there is no validator response to hold this rating against.',
+    rule: 'Feedback and a validator’s response for the same work agree (Validation Registry). Not shown until this explorer is configured with the registry address for the chain.',
   })
   return checks
 }

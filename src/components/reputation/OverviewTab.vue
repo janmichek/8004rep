@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { dailyColumns, valueHistogram } from '../../data/chartData'
 import type { FeedbackStats } from '../../data/feedbackStats'
+import type { ReputationReport } from '../../data/reputation/report'
 import type { LadderId, TrustReport } from '../../data/trustReport'
 import type { Feedback } from '../../data/types'
 import { formatNumber, formatPercent, formatSigned } from '../../format'
@@ -9,7 +10,7 @@ import ColumnChart from '../ui/ColumnChart.vue'
 import Hint from '../ui/Hint.vue'
 import { COUNT_SERIES, WEIGHT_LABELS, WEIGHT_SERIES, weightClass } from '../ui/palette'
 
-const props = defineProps<{ feedback: Feedback[]; stats: FeedbackStats; report: TrustReport; ecosystemAverage?: number }>()
+const props = defineProps<{ feedback: Feedback[]; stats: FeedbackStats; report: TrustReport; rep: ReputationReport }>()
 
 const activity = computed(() =>
   dailyColumns(
@@ -21,21 +22,25 @@ const activity = computed(() =>
   ),
 )
 const undated = computed(() => props.feedback.filter((f) => f.createdAt === undefined).length)
-const distribution = computed(() => valueHistogram(props.feedback.filter((f) => !f.revoked).map((f) => f.value)))
 
-/** One scale for every waterfall bar: 0–100, stretched when values leave it. */
-const scale = computed(() => {
-  const values = props.feedback.map((f) => f.value)
-  return { lo: Math.min(0, ...values), hi: Math.max(100, ...values) }
-})
+/** Only rating rows, read on their own scale: a 5-star review is not 5/100. */
+const distribution = computed(() =>
+  valueHistogram(
+    props.rep.layer.classified.flatMap((c, i) => (!props.feedback[i].revoked && c.kind === 'rating' && c.r !== null ? [c.r * 100] : [])),
+    'rating',
+  ),
+)
+
+/** One scale for every waterfall bar; normalised steps are always 0–100. */
 function barWidth(value: number | null): string {
   if (value === null) return '0%'
-  const { lo, hi } = scale.value
-  return `${Math.max(0, Math.min(100, ((value - lo) / (hi - lo)) * 100))}%`
+  return `${Math.max(0, Math.min(100, value))}%`
 }
 
 const LADDER_COLOR: Record<LadderId, string> = { bare: '#5b6472', context: '#3987e5', file: '#0ca30c' }
 const ladderTotal = computed(() => props.report.ladder.reduce((a, r) => a + r.rows, 0))
+
+const kinds = computed(() => props.rep.byKind.filter((k) => k.rows > 0))
 
 const coverage = computed(() => {
   const c = props.stats.coverage
@@ -58,6 +63,11 @@ const coverage = computed(() => {
         </li>
       </ul>
       <p v-else class="muted">No warning signs in these reviews.</p>
+      <ul v-if="rep.findings.length" class="signals">
+        <li v-for="finding in rep.findings" :key="finding.code" :class="`level-${finding.level}`">
+          <span class="signal-level">{{ finding.level }}</span> <span>{{ finding.text }}</span>
+        </li>
+      </ul>
       <ul class="reasons">
         <li v-for="reason in report.strength.reasons" :key="reason">{{ reason }}</li>
       </ul>
@@ -66,10 +76,9 @@ const coverage = computed(() => {
     <div class="chart-grid">
       <ColumnChart title="Feedback over time, by weight" :columns="activity" :series="WEIGHT_SERIES" />
       <ColumnChart
-        title="Values given (non-revoked)"
+        title="Rating values, normalised"
         :columns="distribution"
         :series="COUNT_SERIES"
-        :marker="ecosystemAverage !== undefined ? { at: ecosystemAverage, label: `ecosystem avg ${formatNumber(ecosystemAverage)}` } : undefined"
       />
     </div>
     <p v-if="undated" class="muted note">{{ undated }} row{{ undated === 1 ? ' has' : 's have' }} no date and {{ undated === 1 ? 'is' : 'are' }} left out of the time chart.</p>
@@ -77,19 +86,50 @@ const coverage = computed(() => {
     <section class="panel">
       <h3>How the score is built <small class="muted">each step applies one rule to the step before</small></h3>
       <ol class="bars waterfall">
-        <li v-for="step in report.waterfall" :key="step.id" :class="{ idle: step.id !== 'all' && step.rows === 0 }">
+        <li v-for="step in rep.waterfall" :key="step.id" :class="{ idle: step.id !== 'all' && step.rows === 0 }">
           <span class="bar-label">{{ step.label }}</span>
           <span class="bar-track" aria-hidden="true"><span :style="{ width: barWidth(step.average) }" /></span>
           <span class="bar-value">{{ formatNumber(step.average) }}</span>
           <span class="bar-delta" :class="{ down: (step.delta ?? 0) < -0.05, up: (step.delta ?? 0) > 0.05 }">
             {{ step.id === 'all' ? '' : formatSigned(step.delta) }}
           </span>
-          <span class="bar-note muted">
-            {{ step.id === 'all' ? `${step.rows} reviews` : step.rows ? `${step.rows} review${step.rows === 1 ? '' : 's'} touched` : 'nothing found' }}
-          </span>
+          <span class="bar-note muted">{{ step.rows }} row{{ step.rows === 1 ? '' : 's' }}</span>
           <small class="bar-rule muted">{{ step.rule }}</small>
         </li>
       </ol>
+    </section>
+
+    <section class="panel">
+      <h3>What the values mean <small class="muted">only ratings are scored</small></h3>
+      <dl class="metric-list">
+        <template v-for="k in kinds" :key="k.kind">
+          <dt>{{ k.label }}</dt>
+          <dd><b>{{ k.rows }}</b> <small class="muted">{{ k.kind === 'rating' ? 'normalised and scored' : 'listed, never averaged into the score' }}</small></dd>
+        </template>
+      </dl>
+      <p v-if="rep.counts.outOfScale" class="muted note">
+        {{ rep.counts.outOfScale }} rating row{{ rep.counts.outOfScale === 1 ? '' : 's' }} fall outside the scale inferred for the tag and are listed but not scored.
+      </p>
+    </section>
+
+    <section v-if="rep.telemetry.length" class="panel">
+      <h3>Telemetry <small class="muted">answers “is it up”, not “is it good”</small></h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Tag</th><th class="num">Rows</th><th class="num">Wallets</th><th class="num">Latest</th><th class="num">Median</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="t in rep.telemetry" :key="t.tag">
+              <td><span class="chip clip-chip" :title="t.label">{{ t.label }}</span></td>
+              <td class="num">{{ t.rows }}</td>
+              <td class="num">{{ t.clients }}</td>
+              <td class="num">{{ formatNumber(t.latest) }}</td>
+              <td class="num">{{ formatNumber(t.median) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <section class="panel">

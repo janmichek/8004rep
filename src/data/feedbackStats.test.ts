@@ -37,7 +37,7 @@ describe('computeFeedbackStats reviews', () => {
   })
 
   it('names the reason behind each discounted weight', () => {
-    const feedback = [row(A, 90), row(B, 90), row(C, 80, { revoked: true })]
+    const feedback = [row(A, 90), row(A, 90), row(C, 80, { revoked: true })]
     const { rows } = computeFeedbackStats(feedback, { now: NOW })
     expect(rows[1].flags).toEqual(['duplicate'])
     expect(rows[2].flags).toEqual(['revoked'])

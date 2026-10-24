@@ -71,8 +71,8 @@ const tiles = computed<Tile[]>(() => {
       label: 'Average value',
       value: formatNumber(s.average),
       hint: [
-        ecosystem.data.value ? `ecosystem ${formatNumber(ecosystem.data.value.averageFeedback)}` : '',
-        s.average !== null && (s.average < 0 || s.average > 100) ? 'includes values outside 0–100' : '',
+        'ratings only, normalised',
+        ecosystem.data.value ? `ecosystem raw mean ${formatNumber(ecosystem.data.value.averageFeedback)}` : '',
       ]
         .filter(Boolean)
         .join(' · '),
@@ -80,7 +80,7 @@ const tiles = computed<Tile[]>(() => {
     {
       label: 'Perfect 100s',
       value: formatPercent(s.perfectShare),
-      hint: 'of non-revoked reviews',
+      hint: 'of scored ratings at 99%+',
       tone: (s.perfectShare ?? 0) > 0.7 ? 'warn' : undefined,
       title: 'A network where most reviews are 100 cannot tell good agents from great ones',
     },

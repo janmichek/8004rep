@@ -16,7 +16,15 @@ const AGENT = {
         compliance: { score: 98, weight: 0.15 },
         engagement: { score: 71.37, weight: 0.3, details: { average_score: 97.75, feedback_count: 49, feedback_weight: 1 } },
       },
-      leaderboard_policy: { score_band: { floor: 78, ceiling: 95 } },
+      leaderboard_policy: {
+        score_band: { floor: 78, ceiling: 95 },
+        weights: { proof: 0.7, support: 0.3 },
+        proof_score: 100,
+        support_score: 54.22,
+        merit_score: 86.27,
+        evidence_tier: 'battle-tested',
+        integrity_tier: 'healthy',
+      },
     },
   },
 }
@@ -29,6 +37,7 @@ describe('parseScanScore', () => {
     expect(score.dimensions[0]).toEqual({ id: 'engagement', label: 'Engagement', score: 71.37, weight: 0.3 })
     expect(score.feedback).toEqual({ average: 97.75, count: 49, weight: 1 })
     expect(score.band).toEqual({ floor: 78, ceiling: 95 })
+    expect(score.policy).toMatchObject({ proofWeight: 0.7, supportWeight: 0.3, proofScore: 100, supportScore: 54.22, merit: 86.27 })
     expect(score.algorithm).toBe('v5_leaderboard_policy v5.2')
     expect(score.scoredAt).toMatch(/^2026-10-18/)
   })

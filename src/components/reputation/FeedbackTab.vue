@@ -9,9 +9,11 @@ import SelectMenu from '../ui/SelectMenu.vue'
 
 const props = defineProps<{ agent: AgentDetail; chain: ChainInfo; stats: FeedbackStats }>()
 
-type Filter = 'all' | 'full' | 'flagged' | 'revoked' | 'replied'
+type Filter = 'all' | 'rating' | 'other' | 'full' | 'flagged' | 'revoked' | 'replied'
 const FILTERS: { id: Filter; label: string; test: (r: ListRow) => boolean }[] = [
   { id: 'all', label: 'All', test: () => true },
+  { id: 'rating', label: 'Scored', test: (r) => !r.row.revoked && r.stats!.kind === 'rating' && r.stats!.rating !== null },
+  { id: 'other', label: 'Not scored', test: (r) => !r.row.revoked && (r.stats!.kind !== 'rating' || r.stats!.rating === null) },
   { id: 'full', label: 'Full weight', test: (r) => !r.row.revoked && r.stats!.weight === 1 },
   { id: 'flagged', label: 'Discounted', test: (r) => !r.row.revoked && r.stats!.weight < 1 },
   { id: 'revoked', label: 'Revoked', test: (r) => r.row.revoked },
