@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import type { Address } from 'viem'
 import { addressExplorerUrl, txExplorerUrl, type ChainInfo } from '../../chains'
+import ChainName from '../ChainName.vue'
 import { sourceFor } from '../../data'
 import { FLAG_INFO, type FeedbackStats } from '../../data/feedbackStats'
 import { clusterByFunder } from '../../data/funding'
@@ -10,8 +11,11 @@ import { LABEL_INFO } from '../../data/reviewerProfile'
 import { MIN_NONCE } from '../../data/txChecks'
 import type { AgentDetail } from '../../data/types'
 import { formatDate, formatNumber, formatPercent, formatSigned, shortAddress } from '../../format'
+import { useSort } from '../../useSort'
+import FlagChip from '../ui/FlagChip.vue'
 import Hint from '../ui/Hint.vue'
 import Skeleton from '../ui/Skeleton.vue'
+import SortHeader from '../ui/SortHeader.vue'
 
 const props = defineProps<{ agent: AgentDetail; chain: ChainInfo; stats: FeedbackStats; self: string[] }>()
 
@@ -20,6 +24,14 @@ const LOOKUP = 12
 const SHOWN = 50
 
 const reviewers = computed(() => [...props.stats.reviewers].sort((a, b) => (b.weightShare ?? 0) - (a.weightShare ?? 0) || b.rows - a.rows))
+const reviewerRows = useSort(reviewers, [
+  { key: 'reviewer', value: (r) => r.client },
+  { key: 'reviews', value: (r) => r.rows, numeric: true },
+  { key: 'weight', value: (r) => r.weightShare, numeric: true },
+  { key: 'average', value: (r) => r.average, numeric: true },
+  { key: 'without', value: (r) => r.shiftWithout, numeric: true },
+])
+
 const insights = reactive(new Map<string, ReviewerInsight>())
 const loading = ref(false)
 // A newer lookup (another agent) makes the results of an older one stale.
@@ -61,7 +73,7 @@ function isSelf(address: string): boolean {
   <p class="muted note">
     How much each address pulls the score, and what it does elsewhere. The top {{ LOOKUP }} by weight are looked up across agents
     <template v-if="chain.explorerApiUrl">and on the block explorer (who first funded them)</template>
-    <template v-else>(funding cannot be traced on {{ chain.name }}: no explorer API that allows browser calls)</template>.
+    <template v-else>(funding cannot be traced on <ChainName :chain-id="chain.chainId" :name="chain.name" />: no explorer API that allows browser calls)</template>.
     <span v-if="loading" class="muted">Looking up {{ insights.size }}/{{ Math.min(LOOKUP, reviewers.length) }}…</span>
   </p>
 
@@ -86,18 +98,18 @@ function isSelf(address: string): boolean {
     <table class="reviewers-table">
       <thead>
         <tr>
-          <th>Reviewer</th>
-          <Hint text="Reviews on this agent (revoked in brackets)"><th class="num">Reviews</th></Hint>
-          <Hint text="Share of the authenticity weight — pull on the trusted score"><th>Weight share</th></Hint>
-          <Hint text="Average of its non-revoked values here, with min–max"><th class="num">Avg here</th></Hint>
-          <Hint text="Raw average without this reviewer minus with it"><th class="num">Without it</th></Hint>
+          <SortHeader label="Reviewer" :active="reviewerRows.state('reviewer')" @sort="reviewerRows.toggle('reviewer')" />
+          <SortHeader label="Reviews" numeric text="Reviews on this agent (revoked in brackets)" :active="reviewerRows.state('reviews')" @sort="reviewerRows.toggle('reviews')" />
+          <SortHeader label="Weight share" text="Share of the authenticity weight — pull on the trusted score" :active="reviewerRows.state('weight')" @sort="reviewerRows.toggle('weight')" />
+          <SortHeader label="Avg here" numeric text="Average of its non-revoked values here, with min–max" :active="reviewerRows.state('average')" @sort="reviewerRows.toggle('average')" />
+          <SortHeader label="Without it" numeric text="Raw average without this reviewer minus with it" :active="reviewerRows.state('without')" @sort="reviewerRows.toggle('without')" />
           <th>Flags here</th>
           <Hint text="Its feedback on other agents, as far as the source reaches"><th>Elsewhere</th></Hint>
           <Hint text="Transactions sent, and who first sent it funds"><th>Wallet</th></Hint>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="r in reviewers.slice(0, SHOWN)" :key="r.client">
+        <tr v-for="r in reviewerRows.sorted.value.slice(0, SHOWN)" :key="r.client">
           <td class="nowrap">
             <RouterLink :to="{ name: 'reviewer', params: { slug: chain.slug, address: r.client } }" class="mono" :title="r.client">
               {{ shortAddress(r.client) }}
@@ -118,7 +130,7 @@ function isSelf(address: string): boolean {
           <td class="num">{{ formatSigned(r.shiftWithout) }}</td>
           <td>
             <Hint v-for="flag in r.flags" :key="flag" :text="FLAG_INFO[flag].rule">
-              <span class="chip warn">{{ FLAG_INFO[flag].label }}</span>
+              <FlagChip :flag="flag" />
             </Hint>
           </td>
           <td>

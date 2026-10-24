@@ -2,6 +2,8 @@
 import { computed, ref, watch } from 'vue'
 import { addressExplorerUrl, agentScanUrl, findChainBySlug } from '../chains'
 import AgentAvatar from '../components/AgentAvatar.vue'
+import ChainIcon from '../components/ChainIcon.vue'
+import ChainName from '../components/ChainName.vue'
 import ReputationPanel from '../components/reputation/ReputationPanel.vue'
 import Disclosure from '../components/ui/Disclosure.vue'
 import Skeleton from '../components/ui/Skeleton.vue'
@@ -47,7 +49,9 @@ const rawJson = computed(() => (file.value ? JSON.stringify(file.value.raw, null
 
 <template>
   <p class="crumbs">
-    <RouterLink :to="{ name: 'agents', params: { slug: chain.slug } }">← {{ chain.name }} agents</RouterLink>
+    <RouterLink :to="{ name: 'agents', params: { slug: chain.slug } }">
+      ← <ChainName :chain-id="chain.chainId" :name="chain.name" /> agents
+    </RouterLink>
   </p>
 
   <section v-if="error" class="state">
@@ -78,7 +82,7 @@ const rawJson = computed(() => (file.value ? JSON.stringify(file.value.raw, null
   </section>
   <section v-else-if="agent === null" class="state">
     <h1>Agent #{{ id }} not found</h1>
-    <p class="muted">No such token in the {{ chain.name }} identity registry.</p>
+    <p class="muted">No such token in the <ChainName :chain-id="chain.chainId" :name="chain.name" /> identity registry.</p>
   </section>
 
   <template v-else>
@@ -90,7 +94,7 @@ const rawJson = computed(() => (file.value ? JSON.stringify(file.value.raw, null
           <template v-else>{{ name }}</template>
         </h1>
         <p class="meta">
-          <span class="mono">{{ chain.chainId }}:{{ agent.tokenId }}</span>
+          <span class="mono"><ChainIcon :chain-id="chain.chainId" :name="chain.name" :size="13" /> {{ chain.chainId }}:{{ agent.tokenId }}</span>
           <template v-if="file === undefined">
             <Skeleton width="4.2em" height="1.35em" radius="999px" />
             <Skeleton width="3.2em" height="1.35em" radius="999px" />

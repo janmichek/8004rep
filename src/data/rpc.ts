@@ -240,15 +240,19 @@ export function createRpcSource(chain: ChainInfo, client: PublicClient = createR
     kind: 'rpc',
     supportsTextSearch: false,
 
-    async listAgents({ page, pageSize, search, owner }) {
+    async listAgents({ page, pageSize, search, owner, sort, order }) {
       if (owner) {
         const ids = await ownedTokenIds(owner)
+        // ownedTokenIds walks newest first; dates need the subgraph, so only token ID sorts here.
+        const ordered =
+          sort === 'tokenId' ? [...ids].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)) : ids
+        if (sort === 'tokenId' && order === 'desc') ordered.reverse()
         const start = page * pageSize
-        const slice = ids.slice(start, start + pageSize)
+        const slice = ordered.slice(start, start + pageSize)
         return {
           items: await Promise.all(slice.map((id) => summary(id))),
-          total: ids.length,
-          hasMore: start + pageSize < ids.length,
+          total: ordered.length,
+          hasMore: start + pageSize < ordered.length,
         }
       }
       const query = search?.trim()

@@ -93,13 +93,16 @@ export type ListOptions = {
   search?: string
   /** Only agents this address currently owns. */
   owner?: Address
+  /** Sort field; omitted keeps the source default (newest first). */
+  sort?: 'createdAt' | 'tokenId'
+  order?: 'asc' | 'desc'
 }
 
 export interface DataSource {
   kind: 'subgraph' | 'rpc'
   /** False when `search` only matches token IDs. */
   supportsTextSearch: boolean
-  /** Newest agents first; `page` is zero-based. */
+  /** Newest agents first unless `sort` is given; `page` is zero-based. */
   listAgents(options: ListOptions): Promise<Page<AgentSummary>>
   /** Null when the token does not exist. */
   getAgent(tokenId: bigint): Promise<AgentDetail | null>

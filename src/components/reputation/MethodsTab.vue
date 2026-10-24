@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { FLAG_INFO } from '../../data/feedbackStats'
+import { FLAG_INFO, type RowFlag } from '../../data/feedbackStats'
 import { LABEL_INFO } from '../../data/reviewerProfile'
 import { computeScores } from '../../data/scores'
 import { DOMINANT_SHARE, STRONG_REVIEWERS, THIN_REVIEWERS } from '../../data/trustReport'
 import type { Feedback } from '../../data/types'
 import { formatNumber, formatPercent, formatSigned } from '../../format'
+import { useSort } from '../../useSort'
+import FlagChip from '../ui/FlagChip.vue'
+import SortHeader from '../ui/SortHeader.vue'
 import StatTiles, { type Tile } from '../ui/StatTiles.vue'
 
 const props = defineProps<{ feedback: Feedback[]; self: string[] }>()
@@ -30,7 +33,16 @@ const shape = computed(() => [
   { label: 'Momentum', value: formatSigned(s.value.momentum), rule: 'Time-decayed mean of the last 30 days minus the 30–120 days before.' },
 ])
 
-const flags = Object.entries(FLAG_INFO).map(([id, info]) => ({ id, ...info }))
+const tagRows = useSort(
+  computed(() => s.value.perTag),
+  [
+    { key: 'tag', value: (t) => t.tag },
+    { key: 'reviews', value: (t) => t.count, numeric: true },
+    { key: 'average', value: (t) => t.average, numeric: true },
+  ],
+)
+
+const flags = (Object.entries(FLAG_INFO) as [RowFlag, { label: string; rule: string }][]).map(([id, info]) => ({ id, ...info }))
 const labels = Object.entries(LABEL_INFO).map(([id, info]) => ({ id, ...info }))
 </script>
 
@@ -50,9 +62,15 @@ const labels = Object.entries(LABEL_INFO).map(([id, info]) => ({ id, ...info }))
     <h3>By tag <small class="muted">different tags can mean different scales — compare within a tag</small></h3>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>tag1</th><th class="num">Reviews</th><th class="num">Weighted avg</th></tr></thead>
+        <thead>
+          <tr>
+            <SortHeader label="tag1" :active="tagRows.state('tag')" @sort="tagRows.toggle('tag')" />
+            <SortHeader label="Reviews" numeric :active="tagRows.state('reviews')" @sort="tagRows.toggle('reviews')" />
+            <SortHeader label="Weighted avg" numeric :active="tagRows.state('average')" @sort="tagRows.toggle('average')" />
+          </tr>
+        </thead>
         <tbody>
-          <tr v-for="t in s.perTag" :key="t.tag">
+          <tr v-for="t in tagRows.sorted.value" :key="t.tag">
             <td><span class="chip clip-chip" :title="t.tag">{{ t.tag }}</span></td>
             <td class="num">{{ t.count }}</td>
             <td class="num">{{ formatNumber(t.average) }}</td>
@@ -66,7 +84,7 @@ const labels = Object.entries(LABEL_INFO).map(([id, info]) => ({ id, ...info }))
     <h3>Rules on a review</h3>
     <dl class="metric-list">
       <template v-for="f in flags" :key="f.id">
-        <dt><span class="chip warn">{{ f.label }}</span></dt>
+        <dt><FlagChip :flag="f.id" /></dt>
         <dd>{{ f.rule }}</dd>
       </template>
     </dl>

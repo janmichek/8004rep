@@ -1,0 +1,39 @@
+<script setup lang="ts">
+import { CHAINS, DEFAULT_CHAIN } from '../../chains'
+import { sourceText, useChainSwitch, useRouteChain } from '../shared/use'
+
+const { route, slug, chain, resolved } = useRouteChain()
+const switchTo = useChainSwitch()
+const group = (name: unknown) => (name === 'agent' ? 'agents' : name === 'reviewer' ? 'network' : name)
+</script>
+
+<template>
+  <div class="m-page">
+    <header class="m-head">
+      <p class="m-est">Est. on chain · open daily</p>
+      <RouterLink class="m-title" :to="{ name: 'agents', params: { slug: (chain ?? DEFAULT_CHAIN).slug } }">The 8004 <i>Gallery</i></RouterLink>
+      <nav class="m-nav">
+        <RouterLink :to="{ name: 'agents', params: { slug: (chain ?? DEFAULT_CHAIN).slug } }" :class="{ on: group(route.name) === 'agents' }">Galleries</RouterLink>
+        <RouterLink :to="{ name: 'network', params: { slug: (chain ?? DEFAULT_CHAIN).slug } }" :class="{ on: group(route.name) === 'network' }">Collection</RouterLink>
+      </nav>
+    </header>
+    <div class="m-wing">
+      <span>Wing</span>
+      <button v-for="c in CHAINS" :key="c.slug" :class="{ on: c.slug === chain?.slug }" @click="switchTo(c.slug)">{{ c.name }}</button>
+      <span v-if="chain" class="m-src" :title="sourceText(resolved)?.detail">labels printed from {{ sourceText(resolved)?.label ?? '…' }}</span>
+    </div>
+    <main class="m-main">
+      <template v-if="slug && !chain">
+        <p class="m-kicker">Gallery closed</p>
+        <h1 class="m-h1">“{{ slug }}” is not a wing of this gallery.</h1>
+        <p class="m-prose">The collection is held in <template v-for="c in CHAINS" :key="c.slug"><RouterLink :to="{ name: 'agents', params: { slug: c.slug } }">{{ c.name }}</RouterLink><template v-if="c !== CHAINS.at(-1)">, </template></template>.</p>
+      </template>
+      <RouterView v-else :key="`${group(route.name)}:${slug}`" />
+    </main>
+    <footer class="m-foot">
+      <span>Admission free</span>
+      <span>Please do not touch the chain</span>
+      <span>All wall texts are derived from on-chain records.</span>
+    </footer>
+  </div>
+</template>

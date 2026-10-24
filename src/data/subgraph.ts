@@ -198,7 +198,7 @@ export function createSubgraphSource(chain: ChainInfo & { subgraphUrl: string })
       return { block: number, ...(timestamp ? { timestamp } : {}) }
     },
 
-    async listAgents({ page, pageSize, search, owner }) {
+    async listAgents({ page, pageSize, search, owner, sort, order }) {
       const query = search?.trim()
       const where = {
         ...(owner ? { owner: owner.toLowerCase() } : {}),
@@ -208,13 +208,15 @@ export function createSubgraphSource(chain: ChainInfo & { subgraphUrl: string })
             ? { agentId: query }
             : { registrationFile_: { name_contains_nocase: query } }),
       }
+      const orderBy = sort === 'tokenId' ? 'agentId' : 'createdAt'
+      const orderDirection = order ?? 'desc'
       const data = await gql<{ agents: AgentRow[] }>(
         url,
-        `query Agents($where: Agent_filter, $first: Int!, $skip: Int!) {
-          agents(where: $where, first: $first, skip: $skip, orderBy: createdAt, orderDirection: desc) {${AGENT_FIELDS}}
+        `query Agents($where: Agent_filter, $first: Int!, $skip: Int!, $orderBy: Agent_orderBy!, $orderDirection: OrderDirection!) {
+          agents(where: $where, first: $first, skip: $skip, orderBy: $orderBy, orderDirection: $orderDirection) {${AGENT_FIELDS}}
         }`,
         // One extra row tells whether another page exists.
-        { where, first: pageSize + 1, skip: page * pageSize },
+        { where, first: pageSize + 1, skip: page * pageSize, orderBy, orderDirection },
       )
       return {
         items: data.agents.slice(0, pageSize).map((row) => mapAgent(chain.chainId, row)),

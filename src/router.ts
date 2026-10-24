@@ -1,24 +1,30 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { DEFAULT_CHAIN } from './chains'
-import AgentPage from './pages/AgentPage.vue'
-import AgentsPage from './pages/AgentsPage.vue'
-import NetworkPage from './pages/NetworkPage.vue'
-import OwnerPage from './pages/OwnerPage.vue'
-import ReviewerPage from './pages/ReviewerPage.vue'
+import type { PageSet } from './variants/registry'
 
 // Paths mirror 8004scan (`/agents/<network>/<tokenId>`); hash history keeps
-// the build deployable to any static host without rewrite rules.
-export const router = createRouter({
-  history: createWebHashHistory(),
-  routes: [
-    { path: '/', redirect: `/agents/${DEFAULT_CHAIN.slug}` },
-    { path: '/agents/:slug', name: 'agents', component: AgentsPage, props: true },
-    { path: '/agents/:slug/:id', name: 'agent', component: AgentPage, props: true },
-    { path: '/network/:slug', name: 'network', component: NetworkPage, props: true },
-    { path: '/owners/:slug/:address', name: 'owner', component: OwnerPage, props: true },
-    { path: '/reviewers/:slug/:address', name: 'reviewer', component: ReviewerPage, props: true },
-    { path: '/:rest(.*)*', redirect: '/' },
-  ],
-  // Switching tabs only changes the query: keep the scroll position then.
-  scrollBehavior: (to, from) => (to.path === from.path ? false : { top: 0 }),
-})
+// the build deployable to any static host without rewrite rules. Every
+// design routes the same paths to its own pages.
+export function makeRouter(pages: PageSet) {
+  return createRouter({
+    history: createWebHashHistory(),
+    routes: [
+      { path: '/', redirect: `/agents/${DEFAULT_CHAIN.slug}` },
+      { path: '/agents/:slug', name: 'agents', component: pages.agents, props: true },
+      // Only the classic design gives a feedback row its own view.
+      ...(pages.feedback
+        ? [{ path: '/agents/:slug/:id/feedback/:index', name: 'feedback', component: pages.feedback, props: true }]
+        : []),
+      { path: '/agents/:slug/:id', name: 'agent', component: pages.agent, props: true },
+      ...(pages.scanAgent
+        ? [{ path: '/scan/:chainId/:id', name: 'scan-agent', component: pages.scanAgent, props: true }]
+        : []),
+      { path: '/network/:slug', name: 'network', component: pages.network, props: true },
+      { path: '/owners/:slug/:address', name: 'owner', component: pages.owner, props: true },
+      { path: '/reviewers/:slug/:address', name: 'reviewer', component: pages.reviewer, props: true },
+      { path: '/:rest(.*)*', redirect: '/' },
+    ],
+    // Switching tabs only changes the query: keep the scroll position then.
+    scrollBehavior: (to, from) => (to.path === from.path ? false : { top: 0 }),
+  })
+}

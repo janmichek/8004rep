@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
 import { findChainBySlug } from '../chains'
+import ChainName from '../components/ChainName.vue'
 import ChartSkeleton from '../components/ui/ChartSkeleton.vue'
 import ColumnChart from '../components/ui/ColumnChart.vue'
 import Hint from '../components/ui/Hint.vue'
 import { COUNT_SERIES, WEIGHT_SERIES } from '../components/ui/palette'
+import SortHeader from '../components/ui/SortHeader.vue'
 import StatTiles, { type Tile } from '../components/ui/StatTiles.vue'
 import TilesSkeleton from '../components/ui/TilesSkeleton.vue'
 import TabBar, { type Tab } from '../components/ui/TabBar.vue'
@@ -18,6 +20,7 @@ import { errorMessage, formatDate, formatNumber, formatPercent, formatScore, for
 import { toDisplayUrl } from '../data/metadata'
 import FeedbackNote from '../components/FeedbackNote.vue'
 import { useAsync } from '../useAsync'
+import { useSort } from '../useSort'
 
 const props = defineProps<{ slug: string }>()
 const chain = computed(() => findChainBySlug(props.slug)!)
@@ -100,6 +103,35 @@ const VOLUME_SERIES = [
 ]
 const distribution = computed(() => valueHistogram((feed.value?.items ?? []).filter((r) => !r.revoked).map((r) => r.value)))
 
+/** Sorts the full lists; the template slices afterwards so the top N stays correct. */
+const suspectRows = useSort(
+  computed(() => stats.value?.suspects ?? []),
+  [
+    { key: 'reviewer', value: (s) => s.client },
+    { key: 'reviews', value: (s) => s.rows, numeric: true },
+    { key: 'agents', value: (s) => s.agents, numeric: true },
+    { key: 'average', value: (s) => s.average, numeric: true },
+  ],
+)
+const topAgentRows = useSort(
+  computed(() => stats.value?.topAgents ?? []),
+  [
+    { key: 'agent', value: (a) => a.agentName ?? `Agent #${a.tokenId}` },
+    { key: 'reviews', value: (a) => a.rows, numeric: true },
+    { key: 'reviewers', value: (a) => a.reviewers, numeric: true },
+    { key: 'average', value: (a) => a.average, numeric: true },
+  ],
+)
+const latestRows = useSort(
+  computed(() => feed.value?.items ?? []),
+  [
+    { key: 'agent', value: (r) => r.agentName ?? `Agent #${r.tokenId}` },
+    { key: 'reviewer', value: (r) => r.client },
+    { key: 'value', value: (r) => r.value, numeric: true },
+    { key: 'when', value: (r) => r.createdAt, numeric: true },
+  ],
+)
+
 const tabs = computed<Tab[]>(() => [
   { id: 'suspects', label: 'Suspect reviewers', count: stats.value?.suspects.length ?? 0, ...(stats.value?.suspects.length ? { tone: 'warn' as const } : {}) },
   { id: 'lookalikes', label: 'Lookalike agents', count: stats.value?.lookalikes.length ?? 0 },
@@ -117,7 +149,7 @@ function reviewerRoute(address: string) {
 
 <template>
   <div class="page-head">
-    <h1>{{ chain.name }} <small>feedback health</small></h1>
+    <h1><ChainName :chain-id="chain.chainId" :name="chain.name" :size="22" /> <small>feedback health</small></h1>
   </div>
   <p class="lede">
     Patterns across the latest feedback of the network. Everything is computed from the rows loaded here — load older rows to widen the window.
@@ -157,10 +189,16 @@ function reviewerRoute(address: string) {
         <div v-else class="table-wrap">
           <table>
             <thead>
-              <tr><th>Reviewer</th><th class="num">Reviews</th><th class="num">Agents</th><th class="num">Average</th><th>Why</th></tr>
+              <tr>
+                <SortHeader label="Reviewer" :active="suspectRows.state('reviewer')" @sort="suspectRows.toggle('reviewer')" />
+                <SortHeader label="Reviews" numeric :active="suspectRows.state('reviews')" @sort="suspectRows.toggle('reviews')" />
+                <SortHeader label="Agents" numeric :active="suspectRows.state('agents')" @sort="suspectRows.toggle('agents')" />
+                <SortHeader label="Average" numeric :active="suspectRows.state('average')" @sort="suspectRows.toggle('average')" />
+                <th>Why</th>
+              </tr>
             </thead>
             <tbody>
-              <tr v-for="s in stats.suspects.slice(0, 50)" :key="s.client">
+              <tr v-for="s in suspectRows.sorted.value.slice(0, 50)" :key="s.client">
                 <td><RouterLink :to="reviewerRoute(s.client)" class="mono" :title="s.client">{{ shortAddress(s.client) }}</RouterLink></td>
                 <td class="num">{{ s.rows }}</td>
                 <td class="num">{{ s.agents }}</td>
@@ -201,9 +239,16 @@ function reviewerRoute(address: string) {
       <template #agents>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Agent</th><th class="num">Reviews</th><th class="num">Reviewers</th><th class="num">Average</th></tr></thead>
+            <thead>
+              <tr>
+                <SortHeader label="Agent" :active="topAgentRows.state('agent')" @sort="topAgentRows.toggle('agent')" />
+                <SortHeader label="Reviews" numeric :active="topAgentRows.state('reviews')" @sort="topAgentRows.toggle('reviews')" />
+                <SortHeader label="Reviewers" numeric :active="topAgentRows.state('reviewers')" @sort="topAgentRows.toggle('reviewers')" />
+                <SortHeader label="Average" numeric :active="topAgentRows.state('average')" @sort="topAgentRows.toggle('average')" />
+              </tr>
+            </thead>
             <tbody>
-              <tr v-for="a in stats.topAgents" :key="a.tokenId.toString()">
+              <tr v-for="a in topAgentRows.sorted.value" :key="a.tokenId.toString()">
                 <td><RouterLink :to="agentRoute(a.tokenId)">{{ a.agentName ?? `Agent #${a.tokenId}` }}</RouterLink> <small class="muted">#{{ a.tokenId }}</small></td>
                 <td class="num">{{ a.rows }}</td>
                 <td class="num" :class="{ warnText: a.reviewers === 1 && a.rows > 2 }">{{ a.reviewers }}</td>
@@ -217,9 +262,19 @@ function reviewerRoute(address: string) {
       <template #latest>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Agent</th><th>Reviewer</th><th class="num">Value</th><th>Tags</th><th>Text</th><th>File</th><th>When</th></tr></thead>
+            <thead>
+              <tr>
+                <SortHeader label="Agent" :active="latestRows.state('agent')" @sort="latestRows.toggle('agent')" />
+                <SortHeader label="Reviewer" :active="latestRows.state('reviewer')" @sort="latestRows.toggle('reviewer')" />
+                <SortHeader label="Value" numeric :active="latestRows.state('value')" @sort="latestRows.toggle('value')" />
+                <th>Tags</th>
+                <th>Text</th>
+                <th>File</th>
+                <SortHeader label="When" numeric :active="latestRows.state('when')" @sort="latestRows.toggle('when')" />
+              </tr>
+            </thead>
             <tbody>
-              <tr v-for="(r, i) in feed.items.slice(0, 100)" :key="i" :class="{ revoked: r.revoked }">
+              <tr v-for="(r, i) in latestRows.sorted.value.slice(0, 100)" :key="i" :class="{ revoked: r.revoked }">
                 <td><RouterLink :to="agentRoute(r.tokenId)">{{ r.agentName ?? `Agent #${r.tokenId}` }}</RouterLink></td>
                 <td><RouterLink :to="reviewerRoute(r.client)" class="mono">{{ shortAddress(r.client) }}</RouterLink></td>
                 <td class="num"><b>{{ formatScore(r.value) }}</b></td>

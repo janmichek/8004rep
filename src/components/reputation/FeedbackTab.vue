@@ -4,7 +4,6 @@ import type { ChainInfo } from '../../chains'
 import type { FeedbackStats } from '../../data/feedbackStats'
 import type { AgentDetail } from '../../data/types'
 import FeedbackList, { type ListRow } from '../FeedbackList.vue'
-import TxDetail from '../TxDetail.vue'
 import Segmented, { type Segment } from '../ui/Segmented.vue'
 import SelectMenu from '../ui/SelectMenu.vue'
 
@@ -46,6 +45,10 @@ const rows = computed(() => {
 function reviewerRoute(address: string) {
   return { name: 'reviewer', params: { slug: props.chain.slug, address } }
 }
+
+function detailRoute(index: number) {
+  return { name: 'feedback', params: { slug: props.chain.slug, id: String(props.agent.tokenId), index: String(index) } }
+}
 </script>
 
 <template>
@@ -56,9 +59,5 @@ function reviewerRoute(address: string) {
       <SelectMenu v-model="sort" compact label="Sort feedback" :options="SORTS" />
     </label>
   </div>
-  <FeedbackList :rows="rows" :chain="chain" :reviewer-route="reviewerRoute">
-    <template #detail="{ row, index }">
-      <TxDetail :chain="chain" :agent="agent" :row="row" :index="index" :stats="stats" />
-    </template>
-  </FeedbackList>
+  <FeedbackList :rows="rows" :chain="chain" :reviewer-route="reviewerRoute" :detail-route="detailRoute" />
 </template>
