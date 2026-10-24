@@ -1,28 +1,41 @@
 <script setup lang="ts">
-import { computed, ref, useSlots, watch } from 'vue'
+import { computed } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import { addressExplorerUrl, txExplorerUrl, type ChainInfo } from '../chains'
 import { FLAG_INFO, type RowStats } from '../data/feedbackStats'
+import { KIND_INFO } from '../data/reputation/kinds'
 import { toDisplayUrl } from '../data/metadata'
 import type { Feedback } from '../data/types'
 import FeedbackNote from './FeedbackNote.vue'
+import FlagChip from './ui/FlagChip.vue'
 import Hint from './ui/Hint.vue'
+import SortHeader from './ui/SortHeader.vue'
 import { formatDate, formatNumber, formatScore, formatTimeline, shortAddress } from '../format'
+import { useSort } from '../useSort'
 
 export type ListRow = { row: Feedback; stats?: RowStats; index: number }
 
-// `index` points into the agent's full feedback, which the detail slot needs.
-const props = defineProps<{ rows: ListRow[]; chain: ChainInfo; reviewerRoute?: (address: string) => RouteLocationRaw }>()
+// `index` points into the agent's full feedback, which the detail link needs.
+const props = defineProps<{
+  rows: ListRow[]
+  chain: ChainInfo
+  reviewerRoute?: (address: string) => RouteLocationRaw
+  detailRoute?: (index: number) => RouteLocationRaw
+}>()
 
-// A `detail` slot makes rows expandable: it renders under the open row, one at a time.
-const slots = useSlots()
-const open = ref<number>()
 const hasStats = computed(() => props.rows.some((r) => r.stats))
 const hasNotes = computed(() => props.rows.some((r) => r.row.feedbackURI))
-const columns = computed(() => 6 + (hasNotes.value ? 1 : 0) + (hasStats.value ? 1 : 0) + (slots.detail ? 1 : 0))
-watch(
+
+const { sorted: sortedRows, state: sortState, toggle: toggleSort } = useSort(
   () => props.rows,
-  () => (open.value = undefined),
+  [
+    { key: 'reviewer', value: (r) => r.row.client },
+    { key: 'value', value: (r) => r.row.value, numeric: true },
+    { key: 'tags', value: (r) => r.row.tag1 },
+    { key: 'weight', value: (r) => r.stats?.weight, numeric: true },
+    { key: 'when', value: (r) => r.row.createdAt, numeric: true },
+    { key: 'replies', value: (r) => r.row.responses?.length, numeric: true },
+  ],
 )
 
 function evidenceUrl(uri: string | undefined): string | undefined {
@@ -36,20 +49,31 @@ function evidenceUrl(uri: string | undefined): string | undefined {
     <table class="feedback-table">
       <thead>
         <tr>
-          <th>Reviewer</th>
-          <th class="num">Value</th>
-          <th>Tags</th>
+          <SortHeader label="Reviewer" :active="sortState('reviewer')" @sort="toggleSort('reviewer')" />
+          <SortHeader label="Value" numeric :active="sortState('value')" @sort="toggleSort('value')" />
+          <SortHeader label="Tags" :active="sortState('tags')" @sort="toggleSort('tags')" />
           <Hint v-if="hasNotes" text="The text (or comment) field of the off-chain feedback file"><th>Text</th></Hint>
-          <Hint v-if="hasStats" text="Authenticity weight (1 = full vote) and the rules that fired; hover a chip for its rule"><th>Weight</th></Hint>
+          <SortHeader
+            v-if="hasStats"
+            label="Weight"
+            text="Authenticity weight (1 = full vote) and the rules that fired; hover a chip for its rule"
+            :active="sortState('weight')"
+            @sort="toggleSort('weight')"
+          />
           <th>Link</th>
-          <th>When</th>
-          <Hint text="appendResponse entries: agent replies, refunds, spam flags"><th>Replies</th></Hint>
-          <th v-if="$slots.detail"><span class="sr-only">Detail</span></th>
+          <SortHeader label="When" numeric :active="sortState('when')" @sort="toggleSort('when')" />
+          <SortHeader
+            label="Replies"
+            text="appendResponse entries: agent replies, refunds, spam flags"
+            numeric
+            :active="sortState('replies')"
+            @sort="toggleSort('replies')"
+          />
+          <th v-if="detailRoute"><span class="sr-only">Detail</span></th>
         </tr>
       </thead>
       <tbody>
-        <template v-for="{ row, stats, index } in rows" :key="index">
-          <tr :class="{ revoked: row.revoked, open: open === index }">
+        <tr v-for="{ row, stats, index } in sortedRows" :key="index" :class="{ revoked: row.revoked }">
             <td class="nowrap">
               <RouterLink v-if="reviewerRoute" :to="reviewerRoute(row.client)" class="mono" :title="row.client">
                 {{ shortAddress(row.client) }}
@@ -61,7 +85,13 @@ function evidenceUrl(uri: string | undefined): string | undefined {
             </td>
             <td class="num">
               <b>{{ formatScore(row.value) }}</b>
-              <span v-if="row.revoked" class="chip">revoked</span>
+              <FlagChip v-if="row.revoked" flag="revoked" />
+              <Hint v-if="stats && stats.kind !== 'rating'" :text="KIND_INFO[stats.kind].rule">
+                <span class="chip">{{ KIND_INFO[stats.kind].label }}</span>
+              </Hint>
+              <Hint v-else-if="stats && stats.rating === null" text="A rating whose value fits no inferred scale; listed, never scored.">
+                <span class="chip warn">off-scale</span>
+              </Hint>
             </td>
             <td class="tags">
               <span v-if="row.tag1" class="chip clip-chip" :title="row.tag1">{{ row.tag1 }}</span>
@@ -78,7 +108,7 @@ function evidenceUrl(uri: string | undefined): string | undefined {
                 </Hint>
                 <template v-for="flag in stats.flags" :key="flag">
                   <Hint v-if="flag !== 'revoked'" :text="FLAG_INFO[flag].rule">
-                    <span class="chip warn">{{ FLAG_INFO[flag].label }}</span>
+                    <FlagChip :flag="flag" />
                   </Hint>
                 </template>
               </template>
@@ -114,30 +144,10 @@ function evidenceUrl(uri: string | undefined): string | undefined {
                 ↩ {{ row.responses.length }}
               </span>
             </td>
-            <td v-if="$slots.detail" class="num">
-              <button class="row-toggle" :aria-expanded="open === index" @click="open = open === index ? undefined : index">
-                {{ open === index ? 'Hide' : 'Inspect' }}
-              </button>
+            <td v-if="detailRoute" class="num">
+              <RouterLink :to="detailRoute(index)" class="row-toggle">Detail</RouterLink>
             </td>
           </tr>
-          <tr v-if="$slots.detail && open === index" class="detail-row">
-            <td :colspan="columns">
-              <ul v-if="row.responses?.length" class="responses">
-                <li v-for="(r, k) in row.responses" :key="k">
-                  ↩ reply by
-                  <a :href="addressExplorerUrl(chain, r.responder)" target="_blank" rel="noopener noreferrer" class="mono">{{ shortAddress(r.responder) }}</a>
-                  <template v-if="r.createdAt"> · {{ formatDate(r.createdAt) }}</template>
-                  <template v-if="r.uri">
-                    ·
-                    <a v-if="evidenceUrl(r.uri)" :href="evidenceUrl(r.uri)" target="_blank" rel="noopener noreferrer" class="ellipsis">{{ r.uri }}</a>
-                    <span v-else class="muted">inline data</span>
-                  </template>
-                </li>
-              </ul>
-              <slot name="detail" :row="row" :index="index" />
-            </td>
-          </tr>
-        </template>
       </tbody>
     </table>
   </div>

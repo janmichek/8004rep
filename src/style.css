@@ -189,6 +189,59 @@ footer {
   color: var(--accent);
 }
 
+/* Review flags: one hue and one Lucide icon per rule. */
+
+.flag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px 1px 6px;
+  border-color: color-mix(in srgb, var(--flag) 50%, transparent);
+  background: color-mix(in srgb, var(--flag) 10%, transparent);
+  color: var(--flag);
+  cursor: help;
+}
+
+.flag-chip svg {
+  flex: none;
+}
+
+.flag-revoked {
+  --flag: var(--bad);
+}
+
+.flag-self {
+  --flag: #f472b6;
+}
+
+.flag-duplicate {
+  --flag: #818cf8;
+}
+
+.flag-burst {
+  --flag: #fbbf24;
+}
+
+.flag-monotonous {
+  --flag: #a78bfa;
+}
+
+.flag-hyperactive {
+  --flag: #fb923c;
+}
+
+.flag-outlier {
+  --flag: #60a5fa;
+}
+
+.flag-out-of-range {
+  --flag: #22d3ee;
+}
+
+.flag-unlisted-endpoint {
+  --flag: #a3a3a3;
+}
+
 .notice {
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
@@ -340,6 +393,38 @@ th {
   text-transform: uppercase;
 }
 
+.sort-trigger {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.sort-trigger:hover {
+  color: var(--text);
+}
+
+.sort-trigger.active {
+  color: var(--accent);
+}
+
+.sort-caret {
+  font-size: 9px;
+  opacity: 0.45;
+}
+
+.sort-trigger:hover .sort-caret,
+.sort-trigger.active .sort-caret {
+  opacity: 1;
+}
+
 tbody tr:last-child td {
   border-bottom: 0;
 }
@@ -384,11 +469,148 @@ tr.revoked td {
   max-width: 60vw;
 }
 
+.agent-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-toggle.on {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+  color: var(--accent);
+}
+
 .agent-cell {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 240px;
+}
+
+/* Keep the wide agents table on one screen; on narrow screens it scrolls instead. */
+.agents-table {
+  min-width: 880px;
+  table-layout: fixed;
+}
+
+.agents-table th,
+.agents-table td {
+  padding-right: 10px;
+  padding-left: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agents-table .agent-cell {
+  min-width: 0;
+}
+
+.agents-table .agent-name,
+.agents-table .agent-title,
+.agents-table .agent-name small {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-title {
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+/* The services column clips to one line; hovering the label reveals the full list in place. */
+.agents-table td.services-td {
+  overflow: visible;
+}
+
+.services-cell {
+  position: relative;
+  display: block;
+  max-width: 100%;
+}
+
+.services-clip {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.services-pop {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  display: none;
+  flex-wrap: wrap;
+  width: 100%;
+  padding: 5px 6px 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
+  pointer-events: none;
+}
+
+.services-cell:hover .services-pop,
+tbody tr.row-link:focus-visible .services-pop {
+  display: flex;
+}
+
+tbody tr.row-link {
+  cursor: pointer;
+}
+
+tbody tr.row-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.chain-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.chain-name {
+  max-width: 9.5em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.score-cell {
+  white-space: nowrap;
+}
+
+.score-label {
+  display: inline-block;
+  min-width: 2.4em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.score-track {
+  display: inline-block;
+  width: 64px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+  vertical-align: middle;
+}
+
+.score-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--muted);
 }
 
 .agent-name {
@@ -803,35 +1025,20 @@ pre {
   white-space: nowrap;
 }
 
-/* Tx detail under a feedback row */
+/* Tx detail on the feedback detail page */
 
 .row-toggle {
   padding: 2px 8px;
   font-size: 12px;
 }
 
-tr.open td {
-  border-bottom-color: transparent;
-}
-
-tr.detail-row:hover {
-  background: none;
-}
-
-tr.detail-row > td {
-  padding: 0 12px 14px;
-  white-space: normal;
-}
-
 .tx-detail {
-  /* As wide as the visible table, not the scrolled one: on a narrow screen it stays put while the row scrolls. */
-  position: sticky;
-  left: 12px;
-  width: calc(100cqw - 26px);
-  padding: 12px 14px;
+  min-width: 0;
+  margin-top: 24px;
+  padding: 16px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--bg);
+  border-radius: 10px;
+  background: var(--panel);
 }
 
 .tx-detail-head {
@@ -841,9 +1048,9 @@ tr.detail-row > td {
   gap: 4px 14px;
 }
 
-.tx-detail-head h4 {
+.tx-detail-head h2 {
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .tx-detail-meta {
@@ -889,8 +1096,17 @@ tr.detail-row > td {
 .tx-groups {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-  gap: 16px 28px;
+  align-items: start;
+  gap: 12px;
   margin-top: 14px;
+}
+
+.tx-group {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
 }
 
 .tx-group h5 {
@@ -1802,6 +2018,20 @@ button:disabled {
   color: var(--muted);
 }
 
+.select-value,
+.select-option {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.select-value > [data-reka-select-value] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .select-icon {
   color: var(--muted);
   font-size: 11px;
@@ -2163,7 +2393,6 @@ footer::before {
   animation: pop-in 0.55s var(--ease) both;
 }
 
-tbody tr:hover .avatar:not(.skeleton),
 .avatar.large:hover {
   border-color: color-mix(in srgb, var(--accent) 60%, var(--line));
   transform: rotate(-4deg) scale(1.08);

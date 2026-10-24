@@ -2,10 +2,12 @@
 import { computed, shallowRef, watch } from 'vue'
 import { isAddress, type Address } from 'viem'
 import { addressExplorerUrl, findChainBySlug, txExplorerUrl } from '../chains'
+import ChainName from '../components/ChainName.vue'
 import ChartSkeleton from '../components/ui/ChartSkeleton.vue'
 import ColumnChart from '../components/ui/ColumnChart.vue'
 import { COUNT_SERIES } from '../components/ui/palette'
 import Skeleton from '../components/ui/Skeleton.vue'
+import SortHeader from '../components/ui/SortHeader.vue'
 import StatTiles, { type Tile } from '../components/ui/StatTiles.vue'
 import TilesSkeleton from '../components/ui/TilesSkeleton.vue'
 import { sourceFor } from '../data'
@@ -18,6 +20,7 @@ import { errorMessage, formatDate, formatNumber, formatPercent, formatScore, for
 import { toDisplayUrl } from '../data/metadata'
 import FeedbackNote from '../components/FeedbackNote.vue'
 import { useAsync } from '../useAsync'
+import { useSort } from '../useSort'
 
 const props = defineProps<{ slug: string; address: string }>()
 const chain = computed(() => findChainBySlug(props.slug)!)
@@ -105,11 +108,32 @@ const valueColumns = computed(() => valueHistogram((feed.value?.items ?? []).fil
 const timeColumns = computed(() =>
   dailyColumns(feed.value?.items ?? [], (r) => r.createdAt, () => 'count', ['count'], { count: 'reviews' }),
 )
+
+/** Sorts the full lists; the template slices afterwards so the top N stays correct. */
+const agentRows = useSort(
+  computed(() => profile.value?.perAgent ?? []),
+  [
+    { key: 'agent', value: (a) => a.agentName ?? `Agent #${a.tokenId}` },
+    { key: 'reviews', value: (a) => a.rows, numeric: true },
+    { key: 'average', value: (a) => a.average, numeric: true },
+    { key: 'revoked', value: (a) => a.revoked, numeric: true },
+  ],
+)
+const latestRows = useSort(
+  computed(() => feed.value?.items ?? []),
+  [
+    { key: 'agent', value: (r) => r.agentName ?? `Agent #${r.tokenId}` },
+    { key: 'value', value: (r) => r.value, numeric: true },
+    { key: 'when', value: (r) => r.createdAt, numeric: true },
+  ],
+)
 </script>
 
 <template>
   <p class="crumbs">
-    <RouterLink :to="{ name: 'network', params: { slug: chain.slug } }">← {{ chain.name }} network</RouterLink>
+    <RouterLink :to="{ name: 'network', params: { slug: chain.slug } }">
+      ← <ChainName :chain-id="chain.chainId" :name="chain.name" /> network
+    </RouterLink>
   </p>
 
   <section v-if="!address" class="state">
@@ -158,7 +182,7 @@ const timeColumns = computed(() =>
             Other reviewers funded by the same address show up as a shared funder on an agent's Reviewers tab.
           </template>
           <Skeleton v-else-if="wallet.loading.value" width="18em" />
-          <span v-else-if="!chain.explorerApiUrl" class="muted">Funding cannot be traced on {{ chain.name }} (no explorer API that allows browser calls).</span>
+          <span v-else-if="!chain.explorerApiUrl" class="muted">Funding cannot be traced on <ChainName :chain-id="chain.chainId" :name="chain.name" /> (no explorer API that allows browser calls).</span>
           <span v-else-if="wallet.data.value?.fundingError" class="muted">Funding lookup failed: {{ wallet.data.value.fundingError }}</span>
           <span v-else-if="wallet.data.value && wallet.data.value.funding === null" class="muted">No incoming transfer among its first transactions.</span>
         </p>
@@ -178,10 +202,15 @@ const timeColumns = computed(() =>
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Agent</th><th class="num">Reviews</th><th class="num">Average</th><th class="num">Revoked</th></tr>
+              <tr>
+                <SortHeader label="Agent" :active="agentRows.state('agent')" @sort="agentRows.toggle('agent')" />
+                <SortHeader label="Reviews" numeric :active="agentRows.state('reviews')" @sort="agentRows.toggle('reviews')" />
+                <SortHeader label="Average" numeric :active="agentRows.state('average')" @sort="agentRows.toggle('average')" />
+                <SortHeader label="Revoked" numeric :active="agentRows.state('revoked')" @sort="agentRows.toggle('revoked')" />
+              </tr>
             </thead>
             <tbody>
-              <tr v-for="a in profile.perAgent" :key="a.tokenId.toString()">
+              <tr v-for="a in agentRows.sorted.value" :key="a.tokenId.toString()">
                 <td>
                   <RouterLink :to="{ name: 'agent', params: { slug: chain.slug, id: a.tokenId.toString() } }">
                     {{ a.agentName ?? `Agent #${a.tokenId}` }}
@@ -202,10 +231,17 @@ const timeColumns = computed(() =>
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Agent</th><th class="num">Value</th><th>Tags</th><th>Text</th><th>File</th><th>When</th></tr>
+              <tr>
+                <SortHeader label="Agent" :active="latestRows.state('agent')" @sort="latestRows.toggle('agent')" />
+                <SortHeader label="Value" numeric :active="latestRows.state('value')" @sort="latestRows.toggle('value')" />
+                <th>Tags</th>
+                <th>Text</th>
+                <th>File</th>
+                <SortHeader label="When" numeric :active="latestRows.state('when')" @sort="latestRows.toggle('when')" />
+              </tr>
             </thead>
             <tbody>
-              <tr v-for="(r, i) in feed!.items.slice(0, 50)" :key="i" :class="{ revoked: r.revoked }">
+              <tr v-for="(r, i) in latestRows.sorted.value.slice(0, 50)" :key="i" :class="{ revoked: r.revoked }">
                 <td>
                   <RouterLink :to="{ name: 'agent', params: { slug: chain.slug, id: r.tokenId.toString() } }">
                     {{ r.agentName ?? `Agent #${r.tokenId}` }}

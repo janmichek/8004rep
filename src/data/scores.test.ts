@@ -12,12 +12,19 @@ function row(client: Address, value: number, extra: Partial<Feedback> = {}): Fee
 }
 
 describe('computeWeights', () => {
-  it('zero-weights exact duplicates after the first', () => {
-    const fb = [row(A, 90, { tag1: 'starred' }), row(B, 90, { tag1: 'starred' })]
+  it('zero-weights a client repeating the same review', () => {
+    const fb = [row(A, 90, { tag1: 'starred' }), row(A, 90, { tag1: 'starred' })]
     const { weights, flaggedDuplicates } = computeWeights(fb)
     expect(weights[0]).toBe(1)
     expect(weights[1]).toBe(0)
     expect(flaggedDuplicates).toBe(1)
+  })
+
+  it('counts agreement between different clients as two voices, not a duplicate', () => {
+    const fb = [row(A, 90, { tag1: 'starred' }), row(B, 90, { tag1: 'starred' })]
+    const { weights, flaggedDuplicates } = computeWeights(fb)
+    expect(weights).toEqual([1, 1])
+    expect(flaggedDuplicates).toBe(0)
   })
 
   it('down-weights bursts from the same client within 24h', () => {
@@ -59,11 +66,22 @@ describe('computeScores', () => {
   })
 
   it('gap exposes a farmed duplicate', () => {
-    const s = computeScores([row(A, 100), row(B, 100), row(C, 0)])
-    // raw = 200/3 ≈ 66.7, weighted drops a duplicate 100
+    const s = computeScores([row(A, 100), row(A, 100), row(C, 0)])
+    // raw = 200/3 ≈ 66.7, weighted drops the repeated 100 from the same client
     expect(s.raw).toBeCloseTo(66.67, 1)
     expect(s.weighted).toBeCloseTo(50, 5)
     expect(s.gap).toBeCloseTo(16.67, 1)
+  })
+
+  it('does not punish independent reviewers who agree', () => {
+    const fb = [
+      ...Array.from({ length: 50 }, (_, i) => row(`0x${(i + 1).toString(16).padStart(40, '0')}` as Address, 100, { tag1: 'starred' })),
+      row('0x00000000000000000000000000000000000000ff' as Address, 20, { tag1: 'starred' }),
+    ]
+    const s = computeScores(fb)
+    expect(s.raw).toBeCloseTo(98.43, 2)
+    expect(s.weighted).toBeCloseTo(s.raw!, 6)
+    expect(s.distinctClients).toBe(51)
   })
 
   it('consensus is 1 for identical scores, polarization 0', () => {

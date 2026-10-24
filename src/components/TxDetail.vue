@@ -67,7 +67,7 @@ const segments = computed(() =>
 <template>
   <section class="tx-detail" aria-label="Tx detail">
     <div class="tx-detail-head">
-      <h4>Tx detail</h4>
+      <h2>Tx detail</h2>
       <span v-if="facts?.tx" class="tx-detail-meta">
         <a :href="txExplorerUrl(chain, facts.tx.hash)" target="_blank" rel="noopener noreferrer" class="mono">
           {{ shortAddress(facts.tx.hash) }} ↗

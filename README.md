@@ -57,6 +57,39 @@ Production deployments also require a `production` environment in the repository
 
 Tx detail opens as a container on an agent page and answers one question per feedback row: what would it have cost to fake this rating? — transaction, feedback file, cited proof of payment, and the reviewer, one check per line.
 
+## Designs
+
+The same five views ship in twenty-one designs. Pick one with the switcher in the bottom-right corner, or with `?v=N`
+in the URL (remembered per browser). Each design is its own chunk and stylesheet; only the chosen one loads.
+
+| `v` | Design | Idea |
+|---|---|---|
+| 0 | Classic | The original explorer |
+| 1 | Terminal | A TUI: `ls -l` listings, ascii bars, `g a` / `g n` / `j` `k` keyboard navigation |
+| 2 | Ledger | A broadsheet: the network as a front page, agents as profiles, headlines picked from the numbers |
+| 3 | Bento | A mosaic of cards: score rings, grade, weekday × hour heatmap, reviewer donut |
+| 4 | League | Standings: agents ranked by a shrunk score, form guide (W/D/L), referees with bias |
+| 5 | Bureau | A credit file: letter grade, gauge, key factors, reporting sources, disputes |
+| 6 | Stream | A social feed: reviews as posts by day, trending agents, accounts to watch |
+| 7 | Orbit | Graphs: reviewer ↔ agent constellation, ego orbits per agent / reviewer / owner |
+| 8 | Swiss | Giant numerals, one red; keeps only trusted, raw, gap and reviewers |
+| 9 | Grid | A spreadsheet: sortable sheets, column picker, formula bar per cell, CSV export |
+| 10 | Inspector | Master–detail panes; selecting never navigates away, tx detail opens in a drawer |
+| 11 | Docket | A court record: exhibits, a verdict stamp, numbered testimony and a ruling |
+| 12 | Blueprint | An engineering drawing: title block, assembled parts, dimension lines, calibration gauge |
+| 13 | Herbarium | Naturalist specimens: taxonomy, pressed cards, abundance and a determination key |
+| 14 | Forecast | A weather bulletin: conditions, temperatures, outlook, storm warnings and fronts |
+| 15 | Recipe | A cookbook: ingredient lists, a numbered method, servings and tasting notes |
+| 16 | Atlas | Cartography: a gazetteer, charted places, terrain and a surveyor's route |
+| 17 | Ticker | A market terminal: quote board, daily candles, volatility and a participant order book |
+| 18 | Museum | A gallery: framed works, wall labels, curatorial notes, provenance and visitor book |
+| 19 | Archive | A registry: manila index cards, call numbers, series stamps and item lists |
+| 20 | Signal | A radio receiver: carrier frequencies, S-meters, SNR, bandwidth and interference |
+
+Shared loaders live in `src/variants/shared/use.ts`; the values the classic design does not compute (Gini,
+evenness, inverse HHI, velocity, active days and streaks, weekday × hour grid, running average, rank score,
+letter grade, co-rated agents) are in `src/variants/shared/metrics.ts`.
+
 ## Networks and data sources
 
 | Network | Chain ID | Source |

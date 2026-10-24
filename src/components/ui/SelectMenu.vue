@@ -11,17 +11,21 @@ import {
   SelectValue,
   SelectViewport,
 } from 'reka-ui'
+import { computed } from 'vue'
+import ChainIcon from '../ChainIcon.vue'
 
-export type SelectOption = { value: string; label: string; disabled?: boolean }
+export type SelectOption = { value: string; label: string; disabled?: boolean; chainId?: number }
 
 const model = defineModel<string>()
-defineProps<{
+const props = defineProps<{
   options: SelectOption[]
   /** Accessible name, since the trigger shows the current value rather than the field name. */
   label: string
   placeholder?: string
   compact?: boolean
 }>()
+
+const selected = computed(() => props.options.find((option) => option.value === model.value))
 
 function pick(value: unknown): void {
   if (typeof value === 'string') model.value = value
@@ -31,7 +35,10 @@ function pick(value: unknown): void {
 <template>
   <SelectRoot :model-value="model" @update:model-value="pick">
     <SelectTrigger class="select-trigger" :class="{ compact }" :aria-label="label">
-      <SelectValue :placeholder="placeholder ?? label" />
+      <span class="select-value">
+        <ChainIcon v-if="selected?.chainId !== undefined" :chain-id="selected.chainId" :name="selected.label" :size="15" />
+        <SelectValue :placeholder="placeholder ?? label" />
+      </span>
       <SelectIcon class="select-icon" aria-hidden="true">▾</SelectIcon>
     </SelectTrigger>
     <SelectPortal>
@@ -44,7 +51,10 @@ function pick(value: unknown): void {
             :value="option.value"
             :disabled="option.disabled"
           >
-            <SelectItemText>{{ option.label }}</SelectItemText>
+            <span class="select-option">
+              <ChainIcon v-if="option.chainId !== undefined" :chain-id="option.chainId" :name="option.label" :size="15" />
+              <SelectItemText>{{ option.label }}</SelectItemText>
+            </span>
             <SelectItemIndicator class="select-check" aria-hidden="true">✓</SelectItemIndicator>
           </SelectItem>
         </SelectViewport>

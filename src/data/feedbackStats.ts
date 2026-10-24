@@ -1,5 +1,6 @@
 import type { Address } from 'viem'
 import { formatScore, shortAddress } from '../format'
+import { classify, type Kind } from './reputation/kinds'
 import { computeWeights, medianOf, type WeightReason } from './scores'
 import type { Feedback } from './types'
 
@@ -15,7 +16,7 @@ export type RowFlag = WeightReason | 'outlier' | 'out-of-range' | 'unlisted-endp
 export const FLAG_INFO: Record<RowFlag, { label: string; rule: string }> = {
   revoked: { label: 'revoked', rule: 'Revoked by its author; counts nowhere.' },
   self: { label: 'self', rule: 'Client is the agent owner or agent wallet; weight 0.' },
-  duplicate: { label: 'duplicate', rule: 'Same (value, tag1, tag2, endpoint) as an earlier review; weight 0.' },
+  duplicate: { label: 'duplicate', rule: 'Same (value, tag1, tag2, endpoint) as an earlier review by the same client; weight 0.' },
   burst: { label: 'burst', rule: 'More than 2 reviews from this client within 24h; weight × exp(−(N−2)).' },
   monotonous: { label: 'monotonous', rule: 'Client left 3+ reviews, all with the same value; weight × 0.4.' },
   hyperactive: { label: 'hyperactive', rule: 'Client left more than 5 reviews; weight × 0.7.' },
@@ -28,6 +29,10 @@ export type RowStats = {
   /** Authenticity weight in [0,1] — the row's share of a full vote. */
   weight: number
   flags: RowFlag[]
+  /** What the value means; only `rating` enters the score. */
+  kind: Kind
+  /** Rating normalised to [0,1]; null for every other kind and for ratings off their scale. */
+  rating: number | null
   /** Robust z against the valid rows; null when there is too little spread to judge. */
   deviation: number | null
   /** Rows this client left on this agent, revoked included. */
@@ -112,6 +117,7 @@ export function computeFeedbackStats(feedback: Feedback[], context: StatsContext
   const now = context.now ?? Math.floor(Date.now() / 1000)
   const self = [context.owner, context.agentWallet].filter((a): a is Address => Boolean(a))
   const { weights, reasons } = computeWeights(feedback, self)
+  const { rows: classified } = classify(feedback)
   const services = context.services?.map(normEndpoint).filter(Boolean)
 
   const valid = feedback.filter((f) => !f.revoked)
@@ -143,7 +149,14 @@ export function computeFeedbackStats(feedback: Feedback[], context: StatsContext
         if (!services.some((s) => endpoint === s || endpoint.startsWith(`${s}/`))) flags.push('unlisted-endpoint')
       }
     }
-    return { weight: weights[i], flags, deviation, clientRows: byClient.get(f.client.toLowerCase())!.length }
+    return {
+      weight: weights[i],
+      flags,
+      kind: classified[i].kind,
+      rating: classified[i].r,
+      deviation,
+      clientRows: byClient.get(f.client.toLowerCase())!.length,
+    }
   })
 
   const reviewers: ReviewerStats[] = [...byClient.values()]

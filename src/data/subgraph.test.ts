@@ -114,6 +114,23 @@ describe('listAgents owner filter', () => {
     expect(page.hasMore).toBe(true)
     expect(page.items.map((agent) => agent.tokenId)).toEqual([9n])
   })
+
+  it('passes the requested sort field and direction to the subgraph', async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: { agents: [] } }),
+    })
+    vi.stubGlobal('fetch', fetch)
+    const source = createSubgraphSource({ chainId: 84532, subgraphUrl: 'https://sg.example' } as unknown as ChainInfo & {
+      subgraphUrl: string
+    })
+    await source.listAgents({ page: 0, pageSize: 10, owner: '0xabc' as Address, sort: 'tokenId', order: 'asc' })
+    const body = JSON.parse((fetch.mock.calls[0][1] as { body: string }).body) as {
+      variables: { orderBy: string; orderDirection: string }
+    }
+    expect(body.variables).toMatchObject({ orderBy: 'agentId', orderDirection: 'asc' })
+  })
 })
 
 describe('mapFeedback', () => {

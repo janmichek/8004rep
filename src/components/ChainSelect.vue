@@ -8,7 +8,7 @@ defineProps<{ current?: ChainInfo }>()
 const route = useRoute()
 const router = useRouter()
 
-const options = CHAINS.map((chain) => ({ value: chain.slug, label: chain.name }))
+const options = CHAINS.map((chain) => ({ value: chain.slug, label: chain.name, chainId: chain.chainId }))
 
 // Token IDs and addresses are per chain. Network health has neither, so it stays.
 function select(slug: string | undefined): void {

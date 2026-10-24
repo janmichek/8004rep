@@ -21,32 +21,26 @@ const notes = computed(() => {
   const score = props.scan
   if (!score) return []
   const notes: string[] = []
-  const engagement = score.dimensions.find((d) => d.id === 'engagement')
-  if (engagement && score.feedback) {
-    const ramp =
-      score.feedback.weight !== undefined && score.feedback.weight < 1
-        ? `, counted at ${Math.round(score.feedback.weight * 100)}% because there are few reviews`
-        : ''
+  const p = score.policy
+  if (p && score.band) {
     notes.push(
-      `Feedback reaches 8004scan only through Engagement (${Math.round(engagement.weight * 100)}% of the total), as the plain average ${formatNumber(score.feedback.average)} of ${score.feedback.count} reviews${ramp}. Stars and page views share that dimension.`,
+      `The headline is ${formatNumber(score.band.floor)} + (${formatNumber(score.band.ceiling)} − ${formatNumber(score.band.floor)}) × merit / 100, and merit = ${formatNumber(p.proofWeight * 100, 0)}% proof + ${formatNumber(p.supportWeight * 100, 0)}% support. Here that is ${formatNumber(p.proofScore)} and ${formatNumber(p.supportScore)} → ${formatNumber(p.merit)} merit → ${formatNumber(score.total)}.`,
     )
-    notes.push('No reviewer is discounted there: self-reviews, duplicates and bursts count in full, and more reviews push the score up.')
+    notes.push(
+      'The dimensions listed below are its legacy breakdown (engagement, service, publisher, compliance, momentum). They no longer drive the headline; proof and support do.',
+    )
+  }
+  if (score.feedback) {
+    notes.push(
+      `Feedback enters through the support score, as the plain average ${formatNumber(score.feedback.average)} of ${score.feedback.count} reviews${score.feedback.weight !== undefined && score.feedback.weight < 1 ? `, counted at ${Math.round(score.feedback.weight * 100)}% for volume` : ''}. No reviewer is discounted there: self-reviews, duplicates and bursts count in full, and more reviews push support up.`,
+    )
     if (props.raw !== null && Math.abs(score.feedback.average - props.raw) >= 5) {
-      const valid = props.feedback.filter((f) => !f.revoked)
-      const starred = valid.filter((f) => f.tag1?.toLowerCase() === 'starred').length
-      notes.push(
-        `Its feedback average ${formatNumber(score.feedback.average)} is far from the on-chain mean ${formatNumber(props.raw)}.` +
-          (starred < valid.length
-            ? ` Only ${starred} of ${valid.length} reviews here are tagged “starred”; 8004scan appears to score only reviews on a tag it knows and to read the rest as no score.`
-            : ''),
-      )
+      notes.push(`Its feedback average ${formatNumber(score.feedback.average)} differs from the on-chain mean ${formatNumber(props.raw)} here by ${formatNumber(Math.abs(score.feedback.average - props.raw))}.`)
     }
   }
-  const others = score.dimensions.filter((d) => d.id !== 'engagement')
-  const rest = others.reduce((a, d) => a + d.weight, 0)
-  if (rest > 0) {
+  if (p?.proofScore !== undefined) {
     notes.push(
-      `${others.map((d) => d.label).join(', ')} (${Math.round(rest * 100)}% together) rate the listing itself — services, wallet, metadata, activity — not what reviewers said.`,
+      `Proof is capped at ${formatNumber(p.proofScore)} here and does not fall when one wallet writes thousands of rows, which is why a single-wallet record can still read as ${p.evidenceTier ?? 'strong'} evidence.`,
     )
   }
   if (score.band) notes.push(`Final scores are squeezed into ${formatNumber(score.band.floor)}–${formatNumber(score.band.ceiling)}, so many agents tie.`)
@@ -89,9 +83,9 @@ const notes = computed(() => {
         <small class="muted">{{ feedback.length }} rows read</small>
       </div>
       <div>
-        <div class="tile-label">Trusted here</div>
+        <div class="tile-label">Robust here</div>
         <div class="compare-value accent">{{ formatNumber(trusted) }}</div>
-        <small class="muted">after the rules</small>
+        <small class="muted">one vote per wallet, ratings only</small>
       </div>
     </div>
 

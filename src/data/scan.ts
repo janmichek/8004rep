@@ -24,12 +24,71 @@ export type ScanScore = {
   feedback?: { average: number; count: number; weight?: number }
   /** Range the leaderboard policy squeezes scores into. */
   band?: { floor: number; ceiling: number }
+  /** How the headline is actually built, as the API reports it. */
+  policy?: {
+    proofWeight: number
+    supportWeight: number
+    proofScore: number
+    supportScore: number
+    merit: number
+    evidenceTier?: string
+    integrityTier?: string
+  }
   algorithm?: string
   scoredAt?: string
 }
 
 /** Ecosystem-wide numbers, for a baseline. */
 export type ScanStats = { averageFeedback: number; totalFeedback: number; totalAgents: number }
+
+/** One network as 8004scan lists it. */
+export type ScanChain = { chainId: number; name: string; key: string; testnet: boolean }
+
+/** A row of 8004scan's all-network agent table. */
+export type ScanAgent = {
+  chainId: number
+  tokenId: bigint
+  name?: string
+  description?: string
+  imageUrl?: string
+  owner: string | null
+  protocols: string[]
+  x402: boolean
+  /** 8004scan's 0–100 leaderboard score. */
+  totalScore: number
+  averageScore: number
+  feedbackCount: number
+  /** Unix seconds. */
+  createdAt?: number
+  testnet: boolean
+}
+
+export type ScanAgentPage = { items: ScanAgent[]; total: number; hasMore: boolean }
+
+/** One service advertised in 8004scan's copy of the registration file. */
+export type ScanService = { name: string; endpoint: string; version?: string }
+
+/** An agent as 8004scan's public API reports it, for networks this app has no chain config for. */
+export type ScanAgentDetail = {
+  chainId: number
+  tokenId: bigint
+  name?: string
+  description?: string
+  imageUrl?: string
+  owner: string | null
+  agentWallet: string | null
+  protocols: string[]
+  x402: boolean
+  services: ScanService[]
+  supportedTrust: string[]
+  /** 8004scan's 0–100 leaderboard score. */
+  totalScore: number
+  averageScore: number
+  feedbackCount: number
+  active?: boolean
+  /** Unix seconds. */
+  createdAt?: number
+}
 
 const LABELS: Record<string, string> = {
   engagement: 'Engagement',
@@ -74,6 +133,14 @@ export function parseScanScore(data: unknown): ScanScore | null {
   const bandRaw = isRecord(policy.score_band) ? policy.score_band : {}
   const floor = num(bandRaw.floor)
   const ceiling = num(bandRaw.ceiling)
+  const weights = isRecord(policy.weights) ? policy.weights : {}
+  const proofWeight = num(weights.proof)
+  const supportWeight = num(weights.support)
+  const proofScore = num(policy.proof_score)
+  const supportScore = num(policy.support_score)
+  const merit = num(policy.merit_score)
+  const evidenceTier = typeof policy.evidence_tier === 'string' ? policy.evidence_tier : undefined
+  const integrityTier = typeof policy.integrity_tier === 'string' ? policy.integrity_tier : undefined
   const algorithm = typeof breakdown.algorithm === 'string' ? breakdown.algorithm : undefined
   const version = typeof breakdown.version === 'string' ? breakdown.version : undefined
   const scoredAt = isRecord(data.scores) && typeof data.scores.last_scored_at === 'string' ? data.scores.last_scored_at : undefined
@@ -85,6 +152,23 @@ export function parseScanScore(data: unknown): ScanScore | null {
       ? { feedback: { average, count, ...(feedbackWeight !== undefined ? { weight: feedbackWeight } : {}) } }
       : {}),
     ...(floor !== undefined && ceiling !== undefined ? { band: { floor, ceiling } } : {}),
+    ...(proofWeight !== undefined &&
+    supportWeight !== undefined &&
+    proofScore !== undefined &&
+    supportScore !== undefined &&
+    merit !== undefined
+      ? {
+          policy: {
+            proofWeight,
+            supportWeight,
+            proofScore,
+            supportScore,
+            merit,
+            ...(evidenceTier ? { evidenceTier } : {}),
+            ...(integrityTier ? { integrityTier } : {}),
+          },
+        }
+      : {}),
     ...(algorithm ? { algorithm: version ? `${algorithm} v${version}` : algorithm } : {}),
     ...(scoredAt ? { scoredAt } : {}),
   }
@@ -99,6 +183,115 @@ export function parseScanStats(data: unknown): ScanStats | null {
   return { averageFeedback, totalFeedback, totalAgents }
 }
 
+export function parseScanChains(data: unknown): ScanChain[] {
+  if (!isRecord(data) || !Array.isArray(data.supported_chains)) return []
+  return data.supported_chains.flatMap((value) => {
+    if (!isRecord(value)) return []
+    const chainId = num(value.chain_id)
+    const name = typeof value.name === 'string' ? value.name : undefined
+    const key = typeof value.key === 'string' ? value.key : undefined
+    if (chainId === undefined || !name || !key) return []
+    return [{ chainId, name, key, testnet: value.is_testnet === true }]
+  })
+}
+
+export function parseScanAgent(value: unknown): ScanAgent | null {
+  if (!isRecord(value)) return null
+  const chainId = num(value.chain_id)
+  const tokenRaw = value.token_id
+  const tokenId =
+    typeof tokenRaw === 'string' && /^\d+$/.test(tokenRaw)
+      ? BigInt(tokenRaw)
+      : typeof tokenRaw === 'number' && Number.isInteger(tokenRaw)
+        ? BigInt(tokenRaw)
+        : undefined
+  if (chainId === undefined || tokenId === undefined) return null
+
+  const created = typeof value.created_at === 'string' ? Date.parse(value.created_at) : Number.NaN
+  const protocols = Array.isArray(value.supported_protocols)
+    ? value.supported_protocols.filter((item): item is string => typeof item === 'string')
+    : []
+  return {
+    chainId,
+    tokenId,
+    ...(typeof value.name === 'string' && value.name ? { name: value.name } : {}),
+    ...(typeof value.description === 'string' && value.description ? { description: value.description } : {}),
+    ...(typeof value.image_url === 'string' && value.image_url ? { imageUrl: value.image_url } : {}),
+    owner: typeof value.owner_address === 'string' ? value.owner_address : null,
+    protocols,
+    x402: value.x402_supported === true,
+    totalScore: num(value.total_score) ?? 0,
+    averageScore: num(value.average_score) ?? 0,
+    feedbackCount: num(value.total_feedbacks) ?? 0,
+    ...(Number.isFinite(created) ? { createdAt: Math.floor(created / 1000) } : {}),
+    testnet: value.is_testnet === true,
+  }
+}
+
+/** Parses `data` of `GET /agents/{chainId}/{tokenId}`; null when it holds no agent. Never throws. */
+export function parseScanAgentDetail(data: unknown): ScanAgentDetail | null {
+  if (!isRecord(data)) return null
+  const chainId = num(data.chain_id)
+  const tokenRaw = data.token_id
+  const tokenId =
+    typeof tokenRaw === 'string' && /^\d+$/.test(tokenRaw)
+      ? BigInt(tokenRaw)
+      : typeof tokenRaw === 'number' && Number.isInteger(tokenRaw)
+        ? BigInt(tokenRaw)
+        : undefined
+  if (chainId === undefined || tokenId === undefined) return null
+
+  const created = typeof data.created_at === 'string' ? Date.parse(data.created_at) : Number.NaN
+  const protocols = Array.isArray(data.supported_protocols)
+    ? data.supported_protocols.filter((item): item is string => typeof item === 'string')
+    : []
+  const servicesRaw = isRecord(data.services) ? data.services : {}
+  const services: ScanService[] = Object.entries(servicesRaw).flatMap(([name, value]) => {
+    if (!isRecord(value) || typeof value.endpoint !== 'string' || !value.endpoint) return []
+    const version = typeof value.version === 'string' && value.version ? { version: value.version } : {}
+    return [{ name, endpoint: value.endpoint, ...version }]
+  })
+  const trust = Array.isArray(data.supported_trust_models)
+    ? data.supported_trust_models.filter((item): item is string => typeof item === 'string')
+    : []
+
+  return {
+    chainId,
+    tokenId,
+    ...(typeof data.name === 'string' && data.name ? { name: data.name } : {}),
+    ...(typeof data.description === 'string' && data.description ? { description: data.description } : {}),
+    ...(typeof data.image_url === 'string' && data.image_url ? { imageUrl: data.image_url } : {}),
+    owner: typeof data.owner_address === 'string' ? data.owner_address : null,
+    agentWallet: typeof data.agent_wallet === 'string' ? data.agent_wallet : null,
+    protocols,
+    x402: data.x402_supported === true,
+    services,
+    supportedTrust: trust,
+    totalScore: num(data.total_score) ?? 0,
+    averageScore: num(data.average_score) ?? 0,
+    feedbackCount: num(data.total_feedbacks) ?? 0,
+    ...(typeof data.is_active === 'boolean' ? { active: data.is_active } : {}),
+    ...(Number.isFinite(created) ? { createdAt: Math.floor(created / 1000) } : {}),
+  }
+}
+
+/** Parses the envelope of `GET /agents`; null when it carries no page. */
+export function parseScanAgentPage(body: unknown): ScanAgentPage | null {
+  if (!isRecord(body) || body.success !== true) return null
+  const rows = body.data
+  if (!Array.isArray(rows)) return null
+  const meta = isRecord(body.meta) && isRecord(body.meta.pagination) ? body.meta.pagination : {}
+  const items = rows.flatMap((row) => {
+    const agent = parseScanAgent(row)
+    return agent ? [agent] : []
+  })
+  return {
+    items,
+    total: num(meta.total) ?? items.length,
+    hasMore: meta.hasMore === true,
+  }
+}
+
 async function getData(path: string): Promise<unknown> {
   const res = await fetch(`${SCAN_API}${path}`, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
   if (res.status === 404) return null
@@ -107,8 +300,18 @@ async function getData(path: string): Promise<unknown> {
   return isRecord(body) && body.success === true ? body.data : null
 }
 
+async function getPage(path: string): Promise<ScanAgentPage> {
+  const res = await fetch(`${SCAN_API}${path}`, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+  if (!res.ok) throw new Error(`8004scan answered ${res.status}`)
+  const page = parseScanAgentPage(await res.json().catch(() => null))
+  if (!page) throw new Error('8004scan returned an unexpected agent list')
+  return page
+}
+
 const scoreCache = new Map<string, Promise<ScanScore | null>>()
+const detailCache = new Map<string, Promise<ScanAgentDetail | null>>()
 let statsCache: Promise<ScanStats | null> | undefined
+let chainsCache: Promise<ScanChain[]> | undefined
 
 /** Null when 8004scan has not indexed or scored the agent. Failed lookups are not cached. */
 export function fetchScanScore(chainId: number, tokenId: bigint): Promise<ScanScore | null> {
@@ -122,10 +325,51 @@ export function fetchScanScore(chainId: number, tokenId: bigint): Promise<ScanSc
   return hit
 }
 
+/** Null when 8004scan has not indexed the agent. Failed lookups are not cached. */
+export function fetchScanAgentDetail(chainId: number, tokenId: bigint): Promise<ScanAgentDetail | null> {
+  const key = `${chainId}:${tokenId}`
+  let hit = detailCache.get(key)
+  if (!hit) {
+    hit = getData(`/agents/${chainId}/${tokenId}`).then(parseScanAgentDetail)
+    hit.catch(() => detailCache.delete(key))
+    detailCache.set(key, hit)
+  }
+  return hit
+}
+
 export function fetchScanStats(): Promise<ScanStats | null> {
   if (!statsCache) {
     statsCache = getData('/stats').then(parseScanStats)
     statsCache.catch(() => (statsCache = undefined))
   }
   return statsCache
+}
+
+/** Every network 8004scan indexes, for naming rows and linking those this app cannot open. */
+export function fetchScanChains(): Promise<ScanChain[]> {
+  if (!chainsCache) {
+    chainsCache = getData('/stats').then(parseScanChains)
+    chainsCache.catch(() => (chainsCache = undefined))
+  }
+  return chainsCache
+}
+
+/** Newest agents; `isTestnet` omitted means both environments, `chainId` omitted means every network. */
+export function fetchScanAgents(options: {
+  page: number
+  pageSize: number
+  search?: string
+  isTestnet?: boolean
+  chainId?: number
+  /** Only fields the API sorts quickly are offered: `created_at`, `total_score` and `total_feedbacks`. */
+  sortBy?: 'created_at' | 'total_score' | 'total_feedbacks'
+  sortOrder?: 'asc' | 'desc'
+}): Promise<ScanAgentPage> {
+  const params = new URLSearchParams({ page: String(options.page + 1), limit: String(options.pageSize) })
+  if (options.search) params.set('search', options.search)
+  if (options.isTestnet !== undefined) params.set('isTestnet', String(options.isTestnet))
+  if (options.chainId !== undefined) params.set('chainId', String(options.chainId))
+  if (options.sortBy) params.set('sortBy', options.sortBy)
+  if (options.sortOrder) params.set('sortOrder', options.sortOrder)
+  return getPage(`/agents?${params.toString()}`)
 }

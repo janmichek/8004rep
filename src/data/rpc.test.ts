@@ -167,6 +167,15 @@ describe('listAgents by owner', () => {
     expect(owned.items.map((agent) => agent.tokenId)).toEqual([2n, 1n])
   })
 
+  it('sorts that address’s agents by token ID when asked', async () => {
+    const { client } = registry()
+    const source = createRpcSource(chain, client)
+    const asc = await source.listAgents({ page: 0, pageSize: 10, owner: A, sort: 'tokenId', order: 'asc' })
+    expect(asc.items.map((agent) => agent.tokenId)).toEqual([1n, 2n])
+    const desc = await source.listAgents({ page: 0, pageSize: 10, owner: A, sort: 'tokenId', order: 'desc' })
+    expect(desc.items.map((agent) => agent.tokenId)).toEqual([2n, 1n])
+  })
+
   it('does not scan token owners when the balance is zero', async () => {
     const { client, calls } = registry()
     const source = createRpcSource(chain, client)

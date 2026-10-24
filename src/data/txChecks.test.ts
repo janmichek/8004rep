@@ -330,7 +330,7 @@ describe('checks within the agent', () => {
 
   it('carries the authenticity weight of the review', () => {
     expect(status('agent-weight', facts())).toBe('pass')
-    const duplicate = [row(B, 90), row(A, 90), row(C, 70)]
+    const duplicate = [row(A, 90), row(A, 90), row(C, 70)]
     expect(check('agent-weight', facts(), context(duplicate, { index: 1 }))).toMatchObject({
       status: 'fail',
       detail: 'Weight 0 (duplicate): it does not count in the weighted score.',

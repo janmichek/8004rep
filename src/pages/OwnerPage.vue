@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { isAddress, type Address } from 'viem'
 import { identityAbi } from '../abi'
 import { addressExplorerUrl, findChainBySlug } from '../chains'
 import AgentRow from '../components/AgentRow.vue'
+import ChainName from '../components/ChainName.vue'
 import Skeleton from '../components/ui/Skeleton.vue'
+import SortHeader from '../components/ui/SortHeader.vue'
 import Hint from '../components/ui/Hint.vue'
 import StatTiles, { type Tile } from '../components/ui/StatTiles.vue'
 import TableSkeleton from '../components/ui/TableSkeleton.vue'
@@ -19,15 +21,28 @@ const PAGE_SIZE = 25
 
 const props = defineProps<{ slug: string; address: string }>()
 const route = useRoute()
+const router = useRouter()
 
 const chain = computed(() => findChainBySlug(props.slug)!)
 const address = computed(() => (isAddress(props.address, { strict: false }) ? (props.address as Address) : undefined))
 const page = computed(() => Math.max(0, Math.trunc(Number(route.query.page) || 1) - 1))
 
+type OwnerSort = 'created' | 'id'
+const sort = computed<OwnerSort | null>(() =>
+  route.query.sort === 'created' ? 'created' : route.query.sort === 'id' ? 'id' : null,
+)
+const order = computed<'asc' | 'desc'>(() => (route.query.order === 'asc' ? 'asc' : 'desc'))
+
 const { data, error, loading, reload } = useAsync(async () => {
   if (!address.value) return null
   const { source, rpcClient } = await sourceFor(chain.value)
-  const listed = await source.listAgents({ page: page.value, pageSize: PAGE_SIZE, owner: address.value })
+  const listed = await source.listAgents({
+    page: page.value,
+    pageSize: PAGE_SIZE,
+    owner: address.value,
+    sort: sort.value === 'id' ? 'tokenId' : sort.value === 'created' ? 'createdAt' : undefined,
+    order: sort.value ? order.value : undefined,
+  })
   // Indexed lists have no total; the registry's balance is the owned count.
   let owned = listed.total
   if (owned === undefined) {
@@ -44,8 +59,8 @@ const { data, error, loading, reload } = useAsync(async () => {
       owned = undefined
     }
   }
-  return { ...listed, owned }
-}, () => [chain.value, address.value, page.value])
+  return { ...listed, owned, sourceKind: source.kind }
+}, () => [chain.value, address.value, page.value, sort.value, order.value])
 
 const scores = shallowRef<Map<bigint, ReputationSummary>>()
 let scoreRun = 0
@@ -67,8 +82,31 @@ watch(data, async (list) => {
   }
 })
 
+const canSortCreated = computed(() => data.value?.sourceKind === 'subgraph')
+const createdSort = computed(() => (canSortCreated.value && sort.value === 'created' ? order.value : null))
+/** The sort actually in effect; Created is ignored when the source has no dates. */
+const activeSort = computed(() => (sort.value === 'created' && !canSortCreated.value ? null : sort.value))
+
+function queryFor(next: { page?: number; sort?: OwnerSort | null; order?: 'asc' | 'desc' } = {}): Record<string, string> {
+  const query: Record<string, string> = {}
+  const sortValue = next.sort === undefined ? sort.value : next.sort
+  const orderValue = next.order ?? order.value
+  if (sortValue) {
+    query.sort = sortValue
+    if (orderValue === 'asc') query.order = 'asc'
+  }
+  const target = next.page ?? 0
+  if (target > 0) query.page = String(target + 1)
+  return query
+}
+
+function toggleSort(next: OwnerSort): void {
+  const nextOrder = sort.value === next && order.value === 'desc' ? 'asc' : 'desc'
+  void router.push({ query: queryFor({ sort: next, order: nextOrder }) })
+}
+
 function pageLink(target: number) {
-  return { query: target > 0 ? { page: target + 1 } : {} }
+  return { query: queryFor({ page: target }) }
 }
 
 const owned = computed(() => data.value?.owned ?? 0)
@@ -108,7 +146,7 @@ const tiles = computed<Tile[]>(() => {
       label: 'Average rating',
       value: s ? formatScore(s.avg) : '—',
       hint: s ? `${s.total} ${s.total === 1 ? 'review' : 'reviews'} across ${s.rated} ${s.rated === 1 ? 'agent' : 'agents'}` : '',
-      title: 'Simple average of each owned agent\'s on-chain average',
+      title: 'Simple average of each owned agent\'s raw on-chain mean. It mixes ratings with telemetry; open an agent for its robust score.',
       loading: s === null,
       tone: s && s.avg >= 75 ? 'good' : s && s.avg > 0 ? undefined : 'quiet',
     },
@@ -118,7 +156,9 @@ const tiles = computed<Tile[]>(() => {
 
 <template>
   <p class="crumbs">
-    <RouterLink :to="{ name: 'agents', params: { slug: chain.slug } }">← {{ chain.name }} agents</RouterLink>
+    <RouterLink :to="{ name: 'agents', params: { slug: chain.slug } }">
+      ← <ChainName :chain-id="chain.chainId" :name="chain.name" /> agents
+    </RouterLink>
   </p>
 
   <section v-if="!address" class="state">
@@ -155,17 +195,19 @@ const tiles = computed<Tile[]>(() => {
     />
     <template v-else>
       <section v-if="data.items.length === 0" class="state muted">
-        {{ page > 0 ? 'No more agents on this page.' : `This address owns no agents on ${chain.name}.` }}
+        <template v-if="page > 0">No more agents on this page.</template>
+        <template v-else>This address owns no agents on <ChainName :chain-id="chain.chainId" :name="chain.name" />.</template>
       </section>
       <div v-else class="table-wrap">
         <table>
           <thead>
             <tr>
               <th>Agent</th>
-              <th class="num">ID</th>
+              <SortHeader label="ID" numeric :active="sort === 'id' ? order : null" @sort="toggleSort('id')" />
               <th>Services</th>
               <Hint text="Count and average of all feedback values, any tag"><th class="num">Feedback</th></Hint>
-              <th class="num">Created</th>
+              <SortHeader v-if="canSortCreated" label="Created" numeric :active="createdSort" @sort="toggleSort('created')" />
+              <th v-else class="num">Created</th>
             </tr>
           </thead>
           <tbody>
@@ -182,11 +224,11 @@ const tiles = computed<Tile[]>(() => {
         </table>
       </div>
       <nav v-if="page > 0 || data.hasMore" class="pager" aria-label="Pagination">
-        <RouterLink v-if="page > 0" :to="pageLink(page - 1)">← Newer</RouterLink>
-        <span v-else class="muted">← Newer</span>
+        <RouterLink v-if="page > 0" :to="pageLink(page - 1)">{{ activeSort ? '← Previous' : '← Newer' }}</RouterLink>
+        <span v-else class="muted">{{ activeSort ? '← Previous' : '← Newer' }}</span>
         <span>Page {{ page + 1 }}</span>
-        <RouterLink v-if="data.hasMore" :to="pageLink(page + 1)">Older →</RouterLink>
-        <span v-else class="muted">Older →</span>
+        <RouterLink v-if="data.hasMore" :to="pageLink(page + 1)">{{ activeSort ? 'Next →' : 'Older →' }}</RouterLink>
+        <span v-else class="muted">{{ activeSort ? 'Next →' : 'Older →' }}</span>
       </nav>
     </template>
   </template>

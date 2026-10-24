@@ -131,10 +131,14 @@ describe('computeNetworkStats', () => {
   it('summarizes the window and finds agents sharing one reviewer set', () => {
     const ring = [addr(1), addr(2), addr(3)]
     const rows = [
-      ...ring.flatMap((c) => [ev(c, 10, 100, { agentName: 'Ten' }), ev(c, 11, 100), ev(c, 12, 100)]),
-      ev(addr(4), 10, 40),
-      ev(addr(5), 13, 70, { revoked: true }),
-      ev(addr(6), 13, 60),
+      ...ring.flatMap((c) => [
+        ev(c, 10, 100, { agentName: 'Ten', tag1: 'starred' }),
+        ev(c, 11, 100, { tag1: 'starred' }),
+        ev(c, 12, 100, { tag1: 'starred' }),
+      ]),
+      ev(addr(4), 10, 40, { tag1: 'starred' }),
+      ev(addr(5), 13, 70, { revoked: true, tag1: 'starred' }),
+      ev(addr(6), 13, 60, { tag1: 'starred' }),
     ]
     const s = computeNetworkStats(rows)
     expect(s).toMatchObject({ rows: 12, agents: 4, reviewers: 6, revoked: 1 })

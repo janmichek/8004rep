@@ -1,4 +1,5 @@
 import type { Address } from 'viem'
+import { buildRatingLayer } from './reputation/units'
 import { buildReviewerProfile, suspicionOf, type ReviewerLabel } from './reviewerProfile'
 import type { FeedbackEvent } from './types'
 
@@ -67,6 +68,10 @@ export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkSt
   const dates = rows.map((r) => r.createdAt).filter((t): t is number => t !== undefined)
   const byAgent = groupBy(rows, (r) => r.tokenId.toString())
   const byClient = groupBy(rows, (r) => r.client.toLowerCase())
+  // The headline average is over ratings only, read on their own scale: a
+  // network mean that mixes 5-star reviews, uptime and revenue is not a score.
+  const ratings = buildRatingLayer(rows)
+    .classified.flatMap((c, i) => (!rows[i].revoked && c.kind === 'rating' && c.r !== null ? [c.r] : []))
 
   const topAgents: AgentActivity[] = [...byAgent.values()]
     .map((group) => ({
@@ -133,8 +138,8 @@ export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkSt
     rows: rows.length,
     agents: byAgent.size,
     reviewers: byClient.size,
-    average: mean(live.map((r) => r.value)),
-    perfectShare: live.length ? live.filter((r) => r.value >= 100).length / live.length : null,
+    average: ratings.length ? (mean(ratings) ?? 0) * 100 : null,
+    perfectShare: ratings.length ? ratings.filter((r) => r >= 0.99).length / ratings.length : null,
     revoked: rows.length - live.length,
     ...(dates.length ? { from: Math.min(...dates), to: Math.max(...dates) } : {}),
     topAgents,

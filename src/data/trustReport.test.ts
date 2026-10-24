@@ -33,7 +33,8 @@ describe('scoreWaterfall', () => {
     expect(steps[0]).toMatchObject({ average: 60, rows: 5 })
     expect(steps[1]).toMatchObject({ average: 75, rows: 1, delta: 15 })
     expect(steps[2].average).toBeCloseTo(200 / 3, 6)
-    expect(steps[3]).toMatchObject({ average: 60, rows: 1 })
+    // Every client here is distinct, so equal values are agreement, not duplicates.
+    expect(steps[3]).toMatchObject({ average: 200 / 3, rows: 0, delta: 0 })
     expect(steps[4]).toMatchObject({ rows: 0, delta: 0 })
     // The last step lands on the weighted score of computeScores.
     expect(steps.at(-1)!.average).toBeCloseTo(computeScores(feedback, { self: [OWNER] }).weighted!, 9)

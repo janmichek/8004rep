@@ -2,10 +2,11 @@
 import { computed } from 'vue'
 import type { ChainInfo } from '../../chains'
 import { computeFeedbackStats } from '../../data/feedbackStats'
-import { fetchScanScore, fetchScanStats } from '../../data/scan'
-import { buildTrustReport, type StrengthTier } from '../../data/trustReport'
+import { buildReputationReport, type ReputationReport } from '../../data/reputation/report'
+import { fetchScanScore } from '../../data/scan'
+import { buildTrustReport } from '../../data/trustReport'
 import type { AgentDetail, RegistrationFile } from '../../data/types'
-import { formatDate, formatNumber } from '../../format'
+import { formatDate, formatNumber, formatPercent } from '../../format'
 import { useAsync } from '../../useAsync'
 import StatTiles, { type Tile } from '../ui/StatTiles.vue'
 import TabBar, { type Tab } from '../ui/TabBar.vue'
@@ -28,12 +29,12 @@ const stats = computed(() =>
   }),
 )
 const report = computed(() => buildTrustReport(props.agent.feedback, stats.value, self.value))
+const rep = computed(() => buildReputationReport(props.agent.feedback, { self: self.value }))
 
 // 8004scan is a comparison, not a dependency: a failure only empties its tile.
 const scan = useAsync(() => fetchScanScore(props.chain.chainId, props.agent.tokenId), () => [props.chain.chainId, props.agent.tokenId])
-const ecosystem = useAsync(() => fetchScanStats(), () => true)
 
-const TIER_TONE: Record<StrengthTier, Tile['tone']> = { none: 'quiet', thin: 'warn', moderate: undefined, strong: 'good' }
+const CONFIDENCE_TONE: Record<ReputationReport['confidence'], Tile['tone']> = { low: 'warn', medium: undefined, high: 'good' }
 const LEVEL: Record<string, { word: string; tone: Tile['tone'] }> = {
   high: { word: 'high risk', tone: 'bad' },
   warn: { word: 'needs a look', tone: 'warn' },
@@ -42,24 +43,28 @@ const LEVEL: Record<string, { word: string; tone: Tile['tone'] }> = {
 }
 
 const tiles = computed<Tile[]>(() => {
-  const r = report.value
+  const r = rep.value
   const s = stats.value
   const onchain = props.agent.reputation
   const scanScore = scan.data.value
+  const interval = r.interval ? `80% interval ${formatNumber(r.interval[0])}–${formatNumber(r.interval[1])}` : 'too few rating units for an interval'
   return [
     {
-      label: 'Trusted score',
-      value: formatNumber(r.trusted),
-      hint: r.lcb === null ? 'too few votes for a bound' : `95% bound ${formatNumber(r.lcb)}`,
-      title: 'Weighted average after every rule in “How the score is built” (Overview tab)',
-      tone: 'main',
+      label: 'Robust score',
+      value: r.unrated ? 'Unrated' : formatNumber(r.score),
+      hint: r.unrated ? 'no rating rows' : interval,
+      title: r.unrated
+        ? 'No review here is a rating. Telemetry, outcomes and quantities are listed, never averaged into a score.'
+        : `One vote per wallet, ratings only, neutral prior of ${r.params.alpha0} wallets. ${r.confidence} confidence.`,
+      tone: r.unrated ? 'quiet' : 'main',
+      word: r.unrated,
     },
     {
-      label: 'Evidence',
-      value: r.strength.tier,
-      hint: `${s.reviewers.length} reviewer${s.reviewers.length === 1 ? '' : 's'}`,
-      title: r.strength.reasons.join('\n'),
-      tone: TIER_TONE[r.strength.tier],
+      label: 'Confidence',
+      value: r.confidence,
+      hint: `${r.funnel.wallets} wallet${r.funnel.wallets === 1 ? '' : 's'} · ${r.funnel.units} unit${r.funnel.units === 1 ? '' : 's'}`,
+      title: `${formatNumber(r.concentration.neff)} effective voices; the largest wallet holds ${formatPercent(r.concentration.top1)} of the weight.`,
+      tone: CONFIDENCE_TONE[r.confidence],
       word: true,
     },
     {
@@ -73,8 +78,8 @@ const tiles = computed<Tile[]>(() => {
     {
       label: 'Raw on-chain',
       value: formatNumber(onchain?.average ?? r.raw),
-      hint: `n = ${onchain?.count ?? s.coverage.total}`,
-      title: "Plain mean of non-revoked rows, as the registry's getSummary reports it",
+      hint: `n = ${onchain?.count ?? s.coverage.total}${r.inflation !== null && r.inflation > 0.5 ? ` · +${formatNumber(r.inflation)} vs robust` : ''}`,
+      title: "Plain mean of non-revoked rows, as the registry's getSummary reports it. It mixes ratings with telemetry and quantities, so it is a baseline, not a quality score.",
     },
     {
       label: '8004scan',
@@ -90,19 +95,25 @@ const tiles = computed<Tile[]>(() => {
       tone: 'quiet',
       loading: scan.loading.value,
     },
-    {
-      label: 'Ecosystem avg',
-      value: ecosystem.data.value ? formatNumber(ecosystem.data.value.averageFeedback) : '—',
-      hint: ecosystem.data.value
-        ? `${ecosystem.data.value.totalFeedback.toLocaleString('en-US')} reviews`
-        : ecosystem.loading.value
-          ? ''
-          : 'unreachable',
-      title: 'Mean feedback value over every agent 8004scan indexes: what a typical rating looks like',
-      tone: 'quiet',
-      loading: ecosystem.loading.value,
-    },
   ]
+})
+
+const headline = computed(() => {
+  const r = rep.value
+  if (r.unrated) {
+    return r.counts.rating > 0
+      ? `Unrated: ${r.counts.rating} rating row${r.counts.rating === 1 ? '' : 's'} sit outside every inferred scale. Telemetry and outcomes are listed separately.`
+      : 'Unrated: no review here is a rating. Telemetry, outcomes and quantities are listed, never averaged into a score.'
+  }
+  const gap = r.inflation
+  const versus = gap === null || Math.abs(gap) < 0.5 ? 'the raw rating mean' : `the raw rating mean ${formatNumber(r.rawRatings)} (${gap > 0 ? '+' : ''}${formatNumber(gap)} of inflation removed)`
+  return `Robust score ${formatNumber(r.score)} (${r.confidence} confidence) on ${r.funnel.wallets} wallet${r.funnel.wallets === 1 ? '' : 's'}, ${versus}.`
+})
+
+const rowsRead = computed(() => {
+  const total = props.agent.totalFeedback
+  if (!total || total <= props.agent.feedback.length) return ''
+  return `Computed on ${props.agent.feedback.length.toLocaleString('en-US')} of ${total.toLocaleString('en-US')} reviews (source cap).`
 })
 
 const flagged = computed(() => stats.value.rows.filter((r) => !r.flags.includes('revoked') && r.weight < 1).length)
@@ -133,18 +144,14 @@ const tabs = computed<Tab[]>(() => [
     <template v-else>
       <StatTiles :tiles="tiles" />
       <p class="headline">
-        {{ report.headline }}
+        {{ headline }}
         <span v-if="flagged" class="muted">{{ flagged }} of {{ agent.feedback.length }} rows count less than a full vote.</span>
+        <span v-if="rowsRead" class="muted">{{ rowsRead }}</span>
       </p>
 
       <TabBar :tabs="tabs" label="Reputation views">
         <template #overview>
-          <OverviewTab
-            :feedback="agent.feedback"
-            :stats="stats"
-            :report="report"
-            :ecosystem-average="ecosystem.data.value?.averageFeedback"
-          />
+          <OverviewTab :feedback="agent.feedback" :stats="stats" :report="report" :rep="rep" />
         </template>
         <template #feedback>
           <FeedbackTab :agent="agent" :chain="chain" :stats="stats" />
@@ -153,7 +160,7 @@ const tabs = computed<Tab[]>(() => [
           <ReviewersTab :agent="agent" :chain="chain" :stats="stats" :self="self" />
         </template>
         <template #methods>
-          <MethodsTab :feedback="agent.feedback" :self="self" />
+          <MethodsTab :rep="rep" :feedback="agent.feedback" />
         </template>
         <template #compare>
           <CompareTab
@@ -161,7 +168,7 @@ const tabs = computed<Tab[]>(() => [
             :token-id="agent.tokenId"
             :feedback="agent.feedback"
             :raw="report.raw"
-            :trusted="report.trusted"
+            :trusted="rep.score"
             :scan="scan.data.value"
             :loading="scan.loading.value"
             :error="scan.error.value"
