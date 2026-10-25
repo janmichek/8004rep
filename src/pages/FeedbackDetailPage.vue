@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { addressExplorerUrl, findChainBySlug, txExplorerUrl } from '../chains'
+import AddressIdenticon from '../components/AddressIdenticon.vue'
 import FeedbackNote from '../components/FeedbackNote.vue'
 import ChainIcon from '../components/ChainIcon.vue'
 import ChainName from '../components/ChainName.vue'
@@ -54,10 +55,6 @@ function evidenceUrl(uri: string | undefined): string | undefined {
 </script>
 
 <template>
-  <p class="crumbs">
-    <RouterLink :to="{ name: 'agent', params: { slug, id }, query: { tab: 'feedback' } }">← {{ loading ? 'Back' : name }} feedback</RouterLink>
-  </p>
-
   <section v-if="error" class="state">
     <p>Could not load feedback: {{ error }}</p>
     <button @click="reload">Retry</button>
@@ -84,7 +81,7 @@ function evidenceUrl(uri: string | undefined): string | undefined {
     <p class="meta">
       <RouterLink :to="{ name: 'agent', params: { slug, id } }">{{ name }}</RouterLink>
       <span class="mono"><ChainIcon :chain-id="chain.chainId" :name="chain.name" :size="13" /> {{ chain.chainId }}:{{ agent.tokenId }}</span>
-      <span v-if="row.index !== undefined" class="muted">review #{{ row.index }}</span>
+      <span v-if="row.index !== undefined" class="muted">feedback #{{ row.index }}</span>
       <span v-if="row.revoked" class="chip">revoked</span>
     </p>
 
@@ -92,7 +89,8 @@ function evidenceUrl(uri: string | undefined): string | undefined {
       <dl>
         <dt>Reviewer</dt>
         <dd>
-          <RouterLink :to="{ name: 'reviewer', params: { slug, address: row.client } }" class="mono" :title="row.client">
+          <RouterLink :to="{ name: 'reviewer', params: { slug, address: row.client } }" class="address-mark mono" :title="row.client">
+            <AddressIdenticon :address="row.client" />
             {{ shortAddress(row.client) }}
           </RouterLink>
         </dd>
@@ -130,7 +128,10 @@ function evidenceUrl(uri: string | undefined): string | undefined {
         <ul class="responses">
           <li v-for="(reply, k) in row.responses" :key="k">
             ↩ reply by
-            <a :href="addressExplorerUrl(chain, reply.responder)" target="_blank" rel="noopener noreferrer" class="mono">{{ shortAddress(reply.responder) }}</a>
+            <a :href="addressExplorerUrl(chain, reply.responder)" target="_blank" rel="noopener noreferrer" class="address-mark mono">
+              <AddressIdenticon :address="reply.responder" />
+              {{ shortAddress(reply.responder) }}
+            </a>
             <template v-if="reply.createdAt"> · {{ formatDate(reply.createdAt) }}</template>
             <template v-if="reply.uri">
               ·
@@ -142,6 +143,7 @@ function evidenceUrl(uri: string | undefined): string | undefined {
       </template>
     </section>
 
+    <p class="meta">The transaction detail section explains which validation checks passed and displays a progressbar showing the overall check status.</p>
     <TxDetail v-if="stats" :chain="chain" :agent="agent" :row="row" :index="rowIndex!" :stats="stats" />
   </template>
 </template>

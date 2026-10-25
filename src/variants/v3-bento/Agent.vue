@@ -77,7 +77,7 @@ function flagList(f: RowFlag[]): string[] {
           <path v-if="trend" :d="`${trend} L260,74 L0,74 Z`" fill="#6d5dfc" fill-opacity=".12" />
           <path v-if="trend" :d="trend" fill="none" stroke="#6d5dfc" stroke-width="2.5" />
         </svg>
-        <p class="soft" style="margin: 0">momentum {{ formatSigned(scores.momentum) }} · {{ formatNumber(velocity(agent.feedback.map((f) => f.createdAt))) }} reviews/day</p>
+        <p class="soft" style="margin: 0">momentum {{ formatSigned(scores.momentum) }} · {{ formatNumber(velocity(agent.feedback.map((f) => f.createdAt))) }} feedback/day</p>
       </section>
       <section class="b-card s4">
         <h3>Who speaks</h3>
@@ -119,7 +119,7 @@ function flagList(f: RowFlag[]): string[] {
         <p class="b-mid">{{ formatNumber(scores.polarization, 2) }}</p><p class="soft" style="margin: 0 0 10px">polarization (0 united)</p>
         <p class="b-mid">{{ formatNumber(scores.median) }}</p><p class="soft" style="margin: 0">median</p>
       </section>
-      <section class="b-card s6"><h3>When reviews arrive</h3><Heat :times="agent.feedback.map((f) => f.createdAt)" /></section>
+      <section class="b-card s6"><h3>When feedback arrives</h3><Heat :times="agent.feedback.map((f) => f.createdAt)" /></section>
       <section class="b-card s6">
         <h3>Identity</h3>
         <ul class="b-list">

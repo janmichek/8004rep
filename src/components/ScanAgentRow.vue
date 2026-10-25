@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import BookmarkButton from '../bookmarks/BookmarkButton.vue'
+import { isBookmarked } from '../bookmarks'
 import { CHAINS } from '../chains'
 import type { ScanAgent } from '../data/scan'
 import { formatDate, formatScore, formatTimeline, shortAddress } from '../format'
+import { isNestedControl } from '../useRowLink'
+import AddressIdenticon from './AddressIdenticon.vue'
 import AgentAvatar from './AgentAvatar.vue'
 import ChainIcon from './ChainIcon.vue'
 
-const props = defineProps<{ agent: ScanAgent; chainName?: string; chainKey?: string }>()
+const props = defineProps<{ agent: ScanAgent; chainName?: string; chainKey?: string; bookmarked?: boolean }>()
 
 const router = useRouter()
 
@@ -20,8 +24,10 @@ const scoreLabel = computed(() => formatScore(Math.round(props.agent.totalScore 
 const createdAt = computed(() => (props.agent.createdAt ? formatTimeline(props.agent.createdAt) : '—'))
 const createdTitle = computed(() => (props.agent.createdAt ? formatDate(props.agent.createdAt) : undefined))
 const externalUrl = computed(() => `https://8004scan.io/agents/${props.chainKey ?? props.agent.chainId}/${props.agent.tokenId}`)
+const saved = computed(() => isBookmarked(props.agent.chainId, props.agent.tokenId, props.agent.testnet))
 
-function open(): void {
+function open(event?: Event): void {
+  if (event && isNestedControl(event)) return
   if (known.value) {
     void router.push({ name: 'agent', params: { slug: known.value.slug, id: props.agent.tokenId.toString() } })
   } else if (router.hasRoute('scan-agent')) {
@@ -35,15 +41,23 @@ function open(): void {
 <template>
   <tr
     class="row-link"
+    :class="{ bookmarked: bookmarked || saved }"
     role="link"
     tabindex="0"
     :aria-label="`Open ${name}`"
-    @click="open"
-    @keydown.enter.prevent="open"
-    @keydown.space.prevent="open"
+    @click="open($event)"
+    @keydown.enter.prevent="open()"
+    @keydown.space.prevent="open()"
   >
     <td>
       <div class="agent-cell">
+        <BookmarkButton
+          variant="star"
+          :chain-id="agent.chainId"
+          :token-id="agent.tokenId"
+          :testnet="agent.testnet"
+          :label="name"
+        />
         <AgentAvatar :image="agent.imageUrl" :label="name" :seed="`${agent.chainId}:${agent.tokenId}`" />
         <div class="agent-name">
           <span class="agent-title">{{ name }}</span>
@@ -79,9 +93,19 @@ function open(): void {
     </td>
     <td class="num">{{ agent.feedbackCount }}</td>
     <td>
-      <span v-if="agent.owner" class="mono" :title="agent.owner">{{ shortAddress(agent.owner) }}</span>
+      <span v-if="agent.owner" class="address-mark mono" :title="agent.owner">
+        <AddressIdenticon :address="agent.owner" />
+        {{ shortAddress(agent.owner) }}
+      </span>
       <span v-else class="muted">—</span>
     </td>
     <td class="num" :title="createdTitle">{{ createdAt }}</td>
   </tr>
 </template>
+
+<style scoped>
+/* Drop with bookmarks: row tint for pinned/saved agents. */
+tr.bookmarked td {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+</style>

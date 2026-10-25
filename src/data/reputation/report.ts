@@ -26,7 +26,7 @@ export type TelemetrySummary = {
 
 export type Finding = {
   level: 'warn' | 'info'
-  code: 'repeat' | 'template' | 'revocations' | 'review-bomb'
+  code: 'repeat' | 'template' | 'revocations' | 'review-bomb' | 'same-block' | 'burst'
   text: string
 }
 
@@ -77,7 +77,15 @@ export type ReputationReport = {
     top3: number
     neff: number
     maxInfluence: number
+    /** The same three numbers before unit collapsing, one row = one vote. */
+    rawTop1: number
+    rawTop3: number
+    rawNeff: number
   }
+  /** Ratings per calendar day: the busiest day and how far it stands out. */
+  burst: { maxDayRows: number; activeDays: number; ratio: number | null }
+  /** Share of rating rows that share a transaction with another rating row. */
+  sameBlockShare: number | null
   counts: RatingLayer['counts']
   byKind: { kind: Kind; label: string; rows: number }[]
   /** Non-rating rows grouped by tag, the telemetry panel. */
@@ -216,6 +224,40 @@ export function buildReputationReport(
       text: `${extremes.length} of ${ratingIdx.length} ratings sit at the very top or bottom of their scale; a locked template cannot tell good agents from great ones.`,
     })
   }
+  const perTx = new Map<string, number>()
+  for (const i of ratingIdx) {
+    const hash = feedback[i].txHash
+    if (hash) perTx.set(hash, (perTx.get(hash) ?? 0) + 1)
+  }
+  const groupedRows = [...perTx.values()].reduce((a, n) => a + n, 0)
+  const repeatedRows = [...perTx.values()].filter((n) => n > 1).reduce((a, n) => a + n, 0)
+  const sameBlockShare = groupedRows ? repeatedRows / groupedRows : null
+  if (sameBlockShare !== null && ratingIdx.length >= 5 && sameBlockShare >= 0.3) {
+    findings.push({
+      level: 'warn',
+      code: 'same-block',
+      text: `${Math.round(sameBlockShare * 100)}% of rating rows share a transaction with another rating; one transaction cannot be an independent opinion.`,
+    })
+  }
+
+  const perDay = new Map<number, number>()
+  for (const i of ratingIdx) {
+    const at = feedback[i].createdAt
+    if (at !== undefined) {
+      const day = Math.floor(at / 86400)
+      perDay.set(day, (perDay.get(day) ?? 0) + 1)
+    }
+  }
+  const maxDayRows = Math.max(0, ...perDay.values())
+  const activeDays = perDay.size
+  const burstRatio = activeDays > 1 && ratingIdx.length >= 10 ? maxDayRows / (ratingIdx.length / activeDays) : null
+  if (burstRatio !== null && burstRatio >= 5) {
+    findings.push({
+      level: 'warn',
+      code: 'burst',
+      text: `${maxDayRows} of ${ratingIdx.length} ratings landed on one day (${burstRatio.toFixed(1)}× the active-day average); a burst is not steady demand.`,
+    })
+  }
   const lows = ratingIdx.filter((i) => (layer.classified[i].r as number) <= 0.2)
   if (lows.length >= 3 && lows.length / ratingIdx.length >= 0.5) {
     findings.push({
@@ -248,6 +290,12 @@ export function buildReputationReport(
     thirdPartyReplies: responders.length - ownerReplies,
   }
 
+  const rawShare = (k: number) => {
+    const sorted = [...perClientRows.values()].sort((a, b) => b - a)
+    return sorted.slice(0, k).reduce((a, n) => a + n, 0) / (ratingIdx.length || 1)
+  }
+  const rawNeff = ratingIdx.length ? ratingIdx.length ** 2 / [...perClientRows.values()].reduce((a, n) => a + n * n, 0) : 0
+
   return {
     formulaVersion: FORMULA_VERSION,
     params: { unitWindowDays: UNIT_WINDOW_DAYS, halfLifeDays: HALF_LIFE_DAYS, alpha0: 3, mu0: 0.5, fakeTarget: 0.9 },
@@ -274,7 +322,12 @@ export function buildReputationReport(
         .reduce((a, w) => a + w.weight, 0) / (score.totalWeight || 1),
       neff: score.neff,
       maxInfluence: score.maxInfluence,
+      rawTop1: rawShare(1),
+      rawTop3: rawShare(3),
+      rawNeff,
     },
+    burst: { maxDayRows, activeDays, ratio: burstRatio },
+    sameBlockShare,
     counts: layer.counts,
     byKind: KIND_ORDER.map((kind) => ({
       kind,

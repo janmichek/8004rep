@@ -32,7 +32,7 @@ const notes = computed(() => {
   }
   if (score.feedback) {
     notes.push(
-      `Feedback enters through the support score, as the plain average ${formatNumber(score.feedback.average)} of ${score.feedback.count} reviews${score.feedback.weight !== undefined && score.feedback.weight < 1 ? `, counted at ${Math.round(score.feedback.weight * 100)}% for volume` : ''}. No reviewer is discounted there: self-reviews, duplicates and bursts count in full, and more reviews push support up.`,
+      `Feedback enters through the support score, as the plain average ${formatNumber(score.feedback.average)} of ${score.feedback.count} feedback${score.feedback.weight !== undefined && score.feedback.weight < 1 ? `, counted at ${Math.round(score.feedback.weight * 100)}% for volume` : ''}. No reviewer is discounted there: self-feedback, duplicates and bursts count in full, and more feedback pushes support up.`,
     )
     if (props.raw !== null && Math.abs(score.feedback.average - props.raw) >= 5) {
       notes.push(`Its feedback average ${formatNumber(score.feedback.average)} differs from the on-chain mean ${formatNumber(props.raw)} here by ${formatNumber(Math.abs(score.feedback.average - props.raw))}.`)
@@ -45,7 +45,7 @@ const notes = computed(() => {
   }
   if (score.band) notes.push(`Final scores are squeezed into ${formatNumber(score.band.floor)}–${formatNumber(score.band.ceiling)}, so many agents tie.`)
   if (score.feedback && score.feedback.count !== props.feedback.length) {
-    notes.push(`8004scan counts ${score.feedback.count} reviews; this page read ${props.feedback.length} (indexer lag or scan window).`)
+    notes.push(`8004scan counts ${score.feedback.count} feedback; this page read ${props.feedback.length} (indexer lag or scan window).`)
   }
   return notes
 })

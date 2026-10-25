@@ -7,7 +7,8 @@ const props = defineProps<{ current: number }>()
 const open = ref(false)
 const info = VARIANTS.find((v) => v.id === props.current)!
 
-const BOX = 'position:fixed;right:14px;bottom:14px;z-index:9999;font:12px/1.4 system-ui,sans-serif;color:#eee'
+const BOX =
+  'display:none;position:fixed;right:14px;bottom:14px;z-index:9999;font:12px/1.4 system-ui,sans-serif;color:#eee'
 const PILL =
   'all:unset;cursor:pointer;display:inline-flex;gap:6px;align-items:center;padding:7px 12px;border-radius:999px;background:#111;border:1px solid #444;box-shadow:0 4px 18px rgba(0,0,0,.35)'
 const MENU =

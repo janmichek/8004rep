@@ -108,6 +108,7 @@ export const CHAINS: ChainInfo[] = [
     rpcUrl: endpoint('RPC', 8453, 'https://mainnet.base.org')!,
     viemChain: base,
     logRange: 10_000n,
+    explorerApiUrl: endpoint('EXPLORER_API', 8453, 'https://base.blockscout.com/api'),
   },
   {
     ...MAINNET,

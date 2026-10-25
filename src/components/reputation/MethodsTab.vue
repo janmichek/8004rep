@@ -51,6 +51,7 @@ const alternatives = computed<Tile[]>(() => [
     title: '(α0·μ0 + Σ W_c·r̄_c) / (α0 + Σ W_c) — one independent wallet is one vote',
     tone: 'main',
     word: props.rep.unrated,
+    meter: props.rep.unrated ? undefined : { kind: 'gauge', value: props.rep.score, band: props.rep.interval },
   },
   {
     label: 'Effective voices',
@@ -149,7 +150,7 @@ const labels = Object.entries(LABEL_INFO).map(([id, info]) => ({ id, ...info }))
   </section>
 
   <section class="panel">
-    <h3>Rules on a review</h3>
+    <h3>Rules on each feedback</h3>
     <dl class="metric-list">
       <template v-for="f in flags" :key="f.id">
         <dt><FlagChip :flag="f.id" /></dt>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { DEFAULT_CHAIN } from '../chains'
+import BookmarkButton from '../bookmarks/BookmarkButton.vue'
+import AddressIdenticon from '../components/AddressIdenticon.vue'
 import AgentAvatar from '../components/AgentAvatar.vue'
 import Skeleton from '../components/ui/Skeleton.vue'
 import { fetchScanAgentDetail, fetchScanChains } from '../data/scan'
@@ -12,7 +13,6 @@ const props = defineProps<{ chainId: string; id: string }>()
 
 const chainId = computed(() => (Number.isInteger(Number(props.chainId)) ? Number(props.chainId) : undefined))
 const tokenId = computed(() => (/^\d+$/.test(props.id) ? BigInt(props.id) : undefined))
-
 const { data: chains } = useAsync(fetchScanChains, () => true)
 const network = computed(() => chains.value?.find((chain) => chain.chainId === chainId.value))
 
@@ -32,9 +32,6 @@ const scanUrl = computed(() => {
 </script>
 
 <template>
-  <p class="crumbs">
-    <RouterLink :to="{ name: 'agents', params: { slug: DEFAULT_CHAIN.slug }, query: { chain: props.chainId } }">← Agents</RouterLink>
-  </p>
 
   <section v-if="error" class="state">
     <p>Could not load agent: {{ error }}</p>
@@ -66,6 +63,11 @@ const scanUrl = computed(() => {
           <span v-else-if="agent.active === false" class="chip">inactive</span>
           <span v-if="agent.x402" class="chip accent">x402</span>
           <span v-for="protocol in agent.protocols" :key="protocol" class="chip">{{ protocol }}</span>
+          <BookmarkButton
+            :chain-id="agent.chainId"
+            :token-id="agent.tokenId"
+            :testnet="network?.testnet === true"
+          />
           <a :href="scanUrl" target="_blank" rel="noopener noreferrer">View on 8004scan ↗</a>
         </p>
       </div>
@@ -84,12 +86,18 @@ const scanUrl = computed(() => {
         <dl>
           <dt>Owner</dt>
           <dd>
-            <span v-if="agent.owner" class="mono" :title="agent.owner">{{ shortAddress(agent.owner) }}</span>
+            <span v-if="agent.owner" class="address-mark mono" :title="agent.owner">
+              <AddressIdenticon :address="agent.owner" />
+              {{ shortAddress(agent.owner) }}
+            </span>
             <span v-else class="muted">—</span>
           </dd>
           <dt>Agent wallet</dt>
           <dd>
-            <span v-if="agent.agentWallet" class="mono" :title="agent.agentWallet">{{ shortAddress(agent.agentWallet) }}</span>
+            <span v-if="agent.agentWallet" class="address-mark mono" :title="agent.agentWallet">
+              <AddressIdenticon :address="agent.agentWallet" />
+              {{ shortAddress(agent.agentWallet) }}
+            </span>
             <span v-else class="muted">not set</span>
           </dd>
           <template v-if="agent.createdAt">

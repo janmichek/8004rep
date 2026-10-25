@@ -34,7 +34,7 @@ const worst = computed(() => [...rated.value].sort((a, b) => scores.value!.get(a
     <p v-else-if="!data.items.length" class="l-deck">{{ page > 0 ? 'No further holdings.' : 'No holdings on this network.' }}</p>
     <template v-else>
       <table class="l-table">
-        <thead><tr><th>Holding</th><th class="num">No.</th><th class="num">Reviews</th><th class="num">Rating</th></tr></thead>
+        <thead><tr><th>Holding</th><th class="num">No.</th><th class="num">Feedback</th><th class="num">Rating</th></tr></thead>
         <tbody>
           <tr v-for="a in data.items" :key="a.tokenId.toString()">
             <td><RouterLink :to="to.agent(a.tokenId)">{{ files.get(a.tokenId)?.name ?? `Agent No. ${a.tokenId}` }}</RouterLink></td>

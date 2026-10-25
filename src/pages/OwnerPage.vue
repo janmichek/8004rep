@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { isAddress, type Address } from 'viem'
 import { identityAbi } from '../abi'
 import { addressExplorerUrl, findChainBySlug } from '../chains'
+import AddressIdenticon from '../components/AddressIdenticon.vue'
 import AgentRow from '../components/AgentRow.vue'
 import ChainName from '../components/ChainName.vue'
 import Skeleton from '../components/ui/Skeleton.vue'
@@ -139,27 +140,23 @@ const tiles = computed<Tile[]>(() => {
       label: 'Rated',
       value: s ? String(s.rated) : '—',
       hint: s ? `of ${owned.value} owned` : '',
-      title: 'Owned agents that have at least one feedback review',
+      title: 'Owned agents that have at least one feedback',
       loading: s === null,
     },
     {
       label: 'Average rating',
       value: s ? formatScore(s.avg) : '—',
-      hint: s ? `${s.total} ${s.total === 1 ? 'review' : 'reviews'} across ${s.rated} ${s.rated === 1 ? 'agent' : 'agents'}` : '',
+      hint: s ? `${s.total} feedback across ${s.rated} ${s.rated === 1 ? 'agent' : 'agents'}` : '',
       title: 'Simple average of each owned agent\'s raw on-chain mean. It mixes ratings with telemetry; open an agent for its robust score.',
       loading: s === null,
       tone: s && s.avg >= 75 ? 'good' : s && s.avg > 0 ? undefined : 'quiet',
+      meter: s && s.avg > 0 ? { kind: 'gauge', value: s.avg } : undefined,
     },
   ]
 })
 </script>
 
 <template>
-  <p class="crumbs">
-    <RouterLink :to="{ name: 'agents', params: { slug: chain.slug } }">
-      ← <ChainName :chain-id="chain.chainId" :name="chain.name" /> agents
-    </RouterLink>
-  </p>
 
   <section v-if="!address" class="state">
     <h1>Not an address</h1>
@@ -169,7 +166,11 @@ const tiles = computed<Tile[]>(() => {
   <template v-else>
     <div class="page-head">
       <h1>
-        Owner <span class="mono">{{ shortAddress(address) }}</span>
+        Owner
+        <span class="address-mark mono">
+          <AddressIdenticon :address="address" :size="28" />
+          {{ shortAddress(address) }}
+        </span>
         <small v-if="loading || !data"><Skeleton width="6em" height="0.75em" /></small>
         <small v-else-if="data.owned !== undefined">{{ data.owned }} {{ data.owned === 1 ? 'agent' : 'agents' }}</small>
       </h1>

@@ -10,7 +10,7 @@ const chain = useChain(() => props.slug)
 const to = routes(() => chain.value)
 const { feed, error, loading, load, stats, ecosystem } = useNetwork(chain)
 const days = computed(() => byDay(feed.value?.items ?? []))
-// Trending: most reviews in the newest 24h of the window.
+// Trending: most feedback in the newest 24h of the window.
 const trending = computed(() => {
   const items = feed.value?.items ?? []
   const newest = items[0]?.createdAt
@@ -35,7 +35,7 @@ function dayLabel(day: number | null): string {
   <main class="s-main">
     <header class="s-head">
       <h1>Home</h1>
-      <p>Latest reviews on {{ chain.name }}<template v-if="stats"> · {{ stats.rows }} posts from {{ stats.reviewers }} accounts</template></p>
+      <p>Latest feedback on {{ chain.name }}<template v-if="stats"> · {{ stats.rows }} posts from {{ stats.reviewers }} accounts</template></p>
     </header>
     <p v-if="error" class="s-empty">Couldn't load posts: {{ error }} <button @click="load()">Retry</button></p>
     <p v-else-if="!feed" class="s-empty">Loading your timeline…</p>
@@ -66,7 +66,7 @@ function dayLabel(day: number | null): string {
     <div v-if="trending.length" class="s-box">
       <h2>Trending today</h2>
       <RouterLink v-for="(t, i) in trending" :key="t.tokenId.toString()" :to="to.agent(t.tokenId)" class="s-trend">
-        <small>{{ i + 1 }} · Trending on {{ chain.shortName }}</small><b>{{ t.name ?? `Agent #${t.tokenId}` }}</b><small>{{ t.n }} reviews</small>
+        <small>{{ i + 1 }} · Trending on {{ chain.shortName }}</small><b>{{ t.name ?? `Agent #${t.tokenId}` }}</b><small>{{ t.n }} feedback</small>
       </RouterLink>
     </div>
     <div v-if="stats" class="s-box">

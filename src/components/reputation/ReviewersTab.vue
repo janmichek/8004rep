@@ -11,13 +11,17 @@ import { LABEL_INFO } from '../../data/reviewerProfile'
 import { MIN_NONCE } from '../../data/txChecks'
 import type { AgentDetail } from '../../data/types'
 import { formatDate, formatNumber, formatPercent, formatSigned, shortAddress } from '../../format'
+import { useRowLink } from '../../useRowLink'
 import { useSort } from '../../useSort'
+import AddressIdenticon from '../AddressIdenticon.vue'
 import FlagChip from '../ui/FlagChip.vue'
 import Hint from '../ui/Hint.vue'
 import Skeleton from '../ui/Skeleton.vue'
 import SortHeader from '../ui/SortHeader.vue'
 
 const props = defineProps<{ agent: AgentDetail; chain: ChainInfo; stats: FeedbackStats; self: string[] }>()
+
+const { open } = useRowLink()
 
 /** Reviewers looked up across agents and on the explorer, heaviest first. */
 const LOOKUP = 12
@@ -83,10 +87,16 @@ function isSelf(address: string): boolean {
       <li v-for="c in clusters" :key="c.funder" :class="c.self ? 'level-high' : 'level-warn'">
         <span class="signal-level">{{ c.self ? 'high' : 'warn' }}</span>
         <span>
-          <a :href="addressExplorerUrl(chain, c.funder)" target="_blank" rel="noopener noreferrer" class="mono">{{ shortAddress(c.funder) }}</a>
+          <a :href="addressExplorerUrl(chain, c.funder)" target="_blank" rel="noopener noreferrer" class="address-mark mono">
+            <AddressIdenticon :address="c.funder" />
+            {{ shortAddress(c.funder) }}
+          </a>
           <template v-if="c.self"> — the agent's own address — </template>
           first funded {{ c.reviewers.length }} reviewer{{ c.reviewers.length === 1 ? '' : 's' }}:
-          <span v-for="r in c.reviewers" :key="r" class="mono"> {{ shortAddress(r) }}</span>.
+          <span v-for="r in c.reviewers" :key="r" class="address-mark mono">
+            <AddressIdenticon :address="r" />
+            {{ shortAddress(r) }}
+          </span>.
           <small v-if="chain.testnet && !c.self" class="muted"> On testnets a faucet often funds many wallets — open the funder before concluding.</small>
         </span>
       </li>
@@ -109,11 +119,22 @@ function isSelf(address: string): boolean {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="r in reviewerRows.sorted.value.slice(0, SHOWN)" :key="r.client">
+        <tr
+          v-for="r in reviewerRows.sorted.value.slice(0, SHOWN)"
+          :key="r.client"
+          class="row-link"
+          role="link"
+          tabindex="0"
+          :aria-label="`Open reviewer ${shortAddress(r.client)}`"
+          @click="open({ name: 'reviewer', params: { slug: chain.slug, address: r.client } }, $event)"
+          @keydown.enter.prevent="open({ name: 'reviewer', params: { slug: chain.slug, address: r.client } })"
+          @keydown.space.prevent="open({ name: 'reviewer', params: { slug: chain.slug, address: r.client } })"
+        >
           <td class="nowrap">
-            <RouterLink :to="{ name: 'reviewer', params: { slug: chain.slug, address: r.client } }" class="mono" :title="r.client">
+            <span class="address-mark mono" :title="r.client">
+              <AddressIdenticon :address="r.client" />
               {{ shortAddress(r.client) }}
-            </RouterLink>
+            </span>
             <span v-if="isSelf(r.client)" class="chip bad">agent itself</span>
           </td>
           <td class="num">{{ r.rows }}<span v-if="r.revoked" class="muted"> ({{ r.revoked }})</span></td>
@@ -171,9 +192,10 @@ function isSelf(address: string): boolean {
                   :href="txExplorerUrl(chain, insightOf(r.client)!.funding!.txHash)"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="mono"
+                  class="address-mark mono"
                   :title="`First funded ${insightOf(r.client)!.funding!.timestamp ? formatDate(insightOf(r.client)!.funding!.timestamp!) : ''} by ${insightOf(r.client)!.funding!.funder}`"
                 >
+                  <AddressIdenticon :address="insightOf(r.client)!.funding!.funder" />
                   {{ shortAddress(insightOf(r.client)!.funding!.funder) }}
                 </a>
               </template>

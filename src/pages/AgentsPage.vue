@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { usePinnedAgents } from '../bookmarks'
 import ScanAgentRow from '../components/ScanAgentRow.vue'
 import ChainName from '../components/ChainName.vue'
 import SelectMenu, { type SelectOption } from '../components/ui/SelectMenu.vue'
@@ -63,6 +64,11 @@ const { data, error, loading, reload } = useAsync(
     }),
   () => [page.value, rated.value, search.value, networkEnv.value, selectedChain.value, sort.value, order.value],
 )
+
+// Bookmarks: delete `src/bookmarks/` and replace with `data.items` / empty on `data.items.length === 0`.
+const feedItems = computed(() => data.value?.items ?? [])
+const selectedChainId = computed(() => selectedChain.value?.chainId)
+const { pinned, feed, hasRows } = usePinnedAgents({ items: feedItems, chainId: selectedChainId, search })
 
 const input = ref('')
 watch(search, (value) => (input.value = value), { immediate: true })
@@ -170,7 +176,7 @@ function toggleRegistered(): void {
     :headers="['Agent', 'ID', 'Chain', 'Services', 'Score', 'Feedback', 'Owner', 'Registered']"
     :numeric="['ID', 'Feedback', 'Registered']"
   />
-  <section v-else-if="data.items.length === 0" class="state muted">
+  <section v-else-if="!hasRows" class="state muted">
     {{ search ? `No agent matches “${search}”.` : 'No agents registered yet.' }}
   </section>
   <template v-else>
@@ -199,8 +205,17 @@ function toggleRegistered(): void {
           </tr>
         </thead>
         <tbody>
+          <!-- bookmarks: pinned block — drop and loop `data.items` instead -->
           <ScanAgentRow
-            v-for="agent in data.items"
+            v-for="agent in pinned"
+            :key="`pin:${agent.chainId}:${agent.tokenId}`"
+            :agent="agent"
+            :chain-name="chainMap.get(agent.chainId)?.name"
+            :chain-key="chainMap.get(agent.chainId)?.key"
+            bookmarked
+          />
+          <ScanAgentRow
+            v-for="agent in feed"
             :key="`${agent.chainId}:${agent.tokenId}`"
             :agent="agent"
             :chain-name="chainMap.get(agent.chainId)?.name"

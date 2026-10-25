@@ -18,8 +18,10 @@ import { LABEL_INFO } from '../data/reviewerProfile'
 import { fetchScanStats } from '../data/scan'
 import { errorMessage, formatDate, formatNumber, formatPercent, formatScore, formatTimeline, shortAddress } from '../format'
 import { toDisplayUrl } from '../data/metadata'
+import AddressIdenticon from '../components/AddressIdenticon.vue'
 import FeedbackNote from '../components/FeedbackNote.vue'
 import { useAsync } from '../useAsync'
+import { useRowLink } from '../useRowLink'
 import { useSort } from '../useSort'
 
 const props = defineProps<{ slug: string }>()
@@ -64,9 +66,9 @@ const tiles = computed<Tile[]>(() => {
   const s = stats.value
   if (!s) return []
   return [
-    { label: 'Reviews in window', value: String(s.rows), hint: s.from && s.to ? daySpan(s.from, s.to) : '', tone: 'main' },
+    { label: 'Feedback in window', value: String(s.rows), hint: s.from && s.to ? daySpan(s.from, s.to) : '', tone: 'main' },
     { label: 'Agents rated', value: String(s.agents) },
-    { label: 'Reviewers', value: String(s.reviewers), hint: `${formatNumber(s.rows / Math.max(1, s.reviewers))} reviews each` },
+    { label: 'Reviewers', value: String(s.reviewers), hint: `${formatNumber(s.rows / Math.max(1, s.reviewers))} feedback each` },
     {
       label: 'Average value',
       value: formatNumber(s.average),
@@ -76,15 +78,23 @@ const tiles = computed<Tile[]>(() => {
       ]
         .filter(Boolean)
         .join(' · '),
+      meter: s.average === null || s.average === undefined ? undefined : { kind: 'gauge', value: s.average },
     },
     {
       label: 'Perfect 100s',
       value: formatPercent(s.perfectShare),
       hint: 'of scored ratings at 99%+',
       tone: (s.perfectShare ?? 0) > 0.7 ? 'warn' : undefined,
-      title: 'A network where most reviews are 100 cannot tell good agents from great ones',
+      title: 'A network where most feedback is 100 cannot tell good agents from great ones',
+      meter: s.perfectShare === null || s.perfectShare === undefined ? undefined : { kind: 'gauge', value: s.perfectShare * 100 },
     },
-    { label: 'Suspect reviewers', value: String(s.suspects.length), hint: `${s.lookalikes.length} lookalike groups`, tone: s.suspects.length ? 'warn' : 'good' },
+    {
+      label: 'Suspect reviewers',
+      value: String(s.suspects.length),
+      hint: `${s.lookalikes.length} lookalike groups`,
+      tone: s.suspects.length ? 'warn' : 'good',
+      meter: { kind: 'severity', level: s.suspects.length ? Math.min(3, s.suspects.length > 20 ? 3 : s.suspects.length > 5 ? 2 : 1) : 0, max: 3 },
+    },
   ]
 })
 
@@ -136,8 +146,10 @@ const tabs = computed<Tab[]>(() => [
   { id: 'suspects', label: 'Suspect reviewers', count: stats.value?.suspects.length ?? 0, ...(stats.value?.suspects.length ? { tone: 'warn' as const } : {}) },
   { id: 'lookalikes', label: 'Lookalike agents', count: stats.value?.lookalikes.length ?? 0 },
   { id: 'agents', label: 'Busiest agents', count: stats.value?.topAgents.length ?? 0 },
-  { id: 'latest', label: 'Latest Reviews' },
+  { id: 'latest', label: 'Latest Feedback' },
 ])
+
+const { open } = useRowLink()
 
 function agentRoute(tokenId: bigint) {
   return { name: 'agent', params: { slug: chain.value.slug, id: tokenId.toString() } }
@@ -169,7 +181,7 @@ function reviewerRoute(address: string) {
     <StatTiles :tiles="tiles" />
     <p class="muted note">
       Window: {{ stats.rows }} newest rows<template v-if="feed.since"> since {{ formatDate(feed.since) }}</template>.
-      <button v-if="feed.cursor" :disabled="loading" @click="load(true)">{{ loading ? 'Loading…' : 'Load older reviews' }}</button>
+      <button v-if="feed.cursor" :disabled="loading" @click="load(true)">{{ loading ? 'Loading…' : 'Load older feedback' }}</button>
       <span v-else>That is everything the source holds.</span>
     </p>
 
@@ -198,8 +210,23 @@ function reviewerRoute(address: string) {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="s in suspectRows.sorted.value.slice(0, 50)" :key="s.client">
-                <td><RouterLink :to="reviewerRoute(s.client)" class="mono" :title="s.client">{{ shortAddress(s.client) }}</RouterLink></td>
+              <tr
+                v-for="s in suspectRows.sorted.value.slice(0, 50)"
+                :key="s.client"
+                class="row-link"
+                role="link"
+                tabindex="0"
+                :aria-label="`Open reviewer ${shortAddress(s.client)}`"
+                @click="open(reviewerRoute(s.client), $event)"
+                @keydown.enter.prevent="open(reviewerRoute(s.client))"
+                @keydown.space.prevent="open(reviewerRoute(s.client))"
+              >
+                <td>
+                  <span class="address-mark mono" :title="s.client">
+                    <AddressIdenticon :address="s.client" />
+                    {{ shortAddress(s.client) }}
+                  </span>
+                </td>
                 <td class="num">{{ s.rows }}</td>
                 <td class="num">{{ s.agents }}</td>
                 <td class="num">{{ formatNumber(s.average) }}</td>
@@ -217,7 +244,7 @@ function reviewerRoute(address: string) {
       </template>
 
       <template #lookalikes>
-        <p class="muted note">Agents rated by nearly the same set of reviewers (overlap ≥ 80%, at least 2 shared). One crowd reviewing several agents together is how review rings and agent farms look — and also how a test suite looks.</p>
+        <p class="muted note">Agents rated by nearly the same set of reviewers (overlap ≥ 80%, at least 2 shared). One crowd reviewing several agents together is how feedback rings and agent farms look — and also how a test suite looks.</p>
         <p v-if="!stats.lookalikes.length" class="muted">No lookalike groups in this window.</p>
         <ul v-else class="groups">
           <li v-for="(g, i) in stats.lookalikes.slice(0, 30)" :key="i" class="panel">
@@ -229,7 +256,10 @@ function reviewerRoute(address: string) {
             </div>
             <small class="muted">
               Reviewers:
-              <RouterLink v-for="r in g.reviewers.slice(0, 8)" :key="r" :to="reviewerRoute(r)" class="mono"> {{ shortAddress(r) }}</RouterLink>
+              <RouterLink v-for="r in g.reviewers.slice(0, 8)" :key="r" :to="reviewerRoute(r)" class="address-mark mono">
+                <AddressIdenticon :address="r" />
+                {{ shortAddress(r) }}
+              </RouterLink>
               <template v-if="g.reviewers.length > 8"> +{{ g.reviewers.length - 8 }}</template>
             </small>
           </li>
@@ -242,14 +272,24 @@ function reviewerRoute(address: string) {
             <thead>
               <tr>
                 <SortHeader label="Agent" :active="topAgentRows.state('agent')" @sort="topAgentRows.toggle('agent')" />
-                <SortHeader label="Reviews" numeric :active="topAgentRows.state('reviews')" @sort="topAgentRows.toggle('reviews')" />
+                <SortHeader label="Feedback" numeric :active="topAgentRows.state('reviews')" @sort="topAgentRows.toggle('reviews')" />
                 <SortHeader label="Reviewers" numeric :active="topAgentRows.state('reviewers')" @sort="topAgentRows.toggle('reviewers')" />
                 <SortHeader label="Average" numeric :active="topAgentRows.state('average')" @sort="topAgentRows.toggle('average')" />
               </tr>
             </thead>
             <tbody>
-              <tr v-for="a in topAgentRows.sorted.value" :key="a.tokenId.toString()">
-                <td><RouterLink :to="agentRoute(a.tokenId)">{{ a.agentName ?? `Agent #${a.tokenId}` }}</RouterLink> <small class="muted">#{{ a.tokenId }}</small></td>
+              <tr
+                v-for="a in topAgentRows.sorted.value"
+                :key="a.tokenId.toString()"
+                class="row-link"
+                role="link"
+                tabindex="0"
+                :aria-label="`Open ${a.agentName ?? `Agent #${a.tokenId}`}`"
+                @click="open(agentRoute(a.tokenId), $event)"
+                @keydown.enter.prevent="open(agentRoute(a.tokenId))"
+                @keydown.space.prevent="open(agentRoute(a.tokenId))"
+              >
+                <td>{{ a.agentName ?? `Agent #${a.tokenId}` }} <small class="muted">#{{ a.tokenId }}</small></td>
                 <td class="num">{{ a.rows }}</td>
                 <td class="num" :class="{ warnText: a.reviewers === 1 && a.rows > 2 }">{{ a.reviewers }}</td>
                 <td class="num">{{ formatNumber(a.average) }}</td>
@@ -274,9 +314,25 @@ function reviewerRoute(address: string) {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(r, i) in latestRows.sorted.value.slice(0, 100)" :key="i" :class="{ revoked: r.revoked }">
-                <td><RouterLink :to="agentRoute(r.tokenId)">{{ r.agentName ?? `Agent #${r.tokenId}` }}</RouterLink></td>
-                <td><RouterLink :to="reviewerRoute(r.client)" class="mono">{{ shortAddress(r.client) }}</RouterLink></td>
+              <tr
+                v-for="(r, i) in latestRows.sorted.value.slice(0, 100)"
+                :key="i"
+                class="row-link"
+                :class="{ revoked: r.revoked }"
+                role="link"
+                tabindex="0"
+                :aria-label="`Open ${r.agentName ?? `Agent #${r.tokenId}`}`"
+                @click="open(agentRoute(r.tokenId), $event)"
+                @keydown.enter.prevent="open(agentRoute(r.tokenId))"
+                @keydown.space.prevent="open(agentRoute(r.tokenId))"
+              >
+                <td>{{ r.agentName ?? `Agent #${r.tokenId}` }}</td>
+                <td>
+                  <RouterLink :to="reviewerRoute(r.client)" class="address-mark mono">
+                    <AddressIdenticon :address="r.client" />
+                    {{ shortAddress(r.client) }}
+                  </RouterLink>
+                </td>
                 <td class="num"><b>{{ formatScore(r.value) }}</b></td>
                 <td class="tags">
                   <span v-if="r.tag1" class="chip clip-chip" :title="r.tag1">{{ r.tag1 }}</span>

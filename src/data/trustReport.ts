@@ -19,14 +19,14 @@ export type WaterfallStep = {
 }
 
 const STEPS: { id: Exclude<WaterfallStepId, 'all'>; label: string; rule: string }[] = [
-  { id: 'revoked', label: 'Drop revoked', rule: 'Reviews their author revoked count nowhere.' },
-  { id: 'self', label: 'Drop self-reviews', rule: 'Reviews from the agent owner or agent wallet weigh 0.' },
+  { id: 'revoked', label: 'Drop revoked', rule: 'Revoked feedback counts nowhere.' },
+  { id: 'self', label: 'Drop self-feedback', rule: 'Feedback from the agent owner or agent wallet weighs 0.' },
   { id: 'duplicate', label: 'Drop duplicates', rule: 'A client repeating its own earlier (value, tag1, tag2, endpoint) weighs 0.' },
-  { id: 'burst', label: 'Discount bursts', rule: 'More than 2 reviews from one client within 24h: × exp(−(N−2)).' },
+  { id: 'burst', label: 'Discount bursts', rule: 'More than 2 feedback from one client within 24h: × exp(−(N−2)).' },
   {
     id: 'pattern',
     label: 'Discount repeat reviewers',
-    rule: 'A client with 3+ reviews of one value: × 0.4; with more than 5 reviews: × 0.7.',
+    rule: 'A client with 3+ feedback of one value: × 0.4; with more than 5 feedback: × 0.7.',
   },
 ]
 
@@ -43,7 +43,7 @@ export function scoreWaterfall(feedback: Feedback[], self: readonly string[] = [
   const values = feedback.map((f) => f.value)
   const current = feedback.map(() => 1)
   const steps: WaterfallStep[] = [
-    { id: 'all', label: 'Every review', rule: 'Plain mean of all values, revoked included.', average: weightedMean(values, current), rows: feedback.length, delta: null },
+    { id: 'all', label: 'All feedback', rule: 'Plain mean of all values, revoked included.', average: weightedMean(values, current), rows: feedback.length, delta: null },
   ]
   if (feedback.length === 0) return steps
 
@@ -131,7 +131,7 @@ function strengthOf(feedback: Feedback[], stats: FeedbackStats, self: readonly s
     counted.length === 1
       ? 'A single reviewer carries all the weight.'
       : `${counted.length} reviewers carry weight, worth ${fmt(independent)} equally weighted voices.`,
-    `${fmt(scores.effectiveCount)} full votes after discounts, out of ${plural(scores.nValid, 'counted review')}.`,
+    `${fmt(scores.effectiveCount)} full votes after discounts, out of ${scores.nValid} counted feedback.`,
   ]
   if (top && topShare >= DOMINANT_SHARE) {
     reasons.push(`The largest reviewer, ${shortAddress(top.client)}, holds ${Math.round(topShare * 100)}% of the weight.`)
@@ -164,7 +164,7 @@ export function buildTrustReport(feedback: Feedback[], stats: FeedbackStats, sel
   const raw = scores.raw
   let headline: string
   if (feedback.length === 0) headline = 'No feedback yet.'
-  else if (trusted === null) headline = `None of the ${plural(feedback.length, 'review')} carries weight: ${TIER_WORDS.none}.`
+  else if (trusted === null) headline = `None of the ${plural(feedback.length, 'feedback item')} carries weight: ${TIER_WORDS.none}.`
   else {
     const gap = raw === null ? 0 : raw - trusted
     const versus = Math.abs(gap) < 0.05 ? 'same as the raw average' : `raw average ${fmt(raw!)}`

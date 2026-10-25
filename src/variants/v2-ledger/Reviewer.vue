@@ -36,7 +36,7 @@ const charge = computed(() => {
         <article class="l-cols">
           <p>
             Over {{ days.days }} active day{{ days.days === 1 ? '' : 's' }}<template v-if="profile.first && profile.last"> between {{ formatDate(profile.first) }} and {{ formatDate(profile.last) }}</template>,
-            this address left {{ profile.rows }} reviews on {{ profile.agents }} agent{{ profile.agents === 1 ? '' : 's' }}, averaging {{ formatNumber(profile.average) }}.
+            this address left {{ profile.rows }} feedback on {{ profile.agents }} agent{{ profile.agents === 1 ? '' : 's' }}, averaging {{ formatNumber(profile.average) }}.
             <template v-if="profile.mode">Its favourite number is {{ formatScore(profile.mode.value) }}, given {{ formatPercent(profile.mode.share) }} of the time.</template>
             On its busiest day it wrote {{ profile.peakPerDay }}; its longest run lasted {{ days.streak }} day{{ days.streak === 1 ? '' : 's' }}.
             Its attention is {{ formatPercent(spread) }} evenly spread across the agents it rates.

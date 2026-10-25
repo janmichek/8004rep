@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { BookOpen, Gauge, GitCompareArrows, IdCard, MessageSquare, Users } from '@lucide/vue'
 import { computed } from 'vue'
 import type { ChainInfo } from '../../chains'
 import { computeFeedbackStats } from '../../data/feedbackStats'
@@ -35,11 +36,12 @@ const rep = computed(() => buildReputationReport(props.agent.feedback, { self: s
 const scan = useAsync(() => fetchScanScore(props.chain.chainId, props.agent.tokenId), () => [props.chain.chainId, props.agent.tokenId])
 
 const CONFIDENCE_TONE: Record<ReputationReport['confidence'], Tile['tone']> = { low: 'warn', medium: undefined, high: 'good' }
-const LEVEL: Record<string, { word: string; tone: Tile['tone'] }> = {
-  high: { word: 'high risk', tone: 'bad' },
-  warn: { word: 'needs a look', tone: 'warn' },
-  info: { word: 'notes only', tone: undefined },
-  clean: { word: 'no findings', tone: 'good' },
+const CONFIDENCE_STEPS: Record<ReputationReport['confidence'], number> = { low: 1, medium: 2, high: 3 }
+const LEVEL: Record<string, { word: string; tone: Tile['tone']; severity: number }> = {
+  high: { word: 'high risk', tone: 'bad', severity: 3 },
+  warn: { word: 'needs a look', tone: 'warn', severity: 2 },
+  info: { word: 'notes only', tone: undefined, severity: 1 },
+  clean: { word: 'no findings', tone: 'good', severity: 0 },
 }
 
 const tiles = computed<Tile[]>(() => {
@@ -47,6 +49,7 @@ const tiles = computed<Tile[]>(() => {
   const s = stats.value
   const onchain = props.agent.reputation
   const scanScore = scan.data.value
+  const rawValue = onchain?.average ?? r.raw
   const interval = r.interval ? `80% interval ${formatNumber(r.interval[0])}–${formatNumber(r.interval[1])}` : 'too few rating units for an interval'
   return [
     {
@@ -58,6 +61,7 @@ const tiles = computed<Tile[]>(() => {
         : `One vote per wallet, ratings only, neutral prior of ${r.params.alpha0} wallets. ${r.confidence} confidence.`,
       tone: r.unrated ? 'quiet' : 'main',
       word: r.unrated,
+      meter: r.unrated ? undefined : { kind: 'gauge', value: r.score, band: r.interval },
     },
     {
       label: 'Confidence',
@@ -66,6 +70,7 @@ const tiles = computed<Tile[]>(() => {
       title: `${formatNumber(r.concentration.neff)} effective voices; the largest wallet holds ${formatPercent(r.concentration.top1)} of the weight.`,
       tone: CONFIDENCE_TONE[r.confidence],
       word: true,
+      meter: { kind: 'steps', filled: CONFIDENCE_STEPS[r.confidence], total: 3 },
     },
     {
       label: 'Risk',
@@ -74,12 +79,14 @@ const tiles = computed<Tile[]>(() => {
       title: 'Worst level among the signals on the Overview tab',
       tone: LEVEL[s.level].tone,
       word: true,
+      meter: { kind: 'severity', level: LEVEL[s.level].severity, max: 3 },
     },
     {
       label: 'Raw on-chain',
-      value: formatNumber(onchain?.average ?? r.raw),
+      value: formatNumber(rawValue),
       hint: `n = ${onchain?.count ?? s.coverage.total}${r.inflation !== null && r.inflation > 0.5 ? ` · +${formatNumber(r.inflation)} vs robust` : ''}`,
       title: "Plain mean of non-revoked rows, as the registry's getSummary reports it. It mixes ratings with telemetry and quantities, so it is a baseline, not a quality score.",
+      meter: rawValue === null || rawValue === undefined ? undefined : { kind: 'gauge', value: rawValue },
     },
     {
       label: '8004scan',
@@ -91,9 +98,10 @@ const tiles = computed<Tile[]>(() => {
           : scan.loading.value
             ? ''
             : 'not scored there',
-      title: "8004scan's overall score, read live from its public API — see the Compare tab",
+      title: "8004scan's overall score, read live from its public API — see the vs 8004scan tab",
       tone: 'quiet',
       loading: scan.loading.value,
+      meter: scanScore ? { kind: 'gauge', value: scanScore.total } : undefined,
     },
   ]
 })
@@ -117,64 +125,78 @@ const rowsRead = computed(() => {
 })
 
 const flagged = computed(() => stats.value.rows.filter((r) => !r.flags.includes('revoked') && r.weight < 1).length)
+
 const tabs = computed<Tab[]>(() => [
-  { id: 'overview', label: 'Overview' },
-  { id: 'feedback', label: 'Feedback', count: props.agent.feedback.length },
+  { id: 'overview', label: 'Overview', icon: Gauge },
+  { id: 'feedback', label: 'Feedback', icon: MessageSquare, count: props.agent.feedback.length },
   {
     id: 'reviewers',
     label: 'Reviewers',
+    icon: Users,
     count: stats.value.reviewers.length,
     ...(stats.value.signals.some((s) => s.code === 'concentration' || s.code === 'self') ? { tone: 'warn' as const } : {}),
   },
-  { id: 'methods', label: 'Methods' },
-  { id: 'compare', label: 'vs 8004scan' },
+  { id: 'identity', label: 'Identity', icon: IdCard },
+  { id: 'methods', label: 'Methods', icon: BookOpen },
+  { id: 'compare', label: 'vs 8004scan', icon: GitCompareArrows },
 ])
 </script>
 
 <template>
-  <section class="reputation" aria-labelledby="reputation-title">
-    <h2 id="reputation-title">
-      Reputation
-      <small v-if="agent.feedbackSince">feedback dated back to {{ formatDate(agent.feedbackSince) }} (log scan window)</small>
-    </h2>
+  <TabBar :tabs="tabs" label="Agent views">
+    <template #overview>
+      <slot name="overview-top" />
 
-    <template v-if="agent.feedback.length === 0">
-      <p class="muted">No feedback yet. Nothing to score.</p>
-    </template>
-    <template v-else>
-      <StatTiles :tiles="tiles" />
-      <p class="headline">
-        {{ headline }}
-        <span v-if="flagged" class="muted">{{ flagged }} of {{ agent.feedback.length }} rows count less than a full vote.</span>
-        <span v-if="rowsRead" class="muted">{{ rowsRead }}</span>
-      </p>
+      <template v-if="agent.feedback.length === 0">
+        <p class="muted">No feedback yet. Nothing to score.</p>
+      </template>
+      <template v-else>
+        <p v-if="agent.feedbackSince" class="muted note">
+          Feedback dated back to {{ formatDate(agent.feedbackSince) }} (log scan window).
+        </p>
+        <StatTiles :tiles="tiles" />
+        <p class="headline">
+          {{ headline }}
+          <span v-if="flagged" class="muted">{{ flagged }} of {{ agent.feedback.length }} rows count less than a full vote.</span>
+          <span v-if="rowsRead" class="muted">{{ rowsRead }}</span>
+        </p>
 
-      <TabBar :tabs="tabs" label="Reputation views">
-        <template #overview>
-          <OverviewTab :feedback="agent.feedback" :stats="stats" :report="report" :rep="rep" />
-        </template>
-        <template #feedback>
-          <FeedbackTab :agent="agent" :chain="chain" :stats="stats" />
-        </template>
-        <template #reviewers>
-          <ReviewersTab :agent="agent" :chain="chain" :stats="stats" :self="self" />
-        </template>
-        <template #methods>
-          <MethodsTab :rep="rep" :feedback="agent.feedback" />
-        </template>
-        <template #compare>
-          <CompareTab
-            :chain="chain"
-            :token-id="agent.tokenId"
-            :feedback="agent.feedback"
-            :raw="report.raw"
-            :trusted="rep.score"
-            :scan="scan.data.value"
-            :loading="scan.loading.value"
-            :error="scan.error.value"
-          />
-        </template>
-      </TabBar>
+        <OverviewTab :feedback="agent.feedback" :stats="stats" :report="report" :rep="rep" />
+      </template>
     </template>
-  </section>
+
+    <template #feedback>
+      <p v-if="agent.feedback.length === 0" class="muted">No feedback yet.</p>
+      <FeedbackTab v-else :agent="agent" :chain="chain" :stats="stats" />
+    </template>
+
+    <template #reviewers>
+      <p v-if="agent.feedback.length === 0" class="muted">No reviewers yet.</p>
+      <ReviewersTab v-else :agent="agent" :chain="chain" :stats="stats" :self="self" />
+    </template>
+
+    <template #identity>
+      <slot name="identity" />
+    </template>
+
+    <template #methods>
+      <p v-if="agent.feedback.length === 0" class="muted">No feedback yet. Nothing to score.</p>
+      <MethodsTab v-else :rep="rep" :feedback="agent.feedback" />
+    </template>
+
+    <template #compare>
+      <p v-if="agent.feedback.length === 0" class="muted">No feedback yet. Nothing to compare.</p>
+      <CompareTab
+        v-else
+        :chain="chain"
+        :token-id="agent.tokenId"
+        :feedback="agent.feedback"
+        :raw="report.raw"
+        :trusted="rep.score"
+        :scan="scan.data.value"
+        :loading="scan.loading.value"
+        :error="scan.error.value"
+      />
+    </template>
+  </TabBar>
 </template>

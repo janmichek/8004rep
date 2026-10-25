@@ -16,10 +16,10 @@ export type RowFlag = WeightReason | 'outlier' | 'out-of-range' | 'unlisted-endp
 export const FLAG_INFO: Record<RowFlag, { label: string; rule: string }> = {
   revoked: { label: 'revoked', rule: 'Revoked by its author; counts nowhere.' },
   self: { label: 'self', rule: 'Client is the agent owner or agent wallet; weight 0.' },
-  duplicate: { label: 'duplicate', rule: 'Same (value, tag1, tag2, endpoint) as an earlier review by the same client; weight 0.' },
-  burst: { label: 'burst', rule: 'More than 2 reviews from this client within 24h; weight × exp(−(N−2)).' },
-  monotonous: { label: 'monotonous', rule: 'Client left 3+ reviews, all with the same value; weight × 0.4.' },
-  hyperactive: { label: 'hyperactive', rule: 'Client left more than 5 reviews; weight × 0.7.' },
+  duplicate: { label: 'duplicate', rule: 'Same (value, tag1, tag2, endpoint) as an earlier feedback by the same client; weight 0.' },
+  burst: { label: 'burst', rule: 'More than 2 feedback from this client within 24h; weight × exp(−(N−2)).' },
+  monotonous: { label: 'monotonous', rule: 'Client left 3+ feedback, all with the same value; weight × 0.4.' },
+  hyperactive: { label: 'hyperactive', rule: 'Client left more than 5 feedback; weight × 0.7.' },
   outlier: { label: 'outlier', rule: `Robust z = (value − median) / (1.4826 · MAD) beyond ±${OUTLIER_Z}.` },
   'out-of-range': { label: 'off-scale', rule: 'Value outside the conventional 0–100 scale.' },
   'unlisted-endpoint': { label: 'unlisted endpoint', rule: 'Endpoint is not one the registration file advertises.' },
@@ -191,7 +191,7 @@ export function computeFeedbackStats(feedback: Feedback[], context: StatsContext
 
   const selfRows = count('self')
   if (selfRows > 0) {
-    signals.push({ level: 'high', code: 'self', text: `${plural(selfRows, 'review')} from the agent's own owner or wallet` })
+    signals.push({ level: 'high', code: 'self', text: `${selfRows} feedback from the agent's own owner or wallet` })
   }
 
   const top = [...reviewers].sort((a, b) => b.share - a.share)[0]
@@ -199,7 +199,7 @@ export function computeFeedbackStats(feedback: Feedback[], context: StatsContext
     signals.push({
       level: top.share >= 0.8 ? 'high' : 'warn',
       code: 'concentration',
-      text: `${shortAddress(top.client)} wrote ${Math.round(top.share * valid.length)} of ${valid.length} counted reviews (${Math.round(top.share * 100)}%)`,
+      text: `${shortAddress(top.client)} wrote ${Math.round(top.share * valid.length)} of ${valid.length} counted feedback (${Math.round(top.share * 100)}%)`,
     })
   }
 
@@ -219,7 +219,7 @@ export function computeFeedbackStats(feedback: Feedback[], context: StatsContext
     signals.push({
       level: 'warn',
       code: 'discounted',
-      text: `${discounted} of ${valid.length} counted reviews weigh less than a full vote (see Weight on the Feedback tab)`,
+      text: `${discounted} of ${valid.length} counted feedback weigh less than a full vote (see Weight on the Feedback tab)`,
     })
   }
 
@@ -231,13 +231,13 @@ export function computeFeedbackStats(feedback: Feedback[], context: StatsContext
     signals.push({
       level: 'warn',
       code: 'surge',
-      text: `${lastWeek} reviews in the last 7 days vs ${formatScore(weeklyBefore)} per week over the 4 weeks before`,
+      text: `${lastWeek} feedback in the last 7 days vs ${formatScore(weeklyBefore)} per week over the 4 weeks before`,
     })
   }
 
   const revoked = feedback.length - valid.length
   if (revoked >= 2 && revoked / feedback.length >= 0.2) {
-    signals.push({ level: 'warn', code: 'revocations', text: `${revoked} of ${feedback.length} reviews were revoked` })
+    signals.push({ level: 'warn', code: 'revocations', text: `${revoked} of ${feedback.length} feedback were revoked` })
   }
 
   const recent = aged(0, 30 * DAY).map((f) => f.value)
@@ -265,14 +265,14 @@ export function computeFeedbackStats(feedback: Feedback[], context: StatsContext
     signals.push({
       level: 'info',
       code: 'unlisted-endpoint',
-      text: `${plural(unlisted, 'review')} name an endpoint the registration file does not advertise`,
+      text: `${plural(unlisted, 'feedback item')} name an endpoint the registration file does not advertise`,
     })
   }
   if (valid.length > 0 && dated.length < valid.length) {
     signals.push({
       level: 'info',
       code: 'undated',
-      text: `${valid.length - dated.length} of ${valid.length} counted reviews have no date; burst, surge and trend checks skip them`,
+      text: `${valid.length - dated.length} of ${valid.length} counted feedback have no date; burst, surge and trend checks skip them`,
     })
   }
 

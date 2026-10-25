@@ -55,7 +55,7 @@ function detailRoute(index: number) {
 
 <template>
   <div class="toolbar">
-    <Segmented v-model="filter" label="Filter reviews" :segments="segments" />
+    <Segmented v-model="filter" label="Filter feedback" :segments="segments" />
     <label class="sort">
       Sort
       <SelectMenu v-model="sort" compact label="Sort feedback" :options="SORTS" />

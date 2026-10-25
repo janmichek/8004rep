@@ -57,6 +57,7 @@ const { data: resolved } = useAsync(async () => (chain.value ? sourceFor(chain.v
       <nav class="nav">
         <RouterLink :to="{ name: 'agents', params: { slug: activeChain.slug } }">Agents</RouterLink>
         <RouterLink :to="{ name: 'network', params: { slug: activeChain.slug } }">Network health</RouterLink>
+        <RouterLink :to="{ name: 'about' }">About</RouterLink>
       </nav>
       <div class="topbar-right">
         <Segmented
@@ -87,6 +88,7 @@ const { data: resolved } = useAsync(async () => (chain.value ? sourceFor(chain.v
 
     <footer>
       Read-only: no wallet, no backend. Data comes straight from the ERC-8004 registries and public subgraphs.
+      <RouterLink :to="{ name: 'about' }">How the numbers work</RouterLink>
     </footer>
   </TooltipProvider>
 </template>

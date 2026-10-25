@@ -14,7 +14,7 @@ const peak = computed(() => {
 </script>
 
 <template>
-  <div class="b-heat" role="img" :aria-label="`Reviews by weekday and hour, UTC. Peak ${DAYS[peak.d]} ${peak.h}:00`">
+  <div class="b-heat" role="img" :aria-label="`Feedback by weekday and hour, UTC. Peak ${DAYS[peak.d]} ${peak.h}:00`">
     <template v-for="(row, d) in grid" :key="d">
       <b style="font-weight: 600">{{ DAYS[d] }}</b>
       <span v-for="(n, h) in row" :key="h" :title="`${DAYS[d]} ${h}:00 UTC · ${n}`" :style="{ background: n ? `rgba(109,93,252,${0.15 + 0.85 * (n / max)})` : '#f0f1f5' }" />

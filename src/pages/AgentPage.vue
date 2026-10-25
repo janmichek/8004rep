@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import BookmarkButton from '../bookmarks/BookmarkButton.vue'
 import { addressExplorerUrl, agentScanUrl, findChainBySlug } from '../chains'
+import AddressIdenticon from '../components/AddressIdenticon.vue'
 import AgentAvatar from '../components/AgentAvatar.vue'
 import ChainIcon from '../components/ChainIcon.vue'
 import ChainName from '../components/ChainName.vue'
@@ -48,11 +50,6 @@ const rawJson = computed(() => (file.value ? JSON.stringify(file.value.raw, null
 </script>
 
 <template>
-  <p class="crumbs">
-    <RouterLink :to="{ name: 'agents', params: { slug: chain.slug } }">
-      ← <ChainName :chain-id="chain.chainId" :name="chain.name" /> agents
-    </RouterLink>
-  </p>
 
   <section v-if="error" class="state">
     <p>Could not load agent: {{ error }}</p>
@@ -67,17 +64,8 @@ const rawJson = computed(() => (file.value ? JSON.stringify(file.value.raw, null
         <Skeleton width="22em" height="0.8em" />
       </div>
     </div>
-    <div class="skeleton-stack description">
-      <Skeleton block width="92%" />
-      <Skeleton block width="68%" />
-    </div>
-    <div class="facts">
-      <section v-for="panel in 2" :key="panel" class="panel">
-        <Skeleton width="6em" height="0.9em" />
-        <div class="skeleton-stack">
-          <Skeleton v-for="line in 4" :key="line" block height="1.15em" :width="line % 2 ? '100%' : '84%'" />
-        </div>
-      </section>
+    <div class="tabbar" aria-hidden="true">
+      <Skeleton v-for="n in 4" :key="n" width="6.5em" height="1.35em" />
     </div>
   </section>
   <section v-else-if="agent === null" class="state">
@@ -105,95 +93,102 @@ const rawJson = computed(() => (file.value ? JSON.stringify(file.value.raw, null
             <span v-if="file?.x402Support" class="chip accent">x402</span>
             <span v-for="trust in file?.supportedTrust ?? []" :key="trust" class="chip">{{ trust }}</span>
           </template>
-          <a :href="agentScanUrl(chain, agent.tokenId)" target="_blank" rel="noopener noreferrer">View on 8004scan ↗</a>
+          <BookmarkButton :chain-id="chain.chainId" :token-id="agent.tokenId" :testnet="chain.testnet" />
+          <a :href="agentScanUrl(chain, agent.tokenId)" target="_blank" rel="noopener noreferrer">8004scan ↗</a>
         </p>
       </div>
     </div>
 
-    <div v-if="file === undefined" class="skeleton-stack description" aria-busy="true">
-      <span class="sr-only">Loading registration file</span>
-      <Skeleton block width="88%" />
-      <Skeleton block width="64%" />
-    </div>
-    <p v-else-if="file?.description" class="description">{{ file.description }}</p>
-    <p v-else-if="file === null" class="notice">
-      {{
-        agent.agentURI
-          ? 'The registration file could not be loaded (unreachable host, blocked by CORS, or not JSON). On-chain data is shown below.'
-          : 'This agent has no metadata URI set. On-chain data is shown below.'
-      }}
-    </p>
-
-    <div class="facts">
-      <section class="panel">
-        <h3>Identity</h3>
-        <dl>
-          <dt>Owner</dt>
-          <dd>
-            <RouterLink
-              v-if="agent.owner"
-              :to="{ name: 'owner', params: { slug: chain.slug, address: agent.owner } }"
-              class="mono"
-              :title="agent.owner"
-            >
-              {{ shortAddress(agent.owner) }}
-            </RouterLink>
-            <span v-else class="muted">—</span>
-          </dd>
-          <dt>Agent wallet</dt>
-          <dd>
-            <a v-if="agent.agentWallet" :href="addressExplorerUrl(chain, agent.agentWallet)" target="_blank" rel="noopener noreferrer" class="mono" :title="agent.agentWallet">
-              {{ shortAddress(agent.agentWallet) }}
-            </a>
-            <span v-else class="muted">not set</span>
-            <small v-if="agent.agentWallet && agent.owner && agent.agentWallet.toLowerCase() === agent.owner.toLowerCase()" class="muted"> same as owner</small>
-          </dd>
-          <dt>Agent URI</dt>
-          <dd>
-            <a v-if="uriLink" :href="uriLink" target="_blank" rel="noopener noreferrer" class="mono ellipsis" :title="agent.agentURI ?? ''">{{ agent.agentURI }}</a>
-            <span v-else-if="agent.agentURI" class="mono ellipsis" :title="agent.agentURI">{{ agent.agentURI }}</span>
-            <span v-else class="muted">not set</span>
-          </dd>
-          <dt>Registry</dt>
-          <dd>
-            <a :href="addressExplorerUrl(chain, chain.identity)" target="_blank" rel="noopener noreferrer" class="mono" :title="chain.identity">
-              {{ shortAddress(chain.identity) }}
-            </a>
-          </dd>
-          <template v-if="agent.createdAt">
-            <dt>Registered</dt>
-            <dd>{{ formatDate(agent.createdAt) }}</dd>
-          </template>
-        </dl>
-      </section>
-
-      <section class="panel">
-        <h3>Services</h3>
-        <div v-if="file === undefined" class="skeleton-stack" aria-busy="true">
+    <ReputationPanel :agent="agent" :chain="chain" :file="file">
+      <template #overview-top>
+        <div v-if="file === undefined" class="skeleton-stack description" aria-busy="true">
           <span class="sr-only">Loading registration file</span>
-          <Skeleton block height="1.15em" />
-          <Skeleton block height="1.15em" width="76%" />
+          <Skeleton block width="88%" />
+          <Skeleton block width="64%" />
         </div>
-        <p v-else-if="!file?.services?.length" class="muted">No services advertised.</p>
-        <dl v-else>
-          <template v-for="service in file.services" :key="service.name + service.endpoint">
-            <dt><span class="chip">{{ service.name }}</span></dt>
-            <dd>
-              <a v-if="toDisplayUrl(service.endpoint)" :href="toDisplayUrl(service.endpoint)" target="_blank" rel="noopener noreferrer" class="ellipsis" :title="service.endpoint">
-                {{ service.endpoint }}
-              </a>
-              <span v-else class="ellipsis" :title="service.endpoint">{{ service.endpoint }}</span>
-              <small v-if="service.version" class="muted"> v{{ service.version }}</small>
-            </dd>
-          </template>
-        </dl>
-      </section>
-    </div>
+        <p v-else-if="file?.description" class="description">{{ file.description }}</p>
+        <p v-else-if="file === null" class="notice">
+          {{
+            agent.agentURI
+              ? 'The registration file could not be loaded (unreachable host, blocked by CORS, or not JSON). On-chain data is on the Identity tab.'
+              : 'This agent has no metadata URI set. On-chain data is on the Identity tab.'
+          }}
+        </p>
+      </template>
 
-    <ReputationPanel :agent="agent" :chain="chain" :file="file" />
+      <template #identity>
+        <div class="facts">
+          <section class="panel">
+            <h3>Identity</h3>
+            <dl>
+              <dt>Owner</dt>
+              <dd>
+                <RouterLink
+                  v-if="agent.owner"
+                  :to="{ name: 'owner', params: { slug: chain.slug, address: agent.owner } }"
+                  class="address-mark mono"
+                  :title="agent.owner"
+                >
+                  <AddressIdenticon :address="agent.owner" />
+                  {{ shortAddress(agent.owner) }}
+                </RouterLink>
+                <span v-else class="muted">—</span>
+              </dd>
+              <dt>Agent wallet</dt>
+              <dd>
+                <a v-if="agent.agentWallet" :href="addressExplorerUrl(chain, agent.agentWallet)" target="_blank" rel="noopener noreferrer" class="address-mark mono" :title="agent.agentWallet">
+                  <AddressIdenticon :address="agent.agentWallet" />
+                  {{ shortAddress(agent.agentWallet) }}
+                </a>
+                <span v-else class="muted">not set</span>
+                <small v-if="agent.agentWallet && agent.owner && agent.agentWallet.toLowerCase() === agent.owner.toLowerCase()" class="muted"> same as owner</small>
+              </dd>
+              <dt>Agent URI</dt>
+              <dd>
+                <a v-if="uriLink" :href="uriLink" target="_blank" rel="noopener noreferrer" class="mono ellipsis" :title="agent.agentURI ?? ''">{{ agent.agentURI }}</a>
+                <span v-else-if="agent.agentURI" class="mono ellipsis" :title="agent.agentURI">{{ agent.agentURI }}</span>
+                <span v-else class="muted">not set</span>
+              </dd>
+              <dt>Registry</dt>
+              <dd>
+                <a :href="addressExplorerUrl(chain, chain.identity)" target="_blank" rel="noopener noreferrer" class="mono" :title="chain.identity">
+                  {{ shortAddress(chain.identity) }}
+                </a>
+              </dd>
+              <template v-if="agent.createdAt">
+                <dt>Registered</dt>
+                <dd>{{ formatDate(agent.createdAt) }}</dd>
+              </template>
+            </dl>
+          </section>
 
-    <Disclosure v-if="rawJson" label="Raw registration file">
-      <pre>{{ rawJson }}</pre>
-    </Disclosure>
+          <section class="panel">
+            <h3>Services</h3>
+            <div v-if="file === undefined" class="skeleton-stack" aria-busy="true">
+              <span class="sr-only">Loading registration file</span>
+              <Skeleton block height="1.15em" />
+              <Skeleton block height="1.15em" width="76%" />
+            </div>
+            <p v-else-if="!file?.services?.length" class="muted">No services advertised.</p>
+            <dl v-else>
+              <template v-for="service in file.services" :key="service.name + service.endpoint">
+                <dt><span class="chip">{{ service.name }}</span></dt>
+                <dd>
+                  <a v-if="toDisplayUrl(service.endpoint)" :href="toDisplayUrl(service.endpoint)" target="_blank" rel="noopener noreferrer" class="ellipsis" :title="service.endpoint">
+                    {{ service.endpoint }}
+                  </a>
+                  <span v-else class="ellipsis" :title="service.endpoint">{{ service.endpoint }}</span>
+                  <small v-if="service.version" class="muted"> v{{ service.version }}</small>
+                </dd>
+              </template>
+            </dl>
+          </section>
+        </div>
+
+        <Disclosure v-if="rawJson" label="Raw registration file">
+          <pre>{{ rawJson }}</pre>
+        </Disclosure>
+      </template>
+    </ReputationPanel>
   </template>
 </template>

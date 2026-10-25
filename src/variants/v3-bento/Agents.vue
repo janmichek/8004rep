@@ -43,7 +43,7 @@ const summary = computed(() => {
       </form>
     </section>
     <section class="b-card s2"><h3>Rated</h3><p class="b-mid">{{ summary ? `${summary.rated}/${data?.items.length}` : '…' }}</p><p class="soft">on this page</p></section>
-    <section class="b-card s2"><h3>Reviews</h3><p class="b-mid">{{ summary?.reviews ?? '…' }}</p><p class="soft">on this page</p></section>
+    <section class="b-card s2"><h3>Feedback</h3><p class="b-mid">{{ summary?.reviews ?? '…' }}</p><p class="soft">on this page</p></section>
     <section class="b-card s2 b-dark"><h3>Mean score</h3><p class="b-mid">{{ formatNumber(summary?.avg) }}</p><p class="soft">{{ summary?.active ?? 0 }} active · {{ summary?.filed ?? 0 }} with a file</p></section>
   </div>
   <p v-if="searchIgnored" class="b-notice">{{ chain.name }} is read over RPC — only token IDs can be searched. Showing all agents.</p>
@@ -65,7 +65,7 @@ const summary = computed(() => {
         <div>
           <span v-if="files.get(a.tokenId)?.active" class="b-pill good">active</span>
           <span v-if="files.get(a.tokenId)?.x402Support" class="b-pill">x402</span>
-          <span class="b-pill" style="background: #f0f1f5; color: var(--soft)">{{ scores?.get(a.tokenId)?.count ?? '…' }} reviews</span>
+          <span class="b-pill" style="background: #f0f1f5; color: var(--soft)">{{ scores?.get(a.tokenId)?.count ?? '…' }} feedback</span>
         </div>
       </RouterLink>
     </div>

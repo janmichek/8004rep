@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>8004rep — Frontend → Backend Architecture</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: #020617;
+      min-height: 100vh;
+      padding: 2rem;
+      color: white;
+    }
+    .container { max-width: 1280px; margin: 0 auto; }
+    .header { margin-bottom: 2rem; }
+    .header-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .pulse-dot {
+      width: 12px;
+      height: 12px;
+      background: #22d3ee;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+    }
+    .subtitle {
+      color: #94a3b8;
+      font-size: 0.875rem;
+      margin-left: 1.75rem;
+    }
+    .diagram-container {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 1rem;
+      border: 1px solid #1e293b;
+      padding: 1.5rem;
+      overflow-x: auto;
+    }
+    svg {
+      width: 100%;
+      min-width: 1100px;
+      display: block;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    .card {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 0.75rem;
+      border: 1px solid #1e293b;
+      padding: 1.25rem;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .card-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; }
+    .card-dot.amber { background: #fbbf24; }
+    .card-dot.orange { background: #fb923c; }
+    .card-dot.rose { background: #fb7185; }
+    .card-dot.slate { background: #94a3b8; }
+    .card h3 {
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+    .card ul {
+      list-style: none;
+      color: #94a3b8;
+      font-size: 0.75rem;
+    }
+    .card li { margin-bottom: 0.375rem; }
+    .footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      color: #475569;
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-row">
+        <div class="pulse-dot"></div>
+        <h1>8004rep Architecture</h1>
+      </div>
+      <p class="subtitle">Frontend → Backend expansion · ERC-8004 agent reputation explorer</p>
+    </div>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 1180 920">
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+          </marker>
+          <marker id="arrow-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" />
+          </marker>
+          <marker id="arrow-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#34d399" />
+          </marker>
+          <marker id="arrow-violet" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa" />
+          </marker>
+          <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fb923c" />
+          </marker>
+          <marker id="arrow-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24" />
+          </marker>
+          <marker id="arrow-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fb7185" />
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- ========== CONNECTIONS (drawn first, behind boxes) ========== -->
+
+        <!-- Users → CDN / FE -->
+        <line x1="120" y1="95" x2="200" y2="95" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="155" y="88" fill="#64748b" font-size="7" text-anchor="middle">HTTPS</text>
+
+        <!-- Frontend → API -->
+        <path d="M 355 140 L 355 200 L 480 200 L 480 255" fill="none" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrow-cyan)"/>
+        <text x="400" y="192" fill="#22d3ee" font-size="7">REST / tRPC</text>
+
+        <!-- Frontend → CDN assets -->
+        <line x1="280" y1="140" x2="280" y2="255" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrow-cyan)"/>
+
+        <!-- API → Auth -->
+        <line x1="420" y1="315" x2="300" y2="315" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow-rose)"/>
+        <text x="360" y="308" fill="#fb7185" font-size="7" text-anchor="middle">JWT</text>
+
+        <!-- API → Redis -->
+        <line x1="560" y1="290" x2="640" y2="290" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
+
+        <!-- API → Postgres -->
+        <path d="M 510 375 L 510 420 L 700 420 L 700 465" fill="none" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow-violet)"/>
+        <text x="600" y="412" fill="#a78bfa" font-size="7">Drizzle / Prisma</text>
+
+        <!-- API → Queue -->
+        <line x1="560" y1="350" x2="640" y2="350" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
+
+        <!-- Queue → Workers -->
+        <line x1="760" y1="350" x2="820" y2="350" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
+        <text x="790" y="342" fill="#fb923c" font-size="7" text-anchor="middle">jobs</text>
+
+        <!-- Workers → Postgres -->
+        <path d="M 880 410 L 880 490 L 780 490" fill="none" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow-violet)"/>
+        <text x="900" y="460" fill="#a78bfa" font-size="7">upsert</text>
+
+        <!-- Workers → Redis -->
+        <path d="M 880 310 L 880 260 L 760 260" fill="none" stroke="#fb923c" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrow-orange)"/>
+
+        <!-- Workers → RPC -->
+        <line x1="940" y1="350" x2="1020" y2="350" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="980" y="342" fill="#94a3b8" font-size="7" text-anchor="middle">viem</text>
+
+        <!-- RPC → Chain -->
+        <line x1="1080" y1="410" x2="1080" y2="480" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+
+        <!-- Indexer alt path → Workers -->
+        <path d="M 1080 580 L 980 580 L 980 410" fill="none" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrow-amber)"/>
+        <text x="1005" y="560" fill="#fbbf24" font-size="7">events</text>
+
+        <!-- CI → Deploy FE -->
+        <path d="M 90 620 L 90 200 L 200 200" fill="none" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow-amber)"/>
+
+        <!-- CI → Deploy BE -->
+        <path d="M 130 700 L 200 700 L 200 450 L 420 450 L 420 375" fill="none" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow-amber)"/>
+
+        <!-- ========== LAYER BOUNDARIES ========== -->
+
+        <!-- Client / Edge -->
+        <rect x="200" y="30" width="340" height="160" rx="12" fill="rgba(8, 51, 68, 0.12)" stroke="#22d3ee" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="212" y="48" fill="#22d3ee" font-size="10" font-weight="600">CLIENT / EDGE</text>
+
+        <!-- Backend platform -->
+        <rect x="200" y="230" width="720" height="360" rx="12" fill="rgba(6, 78, 59, 0.08)" stroke="#34d399" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="212" y="248" fill="#34d399" font-size="10" font-weight="600">BACKEND PLATFORM · Node.js 22 · TypeScript · Docker</text>
+
+        <!-- Data layer label area -->
+        <rect x="640" y="465" width="140" height="100" rx="8" fill="transparent" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="648" y="478" fill="#a78bfa" font-size="8">data</text>
+
+        <!-- External chain -->
+        <rect x="960" y="230" width="190" height="400" rx="12" fill="rgba(30, 41, 59, 0.25)" stroke="#94a3b8" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="972" y="248" fill="#94a3b8" font-size="10" font-weight="600">EXTERNAL / CHAIN</text>
+
+        <!-- Ops -->
+        <rect x="30" y="640" width="280" height="160" rx="12" fill="rgba(120, 53, 15, 0.12)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="42" y="658" fill="#fbbf24" font-size="10" font-weight="600">CI / CD &amp; OPS</text>
+
+        <!-- ========== COMPONENTS ========== -->
+
+        <!-- Users -->
+        <rect x="30" y="70" width="90" height="50" rx="6" fill="#0f172a"/>
+        <rect x="30" y="70" width="90" height="50" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="75" y="90" fill="white" font-size="11" font-weight="600" text-anchor="middle">Users</text>
+        <text x="75" y="106" fill="#94a3b8" font-size="8" text-anchor="middle">Browser</text>
+
+        <!-- Vue Frontend -->
+        <rect x="220" y="60" width="140" height="80" rx="6" fill="#0f172a"/>
+        <rect x="220" y="60" width="140" height="80" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="290" y="85" fill="white" font-size="12" font-weight="600" text-anchor="middle">Vue 3 SPA</text>
+        <text x="290" y="102" fill="#94a3b8" font-size="8" text-anchor="middle">Vite · vue-router</text>
+        <text x="290" y="116" fill="#94a3b8" font-size="8" text-anchor="middle">reka-ui · Lucide</text>
+        <text x="290" y="130" fill="#22d3ee" font-size="7" text-anchor="middle">EXISTS TODAY</text>
+
+        <!-- Static hosting / CDN -->
+        <rect x="380" y="70" width="130" height="60" rx="6" fill="#0f172a"/>
+        <rect x="380" y="70" width="130" height="60" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="445" y="95" fill="white" font-size="11" font-weight="600" text-anchor="middle">CDN / Hosting</text>
+        <text x="445" y="112" fill="#94a3b8" font-size="8" text-anchor="middle">GH Pages / CF</text>
+
+        <!-- Auth -->
+        <rect x="220" y="280" width="100" height="70" rx="6" fill="#0f172a"/>
+        <rect x="220" y="280" width="100" height="70" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="270" y="305" fill="white" font-size="11" font-weight="600" text-anchor="middle">Auth</text>
+        <text x="270" y="321" fill="#94a3b8" font-size="8" text-anchor="middle">JWT / session</text>
+        <text x="270" y="335" fill="#fb7185" font-size="7" text-anchor="middle">optional</text>
+
+        <!-- API Server -->
+        <rect x="420" y="270" width="140" height="105" rx="6" fill="#0f172a"/>
+        <rect x="420" y="270" width="140" height="105" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="490" y="295" fill="white" font-size="12" font-weight="600" text-anchor="middle">API Server</text>
+        <text x="490" y="312" fill="#94a3b8" font-size="8" text-anchor="middle">Hono or Fastify</text>
+        <text x="490" y="326" fill="#94a3b8" font-size="8" text-anchor="middle">OpenAPI / tRPC</text>
+        <text x="490" y="340" fill="#94a3b8" font-size="8" text-anchor="middle">agents · feedback</text>
+        <text x="490" y="354" fill="#94a3b8" font-size="8" text-anchor="middle">reputation metrics</text>
+        <text x="490" y="368" fill="#34d399" font-size="7" text-anchor="middle">NEW</text>
+
+        <!-- Redis -->
+        <rect x="640" y="255" width="120" height="55" rx="6" fill="#0f172a"/>
+        <rect x="640" y="255" width="120" height="55" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="700" y="278" fill="white" font-size="11" font-weight="600" text-anchor="middle">Redis</text>
+        <text x="700" y="294" fill="#94a3b8" font-size="8" text-anchor="middle">cache · rate limit</text>
+
+        <!-- BullMQ -->
+        <rect x="640" y="325" width="120" height="55" rx="6" fill="#0f172a"/>
+        <rect x="640" y="325" width="120" height="55" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="700" y="348" fill="white" font-size="11" font-weight="600" text-anchor="middle">BullMQ</text>
+        <text x="700" y="364" fill="#94a3b8" font-size="8" text-anchor="middle">job queue</text>
+
+        <!-- Workers -->
+        <rect x="820" y="290" width="120" height="120" rx="6" fill="#0f172a"/>
+        <rect x="820" y="290" width="120" height="120" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="880" y="315" fill="white" font-size="11" font-weight="600" text-anchor="middle">Workers</text>
+        <text x="880" y="332" fill="#94a3b8" font-size="8" text-anchor="middle">event sync</text>
+        <text x="880" y="346" fill="#94a3b8" font-size="8" text-anchor="middle">metric refresh</text>
+        <text x="880" y="360" fill="#94a3b8" font-size="8" text-anchor="middle">cron / backlog</text>
+        <text x="880" y="380" fill="#34d399" font-size="7" text-anchor="middle">viem on server</text>
+        <text x="880" y="396" fill="#34d399" font-size="7" text-anchor="middle">NEW</text>
+
+        <!-- Postgres -->
+        <rect x="650" y="485" width="120" height="70" rx="6" fill="#0f172a"/>
+        <rect x="650" y="485" width="120" height="70" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="710" y="510" fill="white" font-size="11" font-weight="600" text-anchor="middle">PostgreSQL</text>
+        <text x="710" y="526" fill="#94a3b8" font-size="8" text-anchor="middle">agents · reviews</text>
+        <text x="710" y="540" fill="#94a3b8" font-size="8" text-anchor="middle">aggregates</text>
+
+        <!-- RPC Provider -->
+        <rect x="990" y="290" width="140" height="120" rx="6" fill="#0f172a"/>
+        <rect x="990" y="290" width="140" height="120" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="1060" y="318" fill="white" font-size="11" font-weight="600" text-anchor="middle">RPC Provider</text>
+        <text x="1060" y="336" fill="#94a3b8" font-size="8" text-anchor="middle">Alchemy</text>
+        <text x="1060" y="350" fill="#94a3b8" font-size="8" text-anchor="middle">Infura</text>
+        <text x="1060" y="364" fill="#94a3b8" font-size="8" text-anchor="middle">QuickNode</text>
+        <text x="1060" y="386" fill="#64748b" font-size="7" text-anchor="middle">eth_getLogs · calls</text>
+
+        <!-- EVM Chain -->
+        <rect x="990" y="480" width="140" height="70" rx="6" fill="#0f172a"/>
+        <rect x="990" y="480" width="140" height="70" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="1060" y="505" fill="white" font-size="11" font-weight="600" text-anchor="middle">EVM Chain</text>
+        <text x="1060" y="522" fill="#94a3b8" font-size="8" text-anchor="middle">ERC-8004 contracts</text>
+        <text x="1060" y="536" fill="#94a3b8" font-size="8" text-anchor="middle">agents · feedback</text>
+
+        <!-- Optional Indexer -->
+        <rect x="990" y="580" width="140" height="70" rx="6" fill="#0f172a"/>
+        <rect x="990" y="580" width="140" height="70" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="1060" y="605" fill="white" font-size="11" font-weight="600" text-anchor="middle">Indexer (opt.)</text>
+        <text x="1060" y="622" fill="#94a3b8" font-size="8" text-anchor="middle">Ponder / The Graph</text>
+        <text x="1060" y="636" fill="#fbbf24" font-size="7" text-anchor="middle">or Envio</text>
+
+        <!-- GitHub Actions -->
+        <rect x="50" y="680" width="120" height="55" rx="6" fill="#0f172a"/>
+        <rect x="50" y="680" width="120" height="55" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="110" y="703" fill="white" font-size="11" font-weight="600" text-anchor="middle">GitHub Actions</text>
+        <text x="110" y="719" fill="#94a3b8" font-size="8" text-anchor="middle">build · deploy</text>
+
+        <!-- Hosting BE -->
+        <rect x="185" y="680" width="110" height="55" rx="6" fill="#0f172a"/>
+        <rect x="185" y="680" width="110" height="55" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="240" y="703" fill="white" font-size="11" font-weight="600" text-anchor="middle">BE Host</text>
+        <text x="240" y="719" fill="#94a3b8" font-size="8" text-anchor="middle">Fly / Railway</text>
+
+        <!-- Current FE note -->
+        <rect x="360" y="680" width="280" height="100" rx="6" fill="#0f172a"/>
+        <rect x="360" y="680" width="280" height="100" rx="6" fill="rgba(8, 51, 68, 0.25)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="500" y="705" fill="#22d3ee" font-size="10" font-weight="600" text-anchor="middle">CURRENT STATE</text>
+        <text x="500" y="725" fill="#94a3b8" font-size="8" text-anchor="middle">Read-only Vue explorer</text>
+        <text x="500" y="740" fill="#94a3b8" font-size="8" text-anchor="middle">viem in browser → RPC directly</text>
+        <text x="500" y="755" fill="#94a3b8" font-size="8" text-anchor="middle">No server · no DB · no indexer</text>
+        <text x="500" y="770" fill="#64748b" font-size="7" text-anchor="middle">Target: move chain sync + metrics server-side</text>
+
+        <!-- Target flow note -->
+        <rect x="660" y="680" width="280" height="100" rx="6" fill="#0f172a"/>
+        <rect x="660" y="680" width="280" height="100" rx="6" fill="rgba(6, 78, 59, 0.25)" stroke="#34d399" stroke-width="1"/>
+        <text x="800" y="705" fill="#34d399" font-size="10" font-weight="600" text-anchor="middle">TARGET FLOW</text>
+        <text x="800" y="725" fill="#94a3b8" font-size="8" text-anchor="middle">1. Workers index ERC-8004 events</text>
+        <text x="800" y="740" fill="#94a3b8" font-size="8" text-anchor="middle">2. Metrics computed → Postgres</text>
+        <text x="800" y="755" fill="#94a3b8" font-size="8" text-anchor="middle">3. API serves cached reputation</text>
+        <text x="800" y="770" fill="#64748b" font-size="7" text-anchor="middle">4. Vue reads API instead of raw RPC</text>
+
+        <!-- ========== LEGEND ========== -->
+        <rect x="30" y="840" width="1120" height="55" rx="8" fill="rgba(15, 23, 42, 0.8)" stroke="#1e293b" stroke-width="1"/>
+        <text x="50" y="872" fill="#e2e8f0" font-size="10" font-weight="600">LEGEND</text>
+
+        <rect x="130" y="858" width="14" height="14" rx="2" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="152" y="870" fill="#94a3b8" font-size="9">Frontend</text>
+
+        <rect x="240" y="858" width="14" height="14" rx="2" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="262" y="870" fill="#94a3b8" font-size="9">Backend</text>
+
+        <rect x="350" y="858" width="14" height="14" rx="2" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="372" y="870" fill="#94a3b8" font-size="9">Database</text>
+
+        <rect x="470" y="858" width="14" height="14" rx="2" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="492" y="870" fill="#94a3b8" font-size="9">Queue / Cache</text>
+
+        <rect x="620" y="858" width="14" height="14" rx="2" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="642" y="870" fill="#94a3b8" font-size="9">Cloud / Indexer</text>
+
+        <rect x="780" y="858" width="14" height="14" rx="2" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="802" y="870" fill="#94a3b8" font-size="9">Security</text>
+
+        <rect x="890" y="858" width="14" height="14" rx="2" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="912" y="870" fill="#94a3b8" font-size="9">External</text>
+
+        <line x1="1000" y1="865" x2="1030" y2="865" stroke="#64748b" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <text x="1040" y="870" fill="#94a3b8" font-size="9">optional path</text>
+      </svg>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Keep (Frontend)</h3>
+        </div>
+        <ul>
+          <li>• Vue 3 + Vite + TypeScript</li>
+          <li>• vue-router · reka-ui · Lucide</li>
+          <li>• Static CDN deploy (existing Actions)</li>
+          <li>• Swap browser RPC reads → API client</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>Add (Backend)</h3>
+        </div>
+        <ul>
+          <li>• Node 22 + Hono/Fastify API</li>
+          <li>• Workers + BullMQ job runners</li>
+          <li>• Server-side viem for sync</li>
+          <li>• OpenAPI or tRPC contracts</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot violet"></div>
+          <h3>Add (Data)</h3>
+        </div>
+        <ul>
+          <li>• PostgreSQL for agents &amp; metrics</li>
+          <li>• Redis for cache / rate limits</li>
+          <li>• Drizzle or Prisma ORM</li>
+          <li>• Optional Ponder/The Graph indexer</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>Add (Ops)</h3>
+        </div>
+        <ul>
+          <li>• Docker for API + workers + DB</li>
+          <li>• Fly.io / Railway / Render</li>
+          <li>• RPC: Alchemy / Infura / QuickNode</li>
+          <li>• Extend GitHub Actions for BE deploy</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer">
+      8004rep · ERC-8004 reputation explorer · architecture draft
+    </div>
+  </div>
+</body>
+</html>

@@ -16,7 +16,7 @@ const files = useFiles(() => data.value?.items ?? undefined)
 const sats = computed<Satellite[]>(() =>
   (data.value?.items ?? []).map((a) => {
     const s = scores.value?.get(a.tokenId)
-    return { id: String(a.tokenId), label: files.value.get(a.tokenId)?.name ?? `#${a.tokenId}`, size: Math.max(1, s?.count ?? 0), value: s?.count ? s.average : 0, color: s?.count ? AGENT : FADED, title: `${files.value.get(a.tokenId)?.name ?? `#${a.tokenId}`} · ${s?.count ?? 0} reviews` }
+    return { id: String(a.tokenId), label: files.value.get(a.tokenId)?.name ?? `#${a.tokenId}`, size: Math.max(1, s?.count ?? 0), value: s?.count ? s.average : 0, color: s?.count ? AGENT : FADED,     title: `${files.value.get(a.tokenId)?.name ?? `#${a.tokenId}`} · ${s?.count ?? 0} feedback` }
   }),
 )
 const router = { open: (id: string) => to.agent(id) }

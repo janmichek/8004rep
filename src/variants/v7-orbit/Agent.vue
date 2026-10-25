@@ -22,7 +22,7 @@ const sats = computed<Satellite[]>(() =>
     size: r.rows,
     value: r.average,
     color: r.flags.length ? SUSPECT : REVIEWER,
-    title: `${r.client} · ${r.rows} reviews · avg ${formatNumber(r.average)}${r.flags.length ? ` · ${r.flags.join(', ')}` : ''}`,
+    title: `${r.client} · ${r.rows} feedback · avg ${formatNumber(r.average)}${r.flags.length ? ` · ${r.flags.join(', ')}` : ''}`,
   })),
 )
 const picked = ref<string>()
@@ -53,10 +53,10 @@ function flags(f: RowFlag[]): string[] {
         <Ego v-if="sats.length" :center="name" :satellites="sats" :selected="picked" @pick="(id) => (picked = picked === id ? undefined : id)" />
         <p v-else class="soft">No reviewer orbits this agent yet.</p>
         <div class="o-legend">
-          <span>closer = kinder average · size = reviews</span>
+          <span>closer = kinder average · size = feedback</span>
           <span><i :style="{ background: REVIEWER }" />reviewer</span>
           <span><i :style="{ background: SUSPECT }" />flagged by a rule</span>
-          <span>click a body to read only its reviews</span>
+          <span>click a body to read only its feedback</span>
         </div>
       </div>
       <aside>
@@ -78,7 +78,7 @@ function flags(f: RowFlag[]): string[] {
           <h3>Selected body</h3>
           <p style="margin: 0"><RouterLink :to="to.reviewer(reviewer.client)" class="mono">{{ reviewer.client }}</RouterLink></p>
           <dl class="o-kv" style="margin-top: 6px">
-            <dt>Reviews</dt><dd>{{ reviewer.rows }}</dd>
+            <dt>Feedback</dt><dd>{{ reviewer.rows }}</dd>
             <dt>Average</dt><dd>{{ formatNumber(reviewer.average) }}</dd>
             <dt>Share / weight share</dt><dd>{{ formatPercent(reviewer.share) }} / {{ formatPercent(reviewer.weightShare) }}</dd>
             <dt>Pull on the average</dt><dd>{{ formatSigned(reviewer.shiftWithout === null ? null : -reviewer.shiftWithout) }}</dd>

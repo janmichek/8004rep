@@ -7,6 +7,7 @@ import { evaluateTxDetail, type CheckStatus } from '../data/txChecks'
 import { loadTxFacts } from '../data/txDetail'
 import type { AgentDetail, Feedback } from '../data/types'
 import { shortAddress } from '../format'
+import AddressIdenticon from './AddressIdenticon.vue'
 import { useAsync } from '../useAsync'
 import Hint from './ui/Hint.vue'
 import Skeleton from './ui/Skeleton.vue'
@@ -73,7 +74,8 @@ const segments = computed(() =>
           {{ shortAddress(facts.tx.hash) }} ↗
         </a>
         · block {{ facts.tx.blockNumber }} · sent by
-        <a :href="addressExplorerUrl(chain, facts.tx.from)" target="_blank" rel="noopener noreferrer" class="mono">
+        <a :href="addressExplorerUrl(chain, facts.tx.from)" target="_blank" rel="noopener noreferrer" class="address-mark mono">
+          <AddressIdenticon :address="facts.tx.from" />
           {{ shortAddress(facts.tx.from) }}
         </a>
       </span>

@@ -4,6 +4,8 @@ import type { ChainInfo } from '../chains'
 import { resolveAgentURI } from '../data/metadata'
 import type { AgentSummary, RegistrationFile, ReputationSummary } from '../data/types'
 import { formatDate, formatScore, shortAddress } from '../format'
+import { useRowLink } from '../useRowLink'
+import AddressIdenticon from './AddressIdenticon.vue'
 import AgentAvatar from './AgentAvatar.vue'
 import Skeleton from './ui/Skeleton.vue'
 
@@ -17,6 +19,8 @@ const props = defineProps<{
   /** Owner page already is that address; the column would only repeat it. */
   hideOwner?: boolean
 }>()
+
+const { open } = useRowLink()
 
 // undefined while the registration file is being fetched.
 const file = ref<RegistrationFile | null>()
@@ -47,7 +51,15 @@ const to = computed(() => ({
 </script>
 
 <template>
-  <tr>
+  <tr
+    class="row-link"
+    role="link"
+    tabindex="0"
+    :aria-label="`Open ${name}`"
+    @click="open(to, $event)"
+    @keydown.enter.prevent="open(to)"
+    @keydown.space.prevent="open(to)"
+  >
     <td>
       <div class="agent-cell">
         <AgentAvatar :pending="file === undefined" :image="file?.image" :label="file?.name ?? ''" :seed="`${chain.chainId}:${agent.tokenId}`" />
@@ -57,7 +69,7 @@ const to = computed(() => ({
             <Skeleton width="14em" height="0.65em" />
           </template>
           <template v-else>
-            <RouterLink :to="to">{{ name }}</RouterLink>
+            <span class="agent-title">{{ name }}</span>
             <small v-if="file?.description">{{ file.description }}</small>
             <small v-else-if="file === null" class="muted">
               {{ agent.agentURI ? 'metadata unreachable' : 'no metadata URI' }}
@@ -66,11 +78,10 @@ const to = computed(() => ({
         </div>
       </div>
     </td>
-    <td class="num">
-      <RouterLink :to="to">#{{ agent.tokenId }}</RouterLink>
-    </td>
+    <td class="num">#{{ agent.tokenId }}</td>
     <td v-if="!hideOwner">
-      <RouterLink v-if="agent.owner" :to="{ name: 'owner', params: { slug: chain.slug, address: agent.owner } }" class="mono" :title="agent.owner">
+      <RouterLink v-if="agent.owner" :to="{ name: 'owner', params: { slug: chain.slug, address: agent.owner } }" class="address-mark mono" :title="agent.owner">
+        <AddressIdenticon :address="agent.owner" />
         {{ shortAddress(agent.owner) }}
       </RouterLink>
       <span v-else class="muted">—</span>

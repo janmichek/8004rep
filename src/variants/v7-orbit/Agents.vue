@@ -13,7 +13,7 @@ const input = ref('')
 watch(search, (v) => (input.value = v), { immediate: true })
 const hover = ref<string>()
 
-// Golden-angle spiral, newest at the centre. Size = reviews, colour = average (cold → warm).
+// Golden-angle spiral, newest at the centre. Size = feedback, colour = average (cold → warm).
 const S = 600
 const stars = computed(() => {
   const list = data.value?.items ?? []
@@ -38,7 +38,7 @@ const stars = computed(() => {
 
 <template>
   <h1 class="o-title">Star field · {{ chain.name }}</h1>
-  <p class="o-sub">{{ data?.total ?? '…' }} agents registered. Page {{ page + 1 }}, newest at the core. Bigger = more reviews, warmer = higher average, grey = unrated.</p>
+  <p class="o-sub">{{ data?.total ?? '…' }} agents registered. Page {{ page + 1 }}, newest at the core. Bigger = more feedback, warmer = higher average, grey = unrated.</p>
   <form style="display: flex; gap: 8px; margin-bottom: 10px; max-width: 420px" @submit.prevent="setSearch(input)">
     <input v-model="input" type="search" placeholder="Find a star — name or token ID" aria-label="Search agents" style="flex: 1" />
     <button type="submit">Find</button>
@@ -50,7 +50,7 @@ const stars = computed(() => {
   <div v-else class="o-stage">
     <svg class="o-sky" :viewBox="`0 0 ${S} ${S}`" role="img" aria-label="Agents as stars">
       <g v-for="st in stars" :key="st.id" class="node" :class="{ dim: hover && hover !== st.id }" tabindex="0" @mouseenter="hover = st.id" @mouseleave="hover = undefined" @click="$router.push(to.agent(st.a.tokenId))">
-        <title>{{ files.get(st.a.tokenId)?.name ?? `#${st.a.tokenId}` }} · {{ st.s?.count ?? 0 }} reviews</title>
+        <title>{{ files.get(st.a.tokenId)?.name ?? `#${st.a.tokenId}` }} · {{ st.s?.count ?? 0 }} feedback</title>
         <circle :cx="st.x" :cy="st.y" :r="st.size * 2.2" :fill="st.color" fill-opacity=".12" />
         <circle :cx="st.x" :cy="st.y" :r="st.size" :fill="st.color" />
         <text v-if="st.size > 8 || hover === st.id" :x="st.x" :y="st.y + st.size + 12" text-anchor="middle">{{ (files.get(st.a.tokenId)?.name ?? `#${st.a.tokenId}`).slice(0, 18) }}</text>

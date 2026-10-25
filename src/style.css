@@ -92,6 +92,36 @@ button:hover {
   font-size: 13px;
 }
 
+.addr-identicon {
+  display: inline-block;
+  flex: none;
+  overflow: hidden;
+  border-radius: 50%;
+  vertical-align: middle;
+  line-height: 0;
+}
+
+.addr-identicon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.address-mark {
+  display: inline-flex;
+  gap: 0.4em;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.address-mark + .address-mark {
+  margin-left: 0.55em;
+}
+
+h1 .address-mark {
+  gap: 0.5em;
+}
+
 /* Shell */
 
 .topbar {
@@ -643,6 +673,27 @@ tbody tr.row-link:focus-visible {
   display: flex;
   align-items: center;
   gap: 16px;
+  margin-bottom: 4px;
+}
+
+.agent-head + .tabs .tabbar {
+  margin-top: 14px;
+  gap: 4px;
+}
+
+.agent-head + .tabs .tab {
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 0.98rem;
+}
+
+.agent-head + .tabs .tab-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.agent-head + .tabs .tab-count {
+  font-size: 0.92em;
 }
 
 .meta {
@@ -791,136 +842,6 @@ pre {
 
 .score-method p {
   max-width: 90ch;
-}
-
-/* Feedback timeline */
-
-.timeline {
-  margin-bottom: 12px;
-  padding: 10px 14px 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-}
-
-.timeline-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-  margin-bottom: 10px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.timeline-legend > :first-child {
-  color: var(--text);
-}
-
-.timeline-body {
-  display: flex;
-  gap: 10px;
-}
-
-.timeline-scale {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-width: 2.5em;
-  /* Lines the top number up with the highest point, which leaves room for its count. */
-  padding-top: 16px;
-  color: var(--muted);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  text-align: right;
-}
-
-.timeline-plot {
-  position: relative;
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  height: 112px;
-  border-bottom: 1px solid var(--line);
-}
-
-.timeline-day {
-  position: relative;
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  min-width: 0;
-}
-
-.timeline-day:hover {
-  background: color-mix(in srgb, var(--line) 45%, transparent);
-}
-
-.timeline-count {
-  margin-bottom: 4px;
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  line-height: 12px;
-}
-
-/* Below the count's 16px, stretched so one viewBox unit is one day column. */
-.timeline-line {
-  position: absolute;
-  inset: 16px 0 0;
-  width: 100%;
-  height: calc(100% - 16px);
-  overflow: visible;
-  pointer-events: none;
-}
-
-.timeline-line polyline {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 2;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-}
-
-.timeline-line polygon {
-  fill: color-mix(in srgb, var(--accent) 12%, transparent);
-}
-
-/* Spacer as tall as the day's value; its dot sits on the line. */
-.timeline-point {
-  position: relative;
-  height: calc((100% - 16px) * var(--share));
-}
-
-.timeline-point::before {
-  content: '';
-  position: absolute;
-  top: -3px;
-  left: -3px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 2px var(--panel);
-}
-
-.timeline-axis {
-  display: flex;
-  margin: 4px 0 0 calc(2.5em + 10px);
-  color: var(--muted);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Same columns as the plot, so each date sits under its day. */
-.timeline-axis span {
-  display: flex;
-  flex: 1;
-  justify-content: center;
-  min-width: 0;
-  white-space: nowrap;
 }
 
 /* Feedback checks */
@@ -1404,7 +1325,7 @@ pre {
 }
 
 .panel {
-  margin: 16px 0;
+  margin: 24px 0;
 }
 
 .panel h3 {
@@ -1488,54 +1409,155 @@ pre {
 
 .tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
   gap: 10px;
 }
 
 .tile {
-  padding: 10px 12px;
+  --tile-tone: var(--muted);
+  --tile-glow: color-mix(in srgb, var(--muted) 14%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px 11px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--tile-tone) 6%, transparent), transparent 42%),
+    var(--panel);
 }
 
 .tile.tone-main {
-  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  --tile-tone: var(--accent);
+  --tile-glow: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
 .tile.tone-good {
-  border-color: color-mix(in srgb, var(--ok) 45%, transparent);
+  --tile-tone: var(--ok);
+  --tile-glow: color-mix(in srgb, var(--ok) 16%, transparent);
 }
 
 .tile.tone-warn {
-  border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+  --tile-tone: var(--warn);
+  --tile-glow: color-mix(in srgb, var(--warn) 16%, transparent);
 }
 
 .tile.tone-bad {
-  border-color: color-mix(in srgb, var(--bad) 45%, transparent);
+  --tile-tone: var(--bad);
+  --tile-glow: color-mix(in srgb, var(--bad) 16%, transparent);
+}
+
+.tile.tone-quiet {
+  --tile-tone: var(--muted);
+  --tile-glow: color-mix(in srgb, var(--muted) 12%, transparent);
 }
 
 .tile-label {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .tile-value {
   font-size: 22px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  line-height: 1.3;
+  line-height: 1.25;
+}
+
+.tile.tone-main .tile-value,
+.tile.tone-good .tile-value,
+.tile.tone-warn .tile-value,
+.tile.tone-bad .tile-value {
+  color: color-mix(in srgb, var(--tile-tone) 72%, var(--text));
 }
 
 .tile-value.word {
   font-size: 16px;
-  line-height: 1.8;
+  line-height: 1.7;
   text-transform: capitalize;
 }
 
 .tile-hint {
   color: var(--muted);
   font-size: 12px;
+  line-height: 1.35;
+}
+
+.tile-meter {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+}
+
+.tile-gauge {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--line) 85%, var(--panel));
+}
+
+.tile-gauge-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--tile-tone) 22%, transparent);
+}
+
+.tile-gauge-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--tile-tone) 55%, transparent),
+    var(--tile-tone)
+  );
+  transition: width 0.55s var(--ease);
+}
+
+.tile-gauge-mark {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  z-index: 1;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--text);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--bg) 55%, transparent);
+}
+
+.tile-steps,
+.tile-severity {
+  display: grid;
+  grid-template-columns: repeat(var(--steps, var(--segs, 3)), 1fr);
+  gap: 4px;
+}
+
+.tile-step,
+.tile-sev {
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--line) 85%, var(--panel));
+  transition: background 0.35s var(--ease);
+}
+
+.tile-step.on {
+  background: var(--tile-tone);
+}
+
+.tile-sev.on {
+  background: var(--tile-tone);
+}
+
+.tile.has-meter .tile-hint {
+  min-height: 1.35em;
 }
 
 /* Tabs */
@@ -1549,13 +1571,26 @@ pre {
 }
 
 .tab {
+  display: inline-flex;
   flex: none;
+  align-items: center;
+  gap: 6px;
   padding: 8px 12px;
   border: 0;
   border-bottom: 2px solid transparent;
   border-radius: 0;
   background: transparent;
   color: var(--muted);
+}
+
+.tab-icon {
+  flex: none;
+  opacity: 0.85;
+}
+
+.tab[data-state='active'] .tab-icon {
+  opacity: 1;
+  color: var(--accent);
 }
 
 .tab:hover {
@@ -1574,7 +1609,6 @@ pre {
 }
 
 .tab-count {
-  margin-left: 6px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
@@ -1698,6 +1732,12 @@ pre {
 .bar-rule {
   grid-column: 1 / -1;
   font-size: 11px;
+}
+
+.tip {
+  cursor: help;
+  text-decoration: underline dotted color-mix(in srgb, var(--muted) 60%, transparent);
+  text-underline-offset: 3px;
 }
 
 .stack-bar {
@@ -2097,6 +2137,17 @@ button:disabled {
   box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
 }
 
+.hint-text {
+  margin: 0;
+}
+
+.hint-more {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--accent);
+  font-size: 11px;
+}
+
 .disclosure {
   margin-top: 32px;
 }
@@ -2415,7 +2466,6 @@ footer::before {
 
 .table-wrap,
 dl,
-.timeline,
 .signals,
 .tx-detail {
   transition: border-color 0.25s var(--ease);
@@ -2518,7 +2568,7 @@ tr.detail-row > td:first-child {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(14rem 6rem at var(--mx, 50%) -20%, var(--glow), transparent 70%);
+  background: radial-gradient(14rem 6rem at 50% -20%, var(--tile-glow, var(--glow)), transparent 70%);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s var(--ease);
@@ -2526,9 +2576,9 @@ tr.detail-row > td:first-child {
 
 .tile:hover,
 .score-card:hover {
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+  border-color: color-mix(in srgb, var(--tile-tone, var(--accent)) 32%, var(--line));
   transform: translateY(-2px);
-  box-shadow: 0 10px 24px -12px rgb(0 0 0 / 60%);
+  box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--tile-tone, #000) 45%, transparent);
 }
 
 .tile:hover::after,
@@ -2536,21 +2586,8 @@ tr.detail-row > td:first-child {
   opacity: 1;
 }
 
-.tile.tone-main .tile-value,
 .score-card.main .score-value {
   text-shadow: 0 0 18px color-mix(in srgb, var(--accent) 45%, transparent);
-}
-
-.tile.tone-good .tile-value {
-  color: var(--ok);
-}
-
-.tile.tone-warn .tile-value {
-  color: var(--warn);
-}
-
-.tile.tone-bad .tile-value {
-  color: var(--bad);
 }
 
 /* Tabs */
@@ -2667,32 +2704,6 @@ tr.detail-row > td:first-child {
   from {
     transform: scaleY(0);
   }
-}
-
-.timeline-line {
-  animation: wipe 1s var(--ease) 0.15s both;
-}
-
-@keyframes wipe {
-  from {
-    clip-path: inset(-10px 100% -10px 0);
-  }
-
-  to {
-    clip-path: inset(-10px -10px -10px 0);
-  }
-}
-
-.timeline-point::before {
-  transition: transform 0.2s var(--ease);
-}
-
-.timeline-day:hover .timeline-point::before {
-  transform: scale(1.8);
-}
-
-.timeline-day {
-  transition: background-color 0.2s var(--ease);
 }
 
 .chart-tip {

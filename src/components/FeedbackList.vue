@@ -6,16 +6,18 @@ import { FLAG_INFO, type RowStats } from '../data/feedbackStats'
 import { KIND_INFO } from '../data/reputation/kinds'
 import { toDisplayUrl } from '../data/metadata'
 import type { Feedback } from '../data/types'
+import AddressIdenticon from './AddressIdenticon.vue'
 import FeedbackNote from './FeedbackNote.vue'
 import FlagChip from './ui/FlagChip.vue'
 import Hint from './ui/Hint.vue'
 import SortHeader from './ui/SortHeader.vue'
 import { formatDate, formatNumber, formatScore, formatTimeline, shortAddress } from '../format'
+import { useRowLink } from '../useRowLink'
 import { useSort } from '../useSort'
 
 export type ListRow = { row: Feedback; stats?: RowStats; index: number }
 
-// `index` points into the agent's full feedback, which the detail link needs.
+// `index` points into the agent's full feedback, which the detail route needs.
 const props = defineProps<{
   rows: ListRow[]
   chain: ChainInfo
@@ -23,6 +25,7 @@ const props = defineProps<{
   detailRoute?: (index: number) => RouteLocationRaw
 }>()
 
+const { open } = useRowLink()
 const hasStats = computed(() => props.rows.some((r) => r.stats))
 const hasNotes = computed(() => props.rows.some((r) => r.row.feedbackURI))
 
@@ -41,10 +44,14 @@ const { sorted: sortedRows, state: sortState, toggle: toggleSort } = useSort(
 function evidenceUrl(uri: string | undefined): string | undefined {
   return uri && !/^data:/i.test(uri) ? toDisplayUrl(uri) : undefined
 }
+
+function openDetail(index: number, event?: Event): void {
+  open(props.detailRoute?.(index), event)
+}
 </script>
 
 <template>
-  <p v-if="rows.length === 0" class="muted">No reviews match.</p>
+  <p v-if="rows.length === 0" class="muted">No feedback match.</p>
   <div v-else class="table-wrap">
     <table class="feedback-table">
       <thead>
@@ -69,16 +76,27 @@ function evidenceUrl(uri: string | undefined): string | undefined {
             :active="sortState('replies')"
             @sort="toggleSort('replies')"
           />
-          <th v-if="detailRoute"><span class="sr-only">Detail</span></th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="{ row, stats, index } in sortedRows" :key="index" :class="{ revoked: row.revoked }">
+        <tr
+          v-for="{ row, stats, index } in sortedRows"
+          :key="index"
+          :class="{ revoked: row.revoked, 'row-link': detailRoute }"
+          :role="detailRoute ? 'link' : undefined"
+          :tabindex="detailRoute ? 0 : undefined"
+          :aria-label="detailRoute ? `Open feedback detail #${index}` : undefined"
+          @click="detailRoute && openDetail(index, $event)"
+          @keydown.enter.prevent="detailRoute && openDetail(index)"
+          @keydown.space.prevent="detailRoute && openDetail(index)"
+        >
             <td class="nowrap">
-              <RouterLink v-if="reviewerRoute" :to="reviewerRoute(row.client)" class="mono" :title="row.client">
+              <RouterLink v-if="reviewerRoute" :to="reviewerRoute(row.client)" class="address-mark mono" :title="row.client">
+                <AddressIdenticon :address="row.client" />
                 {{ shortAddress(row.client) }}
               </RouterLink>
-              <a v-else :href="addressExplorerUrl(chain, row.client)" target="_blank" rel="noopener noreferrer" class="mono">
+              <a v-else :href="addressExplorerUrl(chain, row.client)" target="_blank" rel="noopener noreferrer" class="address-mark mono">
+                <AddressIdenticon :address="row.client" />
                 {{ shortAddress(row.client) }}
               </a>
               <small v-if="row.index !== undefined" class="muted" title="Feedback index of this reviewer on this agent"> #{{ row.index }}</small>
@@ -143,9 +161,6 @@ function evidenceUrl(uri: string | undefined): string | undefined {
               >
                 ↩ {{ row.responses.length }}
               </span>
-            </td>
-            <td v-if="detailRoute" class="num">
-              <RouterLink :to="detailRoute(index)" class="row-toggle">Detail</RouterLink>
             </td>
           </tr>
       </tbody>

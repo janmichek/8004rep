@@ -34,13 +34,13 @@ const sats = computed<Satellite[]>(() =>
     <div v-if="profile && feed" class="o-stage">
       <div>
         <Ego :center="shortAddress(address)" center-color="#7aa2ff" :satellites="sats" @pick="(id) => $router.push(to.agent(id))" />
-        <div class="o-legend"><span>agents it rates · closer = kinder average it gave · size = reviews</span></div>
+        <div class="o-legend"><span>agents it rates · closer = kinder average it gave · size = feedback</span></div>
       </div>
       <aside>
         <section class="o-panel">
           <h3>Trajectory</h3>
           <dl class="o-kv">
-            <dt>Reviews</dt><dd>{{ profile.rows }} <span class="soft">({{ profile.revoked }} revoked)</span></dd>
+            <dt>Feedback</dt><dd>{{ profile.rows }} <span class="soft">({{ profile.revoked }} revoked)</span></dd>
             <dt>Agents</dt><dd>{{ profile.agents }}</dd>
             <dt>Average given</dt><dd>{{ formatNumber(profile.average) }}</dd>
             <dt>Favourite value</dt><dd>{{ profile.mode ? `${formatScore(profile.mode.value)} · ${formatPercent(profile.mode.share)}` : '—' }}</dd>

@@ -33,7 +33,7 @@ const maxRows = computed(() => Math.max(1, ...(profile.value?.perAgent.map((a) =
           <a :href="addressExplorerUrl(chain, address)" target="_blank" rel="noopener noreferrer" class="b-pill">Explorer ↗</a>
         </div>
       </section>
-      <section class="b-card s2"><h3>Reviews</h3><p class="b-big">{{ profile?.rows ?? '…' }}</p><p class="soft">{{ profile?.revoked ?? 0 }} revoked</p></section>
+      <section class="b-card s2"><h3>Feedback</h3><p class="b-big">{{ profile?.rows ?? '…' }}</p><p class="soft">{{ profile?.revoked ?? 0 }} revoked</p></section>
       <section class="b-card s2"><h3>Avg given</h3><p class="b-big">{{ formatNumber(profile?.average) }}</p><p class="soft">mode {{ profile?.mode ? formatScore(profile.mode.value) : '—' }}</p></section>
       <section class="b-card s2 b-dark">
         <h3>Wallet</h3>
@@ -52,7 +52,7 @@ const maxRows = computed(() => Math.max(1, ...(profile.value?.perAgent.map((a) =
           </template>
           <p v-else class="soft">{{ !chain.explorerApiUrl ? 'Not traceable here' : wallet.data.value?.fundingError ? 'Lookup failed' : wallet.data.value ? 'No incoming transfer found' : '…' }}</p>
         </section>
-        <section class="b-card s6"><h3>When it reviews</h3><Heat :times="feed.items.map((r) => r.createdAt)" /></section>
+        <section class="b-card s6"><h3>When it gives feedback</h3><Heat :times="feed.items.map((r) => r.createdAt)" /></section>
         <section class="b-card s6">
           <h3>Agents it rated · {{ profile.agents }}</h3>
           <div v-for="a in profile.perAgent.slice(0, 10)" :key="a.tokenId.toString()" style="margin-bottom: 8px">
@@ -64,7 +64,7 @@ const maxRows = computed(() => Math.max(1, ...(profile.value?.perAgent.map((a) =
           </div>
         </section>
         <section class="b-card s12">
-          <h3>Latest reviews</h3>
+          <h3>Latest feedback</h3>
           <div class="b-feed" style="max-height: 360px">
             <div v-for="(r, i) in feed.items.slice(0, 50)" :key="i" class="b-fb b-row" :class="{ revoked: r.revoked }" style="cursor: default">
               <span class="val">{{ formatScore(r.value) }}</span>

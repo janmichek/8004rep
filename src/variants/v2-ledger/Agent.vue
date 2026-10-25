@@ -58,18 +58,18 @@ function flags(f: RowFlag[]): string {
         <template v-if="report && stats && scores && agent.feedback.length">
           <div class="l-cols">
             <p>
-              {{ report.headline }} The registry's own average stands at {{ formatNumber(report.raw) }} across {{ agent.feedback.length }} reviews.
-              Once self-reviews, duplicates, bursts and monotonous raters are discounted, the trusted figure is {{ formatNumber(report.trusted) }}<template v-if="report.lcb !== null">, and no lower than {{ formatNumber(report.lcb) }} with 95% confidence</template>.
+              {{ report.headline }} The registry's own average stands at {{ formatNumber(report.raw) }} across {{ agent.feedback.length }} feedback.
+              Once self-feedback, duplicates, bursts and monotonous raters are discounted, the trusted figure is {{ formatNumber(report.trusted) }}<template v-if="report.lcb !== null">, and no lower than {{ formatNumber(report.lcb) }} with 95% confidence</template>.
             </p>
             <p>
-              {{ stats.reviewers.length }} address{{ stats.reviewers.length === 1 ? '' : 'es' }} wrote these reviews, speaking with roughly {{ formatNumber(voices) }} independent voice{{ voices === 1 ? '' : 's' }}
+              {{ stats.reviewers.length }} address{{ stats.reviewers.length === 1 ? '' : 'es' }} wrote this feedback, speaking with roughly {{ formatNumber(voices) }} independent voice{{ voices === 1 ? '' : 's' }}
               once their volume is weighed. The median rating is {{ formatNumber(scores.median) }}; momentum over the last month reads {{ formatSigned(scores.momentum) }}.
               <template v-if="ecosystem.data.value"> The typical agent across the ecosystem rates {{ formatNumber(ecosystem.data.value.averageFeedback) }}.</template>
             </p>
             <p v-if="stats.signals.length">
               What gave this desk pause: <template v-for="(s, i) in stats.signals" :key="s.code"><i :class="{ red: s.level === 'high' }">{{ s.text }}</i>{{ i < stats.signals.length - 1 ? '; ' : '.' }}</template>
             </p>
-            <p v-else>Nothing in the reviews raised a flag.</p>
+            <p v-else>Nothing in this feedback raised a flag.</p>
           </div>
           <blockquote v-for="q in quotes" :key="`${q.client}${q.index}`" class="l-quote">
             <FeedbackNote :uri="q.feedbackURI!" />

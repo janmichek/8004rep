@@ -66,7 +66,7 @@ const density = computed(() => {
 
 <template>
   <h1 class="o-title">{{ chain.name }} constellation</h1>
-  <p class="o-sub">The {{ graph.agents.length }} busiest agents (inner ring) and the {{ graph.reviewers.length }} reviewers who rate them (outer ring), from the latest {{ feed?.items.length ?? '…' }} reviews.</p>
+  <p class="o-sub">The {{ graph.agents.length }} busiest agents (inner ring) and the {{ graph.reviewers.length }} reviewers who rate them (outer ring), from the latest {{ feed?.items.length ?? '…' }} feedback.</p>
   <p v-if="error" class="o-notice">{{ error }} <button @click="load()">Retry</button></p>
   <p v-else-if="!stats" class="soft">Charting the sky…</p>
   <div v-if="stats && feed" class="o-stage">
@@ -81,17 +81,17 @@ const density = computed(() => {
           :stroke-width="Math.min(4, 0.5 + l.rows / 4)"
         />
         <g v-for="r in graph.reviewers" :key="r.client" class="node" :class="{ dim: !lit('r', r.client) }" tabindex="0" @click="focusReviewer(r.client)" @dblclick="$router.push(to.reviewer(r.client))">
-          <title>{{ r.client }} · {{ r.n }} reviews{{ r.sus ? ' · suspect' : '' }} (double-click to open)</title>
+          <title>{{ r.client }} · {{ r.n }} feedback{{ r.sus ? ' · suspect' : '' }} (double-click to open)</title>
           <circle :cx="r.x" :cy="r.y" :r="r.r" :fill="r.sus ? SUSPECT : REVIEWER" />
         </g>
         <g v-for="a in graph.agents" :key="String(a.tokenId)" class="node" :class="{ dim: !lit('a', String(a.tokenId)) }" tabindex="0" @click="focusAgent(String(a.tokenId))" @dblclick="$router.push(to.agent(a.tokenId))">
-          <title>{{ a.name ?? `#${a.tokenId}` }} · {{ a.n }} reviews (double-click to open)</title>
+          <title>{{ a.name ?? `#${a.tokenId}` }} · {{ a.n }} feedback (double-click to open)</title>
           <circle :cx="a.x" :cy="a.y" :r="a.r" :fill="AGENT" />
           <text :x="a.x" :y="a.y - a.r - 4" text-anchor="middle">{{ (a.name ?? `#${a.tokenId}`).slice(0, 16) }}</text>
         </g>
       </svg>
       <div class="o-legend">
-        <span><i :style="{ background: AGENT }" />agent (size = reviews)</span>
+        <span><i :style="{ background: AGENT }" />agent (size = feedback)</span>
         <span><i :style="{ background: REVIEWER }" />reviewer</span>
         <span><i :style="{ background: SUSPECT }" />suspect reviewer</span>
         <span>click to focus · double-click to open · click empty sky to reset</span>
@@ -101,12 +101,12 @@ const density = computed(() => {
       <section class="o-panel">
         <h3>Sky readings</h3>
         <dl class="o-kv">
-          <dt>Reviews</dt><dd>{{ stats.rows }}</dd>
+          <dt>Feedback</dt><dd>{{ stats.rows }}</dd>
           <dt>Agents / reviewers</dt><dd>{{ stats.agents }} / {{ stats.reviewers }}</dd>
           <dt>Average value</dt><dd>{{ formatNumber(stats.average) }} <span class="soft">eco {{ formatNumber(ecosystem.data.value?.averageFeedback) }}</span></dd>
           <dt>Perfect 100s</dt><dd>{{ formatPercent(stats.perfectShare) }}</dd>
           <dt title="Drawn edges / possible agent–reviewer pairs">Graph density</dt><dd>{{ formatPercent(density) }}</dd>
-          <dt title="Gini of reviews per reviewer">Reviewer Gini</dt><dd>{{ formatNumber(gini(graph.reviewers.map((r) => r.n)), 2) }}</dd>
+          <dt title="Gini of feedback per reviewer">Reviewer Gini</dt><dd>{{ formatNumber(gini(graph.reviewers.map((r) => r.n)), 2) }}</dd>
         </dl>
         <p style="margin: 10px 0 0"><button v-if="feed.cursor" :disabled="loading" @click="load(true)">{{ loading ? 'Charting…' : 'Look further back' }}</button></p>
       </section>

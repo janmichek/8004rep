@@ -2,6 +2,7 @@
 import { computed, shallowRef, watch } from 'vue'
 import { isAddress, type Address } from 'viem'
 import { addressExplorerUrl, findChainBySlug, txExplorerUrl } from '../chains'
+import AddressIdenticon from '../components/AddressIdenticon.vue'
 import ChainName from '../components/ChainName.vue'
 import ChartSkeleton from '../components/ui/ChartSkeleton.vue'
 import ColumnChart from '../components/ui/ColumnChart.vue'
@@ -20,6 +21,7 @@ import { errorMessage, formatDate, formatNumber, formatPercent, formatScore, for
 import { toDisplayUrl } from '../data/metadata'
 import FeedbackNote from '../components/FeedbackNote.vue'
 import { useAsync } from '../useAsync'
+import { useRowLink } from '../useRowLink'
 import { useSort } from '../useSort'
 
 const props = defineProps<{ slug: string; address: string }>()
@@ -83,16 +85,22 @@ const tiles = computed<Tile[]>(() => {
   const w = wallet.data.value
   if (!p) return []
   return [
-    { label: 'Reviews', value: String(p.rows), hint: p.revoked ? `${p.revoked} revoked` : 'none revoked', tone: 'main' },
+    { label: 'Feedback', value: String(p.rows), hint: p.revoked ? `${p.revoked} revoked` : 'none revoked', tone: 'main' },
     { label: 'Agents rated', value: String(p.agents), hint: p.perAgent[0] ? `most on #${p.perAgent[0].tokenId} (${p.perAgent[0].rows})` : '' },
-    { label: 'Average given', value: formatNumber(p.average), hint: 'non-revoked reviews' },
+    {
+      label: 'Average given',
+      value: formatNumber(p.average),
+      hint: 'non-revoked feedback',
+      meter: p.average === null || p.average === undefined ? undefined : { kind: 'gauge', value: p.average },
+    },
     {
       label: 'Most common value',
       value: p.mode ? formatScore(p.mode.value) : '—',
-      hint: p.mode ? `${formatPercent(p.mode.share)} of reviews` : '',
+      hint: p.mode ? `${formatPercent(p.mode.share)} of feedback` : '',
       tone: p.labels.includes('rubber-stamp') ? 'warn' : undefined,
+      meter: p.mode ? { kind: 'gauge', value: p.mode.value } : undefined,
     },
-    { label: 'Busiest 24h', value: String(p.peakPerDay), hint: 'reviews in one day', tone: p.labels.includes('bulk') ? 'warn' : undefined },
+    { label: 'Busiest 24h', value: String(p.peakPerDay), hint: 'feedback in one day', tone: p.labels.includes('bulk') ? 'warn' : undefined },
     {
       label: 'Wallet',
       value: w?.nonce === undefined ? '—' : `${w.nonce} tx`,
@@ -106,7 +114,7 @@ const tiles = computed<Tile[]>(() => {
 
 const valueColumns = computed(() => valueHistogram((feed.value?.items ?? []).filter((r) => !r.revoked).map((r) => r.value)))
 const timeColumns = computed(() =>
-  dailyColumns(feed.value?.items ?? [], (r) => r.createdAt, () => 'count', ['count'], { count: 'reviews' }),
+  dailyColumns(feed.value?.items ?? [], (r) => r.createdAt, () => 'count', ['count'], { count: 'feedback' }),
 )
 
 /** Sorts the full lists; the template slices afterwards so the top N stays correct. */
@@ -127,14 +135,15 @@ const latestRows = useSort(
     { key: 'when', value: (r) => r.createdAt, numeric: true },
   ],
 )
+
+const { open } = useRowLink()
+
+function agentRoute(tokenId: bigint) {
+  return { name: 'agent', params: { slug: chain.value.slug, id: tokenId.toString() } }
+}
 </script>
 
 <template>
-  <p class="crumbs">
-    <RouterLink :to="{ name: 'network', params: { slug: chain.slug } }">
-      ← <ChainName :chain-id="chain.chainId" :name="chain.name" /> network
-    </RouterLink>
-  </p>
 
   <section v-if="!address" class="state">
     <h1>Not an address</h1>
@@ -143,7 +152,13 @@ const latestRows = useSort(
 
   <template v-else>
     <div class="page-head">
-      <h1>Reviewer <span class="mono">{{ shortAddress(address) }}</span></h1>
+      <h1>
+        Reviewer
+        <span class="address-mark mono">
+          <AddressIdenticon :address="address" :size="28" />
+          {{ shortAddress(address) }}
+        </span>
+      </h1>
       <p class="meta">
         <span class="mono">{{ address }}</span>
         <a :href="addressExplorerUrl(chain, address)" target="_blank" rel="noopener noreferrer">Explorer ↗</a>
@@ -174,7 +189,8 @@ const latestRows = useSort(
         <p class="note">
           <template v-if="wallet.data.value?.funding">
             First funded by
-            <a :href="addressExplorerUrl(chain, wallet.data.value.funding.funder)" target="_blank" rel="noopener noreferrer" class="mono">
+            <a :href="addressExplorerUrl(chain, wallet.data.value.funding.funder)" target="_blank" rel="noopener noreferrer" class="address-mark mono">
+              <AddressIdenticon :address="wallet.data.value.funding.funder" />
               {{ shortAddress(wallet.data.value.funding.funder) }}
             </a>
             <template v-if="wallet.data.value.funding.timestamp"> on {{ formatDate(wallet.data.value.funding.timestamp) }}</template>
@@ -194,7 +210,7 @@ const latestRows = useSort(
 
       <div class="chart-grid">
         <ColumnChart title="Values it gave" :columns="valueColumns" :series="COUNT_SERIES" />
-        <ColumnChart title="Reviews over time" :columns="timeColumns" :series="COUNT_SERIES" />
+        <ColumnChart title="Feedback over time" :columns="timeColumns" :series="COUNT_SERIES" />
       </div>
 
       <section class="panel">
@@ -204,17 +220,25 @@ const latestRows = useSort(
             <thead>
               <tr>
                 <SortHeader label="Agent" :active="agentRows.state('agent')" @sort="agentRows.toggle('agent')" />
-                <SortHeader label="Reviews" numeric :active="agentRows.state('reviews')" @sort="agentRows.toggle('reviews')" />
+                <SortHeader label="Feedback" numeric :active="agentRows.state('reviews')" @sort="agentRows.toggle('reviews')" />
                 <SortHeader label="Average" numeric :active="agentRows.state('average')" @sort="agentRows.toggle('average')" />
                 <SortHeader label="Revoked" numeric :active="agentRows.state('revoked')" @sort="agentRows.toggle('revoked')" />
               </tr>
             </thead>
             <tbody>
-              <tr v-for="a in agentRows.sorted.value" :key="a.tokenId.toString()">
+              <tr
+                v-for="a in agentRows.sorted.value"
+                :key="a.tokenId.toString()"
+                class="row-link"
+                role="link"
+                tabindex="0"
+                :aria-label="`Open ${a.agentName ?? `Agent #${a.tokenId}`}`"
+                @click="open(agentRoute(a.tokenId), $event)"
+                @keydown.enter.prevent="open(agentRoute(a.tokenId))"
+                @keydown.space.prevent="open(agentRoute(a.tokenId))"
+              >
                 <td>
-                  <RouterLink :to="{ name: 'agent', params: { slug: chain.slug, id: a.tokenId.toString() } }">
-                    {{ a.agentName ?? `Agent #${a.tokenId}` }}
-                  </RouterLink>
+                  {{ a.agentName ?? `Agent #${a.tokenId}` }}
                   <small class="muted"> #{{ a.tokenId }}</small>
                 </td>
                 <td class="num">{{ a.rows }}</td>
@@ -227,7 +251,7 @@ const latestRows = useSort(
       </section>
 
       <section class="panel">
-        <h3>Latest Reviews</h3>
+        <h3>Latest Feedback</h3>
         <div class="table-wrap">
           <table>
             <thead>
@@ -241,12 +265,19 @@ const latestRows = useSort(
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(r, i) in latestRows.sorted.value.slice(0, 50)" :key="i" :class="{ revoked: r.revoked }">
-                <td>
-                  <RouterLink :to="{ name: 'agent', params: { slug: chain.slug, id: r.tokenId.toString() } }">
-                    {{ r.agentName ?? `Agent #${r.tokenId}` }}
-                  </RouterLink>
-                </td>
+              <tr
+                v-for="(r, i) in latestRows.sorted.value.slice(0, 50)"
+                :key="i"
+                class="row-link"
+                :class="{ revoked: r.revoked }"
+                role="link"
+                tabindex="0"
+                :aria-label="`Open ${r.agentName ?? `Agent #${r.tokenId}`}`"
+                @click="open(agentRoute(r.tokenId), $event)"
+                @keydown.enter.prevent="open(agentRoute(r.tokenId))"
+                @keydown.space.prevent="open(agentRoute(r.tokenId))"
+              >
+                <td>{{ r.agentName ?? `Agent #${r.tokenId}` }}</td>
                 <td class="num"><b>{{ formatScore(r.value) }}</b> <span v-if="r.revoked" class="chip">revoked</span></td>
                 <td class="tags">
                   <span v-if="r.tag1" class="chip clip-chip" :title="r.tag1">{{ r.tag1 }}</span>
