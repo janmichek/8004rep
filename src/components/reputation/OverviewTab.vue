@@ -8,6 +8,7 @@ import type { ReputationReport } from '../../data/reputation/report'
 import type { LadderId, TrustReport } from '../../data/trustReport'
 import type { Feedback } from '../../data/types'
 import { formatNumber, formatPercent, formatSigned } from '../../format'
+import ActivityGrid from '../ui/ActivityGrid.vue'
 import ColumnChart from '../ui/ColumnChart.vue'
 import Hint from '../ui/Hint.vue'
 import { COUNT_SERIES, WEIGHT_LABELS, WEIGHT_SERIES, weightClass } from '../ui/palette'
@@ -34,6 +35,7 @@ const activity = computed(() =>
   ),
 )
 const undated = computed(() => props.feedback.filter((f) => f.createdAt === undefined).length)
+const datedTimes = computed(() => props.feedback.flatMap((f) => (f.createdAt === undefined ? [] : [f.createdAt])))
 
 /** Only rating rows, read on their own scale: a 5-star feedback is not 5/100. */
 const distribution = computed(() =>
@@ -85,6 +87,8 @@ const coverage = computed(() => {
       </ul>
     </section>
 
+    <ActivityGrid label="Activity" :times="datedTimes" />
+
     <div class="chart-grid">
       <ColumnChart title="Feedback over time, by weight" :columns="activity" :series="WEIGHT_SERIES" />
       <ColumnChart
@@ -94,28 +98,6 @@ const coverage = computed(() => {
       />
     </div>
     <p v-if="undated" class="muted note">{{ undated }} row{{ undated === 1 ? ' has' : 's have' }} no date and {{ undated === 1 ? 'is' : 'are' }} left out of the time chart.</p>
-
-    <section class="panel">
-      <h3>
-        How the score is built
-        <small class="muted">
-          <RouterLink :to="{ name: 'about', hash: '#score' }">how it works</RouterLink>
-        </small>
-      </h3>
-      <ol class="bars waterfall">
-        <li v-for="step in rep.waterfall" :key="step.id" :class="{ idle: step.id !== 'all' && step.rows === 0 }">
-          <Hint :text="step.rule" :about="STEP_ABOUT[step.id]">
-            <span class="bar-label tip">{{ step.label }}</span>
-          </Hint>
-          <span class="bar-track" aria-hidden="true"><span :style="{ width: barWidth(step.average) }" /></span>
-          <span class="bar-value">{{ formatNumber(step.average) }}</span>
-          <span class="bar-delta" :class="{ down: (step.delta ?? 0) < -0.05, up: (step.delta ?? 0) > 0.05 }">
-            {{ step.id === 'all' ? '' : formatSigned(step.delta) }}
-          </span>
-          <span class="bar-note muted">{{ step.rows }} row{{ step.rows === 1 ? '' : 's' }}</span>
-        </li>
-      </ol>
-    </section>
 
     <section class="panel">
       <h3>
@@ -140,24 +122,27 @@ const coverage = computed(() => {
       </p>
     </section>
 
-    <section v-if="rep.telemetry.length" class="panel">
-      <h3>Telemetry <small class="muted">answers “is it up”, not “is it good”</small></h3>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Tag</th><th class="num">Rows</th><th class="num">Wallets</th><th class="num">Latest</th><th class="num">Median</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="t in rep.telemetry" :key="t.tag">
-              <td><span class="chip clip-chip" :title="t.label">{{ t.label }}</span></td>
-              <td class="num">{{ t.rows }}</td>
-              <td class="num">{{ t.clients }}</td>
-              <td class="num">{{ formatNumber(t.latest) }}</td>
-              <td class="num">{{ formatNumber(t.median) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <div class="chart-grid">
+    <section class="panel">
+      <h3>
+        How the score is built
+        <small class="muted">
+          <RouterLink :to="{ name: 'about', hash: '#score' }">how it works</RouterLink>
+        </small>
+      </h3>
+      <ol class="bars waterfall">
+        <li v-for="step in rep.waterfall" :key="step.id" :class="{ idle: step.id !== 'all' && step.rows === 0 }">
+          <Hint :text="step.rule" :about="STEP_ABOUT[step.id]">
+            <span class="bar-label tip">{{ step.label }}</span>
+          </Hint>
+          <span class="bar-track" aria-hidden="true"><span :style="{ width: barWidth(step.average) }" /></span>
+          <span class="bar-value">{{ formatNumber(step.average) }}</span>
+          <span class="bar-delta" :class="{ down: (step.delta ?? 0) < -0.05, up: (step.delta ?? 0) > 0.05 }">
+            {{ step.id === 'all' ? '' : formatSigned(step.delta) }}
+          </span>
+          <span class="bar-note muted">{{ step.rows }} row{{ step.rows === 1 ? '' : 's' }}</span>
+        </li>
+      </ol>
     </section>
 
     <section class="panel">
@@ -196,6 +181,27 @@ const coverage = computed(() => {
           <span class="bar-note muted">{{ m.n }} of {{ stats.coverage.total }}</span>
         </li>
       </ul>
+    </section>
+    </div>
+
+    <section v-if="rep.telemetry.length" class="panel">
+      <h3>Telemetry <small class="muted">answers “is it up”, not “is it good”</small></h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Tag</th><th class="num">Rows</th><th class="num">Wallets</th><th class="num">Latest</th><th class="num">Median</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="t in rep.telemetry" :key="t.tag">
+              <td><span class="chip clip-chip" :title="t.label">{{ t.label }}</span></td>
+              <td class="num">{{ t.rows }}</td>
+              <td class="num">{{ t.clients }}</td>
+              <td class="num">{{ formatNumber(t.latest) }}</td>
+              <td class="num">{{ formatNumber(t.median) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
   </div>
 </template>

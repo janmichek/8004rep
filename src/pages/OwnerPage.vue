@@ -6,6 +6,7 @@ import { identityAbi } from '../abi'
 import { addressExplorerUrl, findChainBySlug } from '../chains'
 import AddressIdenticon from '../components/AddressIdenticon.vue'
 import AgentRow from '../components/AgentRow.vue'
+import StarButton from '../stars/StarButton.vue'
 import ChainName from '../components/ChainName.vue'
 import Skeleton from '../components/ui/Skeleton.vue'
 import SortHeader from '../components/ui/SortHeader.vue'
@@ -147,7 +148,7 @@ const tiles = computed<Tile[]>(() => {
       label: 'Average rating',
       value: s ? formatScore(s.avg) : '—',
       hint: s ? `${s.total} feedback across ${s.rated} ${s.rated === 1 ? 'agent' : 'agents'}` : '',
-      title: 'Simple average of each owned agent\'s raw on-chain mean. It mixes ratings with telemetry; open an agent for its robust score.',
+      title: 'Simple average of each owned agent\'s raw on-chain mean. It mixes ratings with telemetry; open an agent for its filtered score.',
       loading: s === null,
       tone: s && s.avg >= 75 ? 'good' : s && s.avg > 0 ? undefined : 'quiet',
       meter: s && s.avg > 0 ? { kind: 'gauge', value: s.avg } : undefined,
@@ -164,20 +165,19 @@ const tiles = computed<Tile[]>(() => {
   </section>
 
   <template v-else>
-    <div class="page-head">
-      <h1>
-        Owner
-        <span class="address-mark mono">
-          <AddressIdenticon :address="address" :size="28" />
-          {{ shortAddress(address) }}
-        </span>
-        <small v-if="loading || !data"><Skeleton width="6em" height="0.75em" /></small>
-        <small v-else-if="data.owned !== undefined">{{ data.owned }} {{ data.owned === 1 ? 'agent' : 'agents' }}</small>
-      </h1>
-      <p class="meta">
-        <span class="mono">{{ address }}</span>
-        <a :href="addressExplorerUrl(chain, address)" target="_blank" rel="noopener noreferrer">Explorer ↗</a>
-      </p>
+    <div class="agent-head">
+      <AddressIdenticon :address="address" :size="64" />
+      <div>
+        <h1>{{ shortAddress(address) }}</h1>
+        <p class="meta">
+          <span class="chip">owner</span>
+          <span v-if="loading || !data"><Skeleton width="4.2em" height="1.35em" radius="999px" /></span>
+          <span v-else-if="data.owned !== undefined" class="chip">{{ data.owned }} {{ data.owned === 1 ? 'agent' : 'agents' }}</span>
+          <span class="mono">{{ address }}</span>
+          <a :href="addressExplorerUrl(chain, address)" target="_blank" rel="noopener noreferrer">Explorer ↗</a>
+          <StarButton kind="owner" :chain-id="chain.chainId" :id="address" :label="shortAddress(address)" />
+        </p>
+      </div>
     </div>
 
     <template v-if="data && !loading">

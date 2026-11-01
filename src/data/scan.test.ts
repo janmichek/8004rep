@@ -65,6 +65,16 @@ describe('parseScanScore unscored', () => {
   it('reads a bare 0 without a breakdown as not scored', () => {
     expect(parseScanScore({ total_score: 0, scores: null })).toBeNull()
   })
+
+  it('reads a bare 0 with feedback behind it as scored, on the feedback average', () => {
+    const score = parseScanScore({ total_score: 0, scores: null, average_score: 88.75, total_feedbacks: 11 })
+    expect(score?.total).toBe(88.75)
+    expect(score?.feedback).toEqual({ average: 88.75, count: 11 })
+  })
+
+  it('keeps a bare 0 with feedback rows but no average as not scored', () => {
+    expect(parseScanScore({ total_score: 0, scores: null, average_score: 0, total_feedbacks: 11 })).toBeNull()
+  })
 })
 
 describe('parseScanChains', () => {

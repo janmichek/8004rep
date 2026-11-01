@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import BookmarkButton from '../bookmarks/BookmarkButton.vue'
-import { isBookmarked } from '../bookmarks'
 import { CHAINS } from '../chains'
+import { isStarred } from '../stars'
+import StarButton from '../stars/StarButton.vue'
 import type { ScanAgent } from '../data/scan'
 import { formatDate, formatScore, formatTimeline, shortAddress } from '../format'
 import { isNestedControl } from '../useRowLink'
@@ -11,7 +11,7 @@ import AddressIdenticon from './AddressIdenticon.vue'
 import AgentAvatar from './AgentAvatar.vue'
 import ChainIcon from './ChainIcon.vue'
 
-const props = defineProps<{ agent: ScanAgent; chainName?: string; chainKey?: string; bookmarked?: boolean }>()
+const props = defineProps<{ agent: ScanAgent; chainName?: string; chainKey?: string; pinned?: boolean }>()
 
 const router = useRouter()
 
@@ -24,7 +24,7 @@ const scoreLabel = computed(() => formatScore(Math.round(props.agent.totalScore 
 const createdAt = computed(() => (props.agent.createdAt ? formatTimeline(props.agent.createdAt) : '—'))
 const createdTitle = computed(() => (props.agent.createdAt ? formatDate(props.agent.createdAt) : undefined))
 const externalUrl = computed(() => `https://8004scan.io/agents/${props.chainKey ?? props.agent.chainId}/${props.agent.tokenId}`)
-const saved = computed(() => isBookmarked(props.agent.chainId, props.agent.tokenId, props.agent.testnet))
+const starred = computed(() => isStarred('agent', props.agent.chainId, props.agent.tokenId))
 
 function open(event?: Event): void {
   if (event && isNestedControl(event)) return
@@ -41,7 +41,7 @@ function open(event?: Event): void {
 <template>
   <tr
     class="row-link"
-    :class="{ bookmarked: bookmarked || saved }"
+    :class="{ starred: pinned || starred }"
     role="link"
     tabindex="0"
     :aria-label="`Open ${name}`"
@@ -51,11 +51,11 @@ function open(event?: Event): void {
   >
     <td>
       <div class="agent-cell">
-        <BookmarkButton
-          variant="star"
+        <StarButton
+          kind="agent"
+          variant="icon"
           :chain-id="agent.chainId"
-          :token-id="agent.tokenId"
-          :testnet="agent.testnet"
+          :id="agent.tokenId"
           :label="name"
         />
         <AgentAvatar :image="agent.imageUrl" :label="name" :seed="`${agent.chainId}:${agent.tokenId}`" />
@@ -93,7 +93,16 @@ function open(event?: Event): void {
     </td>
     <td class="num">{{ agent.feedbackCount }}</td>
     <td>
-      <span v-if="agent.owner" class="address-mark mono" :title="agent.owner">
+      <RouterLink
+        v-if="agent.owner && known"
+        :to="{ name: 'owner', params: { slug: known.slug, address: agent.owner } }"
+        class="address-mark mono"
+        :title="agent.owner"
+      >
+        <AddressIdenticon :address="agent.owner" />
+        {{ shortAddress(agent.owner) }}
+      </RouterLink>
+      <span v-else-if="agent.owner" class="address-mark mono" :title="agent.owner">
         <AddressIdenticon :address="agent.owner" />
         {{ shortAddress(agent.owner) }}
       </span>
@@ -104,8 +113,8 @@ function open(event?: Event): void {
 </template>
 
 <style scoped>
-/* Drop with bookmarks: row tint for pinned/saved agents. */
-tr.bookmarked td {
+/* Row tint for starred agents, pinned or in the feed. */
+tr.starred td {
   background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 </style>

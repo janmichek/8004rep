@@ -175,7 +175,7 @@ describe('chart data', () => {
     const items = [{ t: 0, k: 'a' }, { t: 2 * DAY + 5, k: 'b' }, { t: 2 * DAY + 9, k: 'a' }]
     const cols = dailyColumns(items, (i) => i.t, (i) => i.k, ['a', 'b'], { a: 'A', b: 'B' })
     expect(cols.map((c) => c.segments)).toEqual([[{ key: 'a', value: 1 }], [], [{ key: 'a', value: 1 }, { key: 'b', value: 1 }]])
-    expect(cols[2].title).toBe('1970-01-03 · 2 reviews · 1 A, 1 B')
+    expect(cols[2].title).toBe('1970-01-03 · 2 feedback · 1 A, 1 B')
     const long = dailyColumns([{ t: 0 }, { t: 200 * DAY }], (i) => i.t, () => 'a', ['a'], {})
     expect(long).toHaveLength(29)
     expect(long[0].title).toMatch(/^Week of/)

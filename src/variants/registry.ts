@@ -1,12 +1,13 @@
 import type { Component } from 'vue'
 
-/** The five routed views every design implements. */
+/** The routed views; agents, agent and network are required of every design. */
 export type PageSet = {
   agents: Component
   agent: Component
   network: Component
-  owner: Component
-  reviewer: Component
+  /** Optional: a design with no owner or reviewer entity (e.g. Maps) leaves these out. */
+  owner?: Component
+  reviewer?: Component
   /** Classic-only: a feedback row opened as its own view. */
   feedback?: Component
   /** Classic-only: an agent on a network with no chain config, read from 8004scan. */
@@ -48,6 +49,7 @@ export const VARIANTS: VariantInfo[] = [
   { id: 18, name: 'Museum', idea: 'A gallery: framed works, wall labels, provenance and condition reports', load: () => import('./v18-museum') },
   { id: 19, name: 'Archive', idea: 'A registry: manila cards, call numbers, series and an item list', load: () => import('./v19-archive') },
   { id: 20, name: 'Signal', idea: 'A radio receiver: frequencies, S-meters, SNR and interference', load: () => import('./v20-signal') },
+  { id: 21, name: 'Maps', idea: 'Google Maps places and reviews, scored by who reviewed and when', load: () => import('./v21-maps') },
 ]
 
 const KEY = '8004rep:variant'

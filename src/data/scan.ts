@@ -121,8 +121,14 @@ export function parseScanScore(data: unknown): ScanScore | null {
       return score === undefined || weight === undefined ? [] : [{ id, label: LABELS[id] ?? id, score, weight }]
     })
     .sort((a, b) => b.weight - a.weight)
-  // Indexed but never scored: a bare 0 with nothing behind it.
-  if (total === 0 && dimensions.length === 0) return null
+  // Zero headline with no breakdown: scored only if feedback sits behind it.
+  // 8004scan can report total_score 0 with scores null yet average_score > 0 and feedback rows.
+  if (total === 0 && dimensions.length === 0) {
+    const average = num(data.average_score)
+    const feedbacks = num(data.total_feedbacks)
+    if (!average || !feedbacks || average <= 0 || feedbacks <= 0) return null
+    return { total: average, dimensions: [], feedback: { average, count: feedbacks } }
+  }
 
   const engagement = isRecord(dims.engagement) && isRecord(dims.engagement.details) ? dims.engagement.details : {}
   const average = num(engagement.average_score)

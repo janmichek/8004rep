@@ -79,11 +79,7 @@ export const CHAINS: ChainInfo[] = [
     rpcUrl: endpoint('RPC', 421614, 'https://sepolia-rollup.arbitrum.io/rpc')!,
     viemChain: arbitrumSepolia,
     logRange: 10_000_000n,
-    subgraphUrl: endpoint(
-      'SUBGRAPH',
-      421614,
-      'https://api.studio.thegraph.com/query/1741985/erc-8004-arbitrum-testnet/version/latest',
-    ),
+    // Subgraph unpublished (Studio dev endpoint returns 409); fall back to RPC.
   },
   {
     ...MAINNET,

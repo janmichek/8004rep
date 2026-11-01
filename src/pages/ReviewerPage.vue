@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { Gauge, MessageSquare, Users } from '@lucide/vue'
 import { computed, shallowRef, watch } from 'vue'
 import { isAddress, type Address } from 'viem'
 import { addressExplorerUrl, findChainBySlug, txExplorerUrl } from '../chains'
+import StarButton from '../stars/StarButton.vue'
 import AddressIdenticon from '../components/AddressIdenticon.vue'
 import ChainName from '../components/ChainName.vue'
 import ChartSkeleton from '../components/ui/ChartSkeleton.vue'
@@ -10,6 +12,7 @@ import { COUNT_SERIES } from '../components/ui/palette'
 import Skeleton from '../components/ui/Skeleton.vue'
 import SortHeader from '../components/ui/SortHeader.vue'
 import StatTiles, { type Tile } from '../components/ui/StatTiles.vue'
+import TabBar, { type Tab } from '../components/ui/TabBar.vue'
 import TilesSkeleton from '../components/ui/TilesSkeleton.vue'
 import { sourceFor } from '../data'
 import { dailyColumns, valueHistogram } from '../data/chartData'
@@ -112,6 +115,12 @@ const tiles = computed<Tile[]>(() => {
   ]
 })
 
+const tabs = computed<Tab[]>(() => [
+  { id: 'overview', label: 'Overview', icon: Gauge },
+  { id: 'agents', label: 'Agents rated', icon: Users, count: profile.value?.perAgent.length },
+  { id: 'feedback', label: 'Latest feedback', icon: MessageSquare, count: feed.value?.items.length },
+])
+
 const valueColumns = computed(() => valueHistogram((feed.value?.items ?? []).filter((r) => !r.revoked).map((r) => r.value)))
 const timeColumns = computed(() =>
   dailyColumns(feed.value?.items ?? [], (r) => r.createdAt, () => 'count', ['count'], { count: 'feedback' }),
@@ -144,25 +153,23 @@ function agentRoute(tokenId: bigint) {
 </script>
 
 <template>
-
   <section v-if="!address" class="state">
     <h1>Not an address</h1>
     <p class="muted">“{{ props.address }}” is not a 0x address.</p>
   </section>
 
   <template v-else>
-    <div class="page-head">
-      <h1>
-        Reviewer
-        <span class="address-mark mono">
-          <AddressIdenticon :address="address" :size="28" />
-          {{ shortAddress(address) }}
-        </span>
-      </h1>
-      <p class="meta">
-        <span class="mono">{{ address }}</span>
-        <a :href="addressExplorerUrl(chain, address)" target="_blank" rel="noopener noreferrer">Explorer ↗</a>
-      </p>
+    <div class="agent-head">
+      <AddressIdenticon :address="address" :size="64" />
+      <div>
+        <h1>{{ shortAddress(address) }}</h1>
+        <p class="meta">
+          <span class="chip">reviewer</span>
+          <span class="mono">{{ address }}</span>
+          <a :href="addressExplorerUrl(chain, address)" target="_blank" rel="noopener noreferrer">Explorer ↗</a>
+          <StarButton kind="reviewer" :chain-id="chain.chainId" :id="address" :label="shortAddress(address)" />
+        </p>
+      </div>
     </div>
 
     <p v-if="feedError" class="notice">Could not load its feedback: {{ feedError }} <button @click="loadFeed()">Retry</button></p>
@@ -175,138 +182,144 @@ function agentRoute(tokenId: bigint) {
       </div>
     </div>
 
-    <template v-if="profile">
-      <StatTiles :tiles="tiles" />
+    <TabBar v-if="profile" :tabs="tabs" label="Reviewer views">
+      <template #overview>
+        <StatTiles :tiles="tiles" />
 
-      <section class="panel">
-        <h3>What its habits say</h3>
-        <ul v-if="profile.labels.length" class="signals">
-          <li v-for="label in profile.labels" :key="label" :class="`level-${LABEL_INFO[label].tone}`">
-            <span class="signal-level">{{ LABEL_INFO[label].label }}</span> <span>{{ LABEL_INFO[label].rule }}</span>
-          </li>
-        </ul>
-        <p v-else class="muted">No reviewer rule fired: varied values, more than one agent, no bulk days.</p>
-        <p class="note">
-          <template v-if="wallet.data.value?.funding">
-            First funded by
-            <a :href="addressExplorerUrl(chain, wallet.data.value.funding.funder)" target="_blank" rel="noopener noreferrer" class="address-mark mono">
-              <AddressIdenticon :address="wallet.data.value.funding.funder" />
-              {{ shortAddress(wallet.data.value.funding.funder) }}
-            </a>
-            <template v-if="wallet.data.value.funding.timestamp"> on {{ formatDate(wallet.data.value.funding.timestamp) }}</template>
-            (<a :href="txExplorerUrl(chain, wallet.data.value.funding.txHash)" target="_blank" rel="noopener noreferrer">tx ↗</a>).
-            Other reviewers funded by the same address show up as a shared funder on an agent's Reviewers tab.
-          </template>
-          <Skeleton v-else-if="wallet.loading.value" width="18em" />
-          <span v-else-if="!chain.explorerApiUrl" class="muted">Funding cannot be traced on <ChainName :chain-id="chain.chainId" :name="chain.name" /> (no explorer API that allows browser calls).</span>
-          <span v-else-if="wallet.data.value?.fundingError" class="muted">Funding lookup failed: {{ wallet.data.value.fundingError }}</span>
-          <span v-else-if="wallet.data.value && wallet.data.value.funding === null" class="muted">No incoming transfer among its first transactions.</span>
-        </p>
-        <p class="muted note">
-          Based on {{ profile.rows }} rows<template v-if="feed?.since"> since {{ formatDate(feed.since) }} (log scan window)</template>.
-          <button v-if="feed?.cursor" :disabled="loadingFeed" @click="loadFeed(true)">{{ loadingFeed ? 'Loading…' : 'Load older' }}</button>
-        </p>
-      </section>
+        <section class="panel">
+          <h3>What its habits say</h3>
+          <ul v-if="profile.labels.length" class="signals">
+            <li v-for="label in profile.labels" :key="label" :class="`level-${LABEL_INFO[label].tone}`">
+              <span class="signal-level">{{ LABEL_INFO[label].label }}</span> <span>{{ LABEL_INFO[label].rule }}</span>
+            </li>
+          </ul>
+          <p v-else class="muted">No reviewer rule fired: varied values, more than one agent, no bulk days.</p>
+          <p class="note">
+            <template v-if="wallet.data.value?.funding">
+              First funded by
+              <a :href="addressExplorerUrl(chain, wallet.data.value.funding.funder)" target="_blank" rel="noopener noreferrer" class="address-mark mono">
+                <AddressIdenticon :address="wallet.data.value.funding.funder" />
+                {{ shortAddress(wallet.data.value.funding.funder) }}
+              </a>
+              <template v-if="wallet.data.value.funding.timestamp"> on {{ formatDate(wallet.data.value.funding.timestamp) }}</template>
+              (<a :href="txExplorerUrl(chain, wallet.data.value.funding.txHash)" target="_blank" rel="noopener noreferrer">tx ↗</a>).
+              Other reviewers funded by the same address show up as a shared funder on an agent's Reviewers tab.
+            </template>
+            <Skeleton v-else-if="wallet.loading.value" width="18em" />
+            <span v-else-if="!chain.explorerApiUrl" class="muted">Funding cannot be traced on <ChainName :chain-id="chain.chainId" :name="chain.name" /> (no explorer API that allows browser calls).</span>
+            <span v-else-if="wallet.data.value?.fundingError" class="muted">Funding lookup failed: {{ wallet.data.value.fundingError }}</span>
+            <span v-else-if="wallet.data.value && wallet.data.value.funding === null" class="muted">No incoming transfer among its first transactions.</span>
+          </p>
+          <p class="muted note">
+            Based on {{ profile.rows }} rows<template v-if="feed?.since"> since {{ formatDate(feed.since) }} (log scan window)</template>.
+            <button v-if="feed?.cursor" :disabled="loadingFeed" @click="loadFeed(true)">{{ loadingFeed ? 'Loading…' : 'Load older' }}</button>
+          </p>
+        </section>
 
-      <div class="chart-grid">
-        <ColumnChart title="Values it gave" :columns="valueColumns" :series="COUNT_SERIES" />
-        <ColumnChart title="Feedback over time" :columns="timeColumns" :series="COUNT_SERIES" />
-      </div>
-
-      <section class="panel">
-        <h3>Agents it rated</h3>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <SortHeader label="Agent" :active="agentRows.state('agent')" @sort="agentRows.toggle('agent')" />
-                <SortHeader label="Feedback" numeric :active="agentRows.state('reviews')" @sort="agentRows.toggle('reviews')" />
-                <SortHeader label="Average" numeric :active="agentRows.state('average')" @sort="agentRows.toggle('average')" />
-                <SortHeader label="Revoked" numeric :active="agentRows.state('revoked')" @sort="agentRows.toggle('revoked')" />
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="a in agentRows.sorted.value"
-                :key="a.tokenId.toString()"
-                class="row-link"
-                role="link"
-                tabindex="0"
-                :aria-label="`Open ${a.agentName ?? `Agent #${a.tokenId}`}`"
-                @click="open(agentRoute(a.tokenId), $event)"
-                @keydown.enter.prevent="open(agentRoute(a.tokenId))"
-                @keydown.space.prevent="open(agentRoute(a.tokenId))"
-              >
-                <td>
-                  {{ a.agentName ?? `Agent #${a.tokenId}` }}
-                  <small class="muted"> #{{ a.tokenId }}</small>
-                </td>
-                <td class="num">{{ a.rows }}</td>
-                <td class="num">{{ formatNumber(a.average) }}</td>
-                <td class="num">{{ a.revoked || '' }}</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="chart-grid">
+          <ColumnChart title="Values it gave" :columns="valueColumns" :series="COUNT_SERIES" />
+          <ColumnChart title="Feedback over time" :columns="timeColumns" :series="COUNT_SERIES" />
         </div>
-      </section>
+      </template>
 
-      <section class="panel">
-        <h3>Latest Feedback</h3>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <SortHeader label="Agent" :active="latestRows.state('agent')" @sort="latestRows.toggle('agent')" />
-                <SortHeader label="Value" numeric :active="latestRows.state('value')" @sort="latestRows.toggle('value')" />
-                <th>Tags</th>
-                <th>Text</th>
-                <th>File</th>
-                <SortHeader label="When" numeric :active="latestRows.state('when')" @sort="latestRows.toggle('when')" />
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(r, i) in latestRows.sorted.value.slice(0, 50)"
-                :key="i"
-                class="row-link"
-                :class="{ revoked: r.revoked }"
-                role="link"
-                tabindex="0"
-                :aria-label="`Open ${r.agentName ?? `Agent #${r.tokenId}`}`"
-                @click="open(agentRoute(r.tokenId), $event)"
-                @keydown.enter.prevent="open(agentRoute(r.tokenId))"
-                @keydown.space.prevent="open(agentRoute(r.tokenId))"
-              >
-                <td>{{ r.agentName ?? `Agent #${r.tokenId}` }}</td>
-                <td class="num"><b>{{ formatScore(r.value) }}</b> <span v-if="r.revoked" class="chip">revoked</span></td>
-                <td class="tags">
-                  <span v-if="r.tag1" class="chip clip-chip" :title="r.tag1">{{ r.tag1 }}</span>
-                  <span v-if="r.tag2" class="chip clip-chip" :title="r.tag2">{{ r.tag2 }}</span>
-                </td>
-                <td class="text-cell">
-                  <FeedbackNote v-if="r.feedbackURI" :uri="r.feedbackURI" />
-                  <span v-else class="muted">—</span>
-                </td>
-                <td class="nowrap">
-                  <a v-if="toDisplayUrl(r.feedbackURI)" :href="toDisplayUrl(r.feedbackURI)" target="_blank" rel="noopener noreferrer" title="Feedback file (effchain file)">
-                    · file ↗
-                  </a>
-                  <span v-else class="muted">—</span>
-                </td>
-                <td class="nowrap">
-                  <template v-if="r.createdAt">
-                    <a v-if="r.txHash" :href="txExplorerUrl(chain, r.txHash)" target="_blank" rel="noopener noreferrer" :title="formatDate(r.createdAt)">
-                      {{ formatTimeline(r.createdAt) }}
+      <template #agents>
+        <section class="panel">
+          <h3>Agents it rated</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <SortHeader label="Agent" :active="agentRows.state('agent')" @sort="agentRows.toggle('agent')" />
+                  <SortHeader label="Feedback" numeric :active="agentRows.state('reviews')" @sort="agentRows.toggle('reviews')" />
+                  <SortHeader label="Average" numeric :active="agentRows.state('average')" @sort="agentRows.toggle('average')" />
+                  <SortHeader label="Revoked" numeric :active="agentRows.state('revoked')" @sort="agentRows.toggle('revoked')" />
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="a in agentRows.sorted.value"
+                  :key="a.tokenId.toString()"
+                  class="row-link"
+                  role="link"
+                  tabindex="0"
+                  :aria-label="`Open ${a.agentName ?? `Agent #${a.tokenId}`}`"
+                  @click="open(agentRoute(a.tokenId), $event)"
+                  @keydown.enter.prevent="open(agentRoute(a.tokenId))"
+                  @keydown.space.prevent="open(agentRoute(a.tokenId))"
+                >
+                  <td>
+                    {{ a.agentName ?? `Agent #${a.tokenId}` }}
+                    <small class="muted"> #{{ a.tokenId }}</small>
+                  </td>
+                  <td class="num">{{ a.rows }}</td>
+                  <td class="num">{{ formatNumber(a.average) }}</td>
+                  <td class="num">{{ a.revoked || '' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </template>
+
+      <template #feedback>
+        <section class="panel">
+          <h3>Latest Feedback</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <SortHeader label="Agent" :active="latestRows.state('agent')" @sort="latestRows.toggle('agent')" />
+                  <SortHeader label="Value" numeric :active="latestRows.state('value')" @sort="latestRows.toggle('value')" />
+                  <th>Tags</th>
+                  <th>Text</th>
+                  <th>File</th>
+                  <SortHeader label="When" numeric :active="latestRows.state('when')" @sort="latestRows.toggle('when')" />
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(r, i) in latestRows.sorted.value.slice(0, 50)"
+                  :key="i"
+                  class="row-link"
+                  :class="{ revoked: r.revoked }"
+                  role="link"
+                  tabindex="0"
+                  :aria-label="`Open ${r.agentName ?? `Agent #${r.tokenId}`}`"
+                  @click="open(agentRoute(r.tokenId), $event)"
+                  @keydown.enter.prevent="open(agentRoute(r.tokenId))"
+                  @keydown.space.prevent="open(agentRoute(r.tokenId))"
+                >
+                  <td>{{ r.agentName ?? `Agent #${r.tokenId}` }}</td>
+                  <td class="num"><b>{{ formatScore(r.value) }}</b> <span v-if="r.revoked" class="chip">revoked</span></td>
+                  <td class="tags">
+                    <span v-if="r.tag1" class="chip clip-chip" :title="r.tag1">{{ r.tag1 }}</span>
+                    <span v-if="r.tag2" class="chip clip-chip" :title="r.tag2">{{ r.tag2 }}</span>
+                  </td>
+                  <td class="text-cell">
+                    <FeedbackNote v-if="r.feedbackURI" :uri="r.feedbackURI" />
+                    <span v-else class="muted">—</span>
+                  </td>
+                  <td class="nowrap">
+                    <a v-if="toDisplayUrl(r.feedbackURI)" :href="toDisplayUrl(r.feedbackURI)" target="_blank" rel="noopener noreferrer" title="Feedback file (effchain file)">
+                      · file ↗
                     </a>
-                    <span v-else :title="formatDate(r.createdAt)">{{ formatTimeline(r.createdAt) }}</span>
-                  </template>
-                  <span v-else class="muted">—</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </template>
+                    <span v-else class="muted">—</span>
+                  </td>
+                  <td class="nowrap">
+                    <template v-if="r.createdAt">
+                      <a v-if="r.txHash" :href="txExplorerUrl(chain, r.txHash)" target="_blank" rel="noopener noreferrer" :title="formatDate(r.createdAt)">
+                        {{ formatTimeline(r.createdAt) }}
+                      </a>
+                      <span v-else :title="formatDate(r.createdAt)">{{ formatTimeline(r.createdAt) }}</span>
+                    </template>
+                    <span v-else class="muted">—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </template>
+    </TabBar>
   </template>
 </template>

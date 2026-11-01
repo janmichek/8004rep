@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Address } from 'viem'
 import type { Feedback } from '../types'
 import { buildReputationReport } from './report'
-import { betaCdf, betaQuantile, robustScore } from './score'
+import { betaCdf, betaQuantile, filteredScore } from './score'
 import { buildRatingLayer } from './units'
 
 const DAY = 86400
@@ -42,7 +42,7 @@ describe('rating units', () => {
     const layer = buildRatingLayer(fb, { now: NOW })
     expect(layer.wallets).toHaveLength(1)
     expect(layer.wallets[0].weight).toBeLessThanOrEqual(1)
-    const score = robustScore(layer.wallets)
+    const score = filteredScore(layer.wallets)
     expect(score.totalWeight).toBeCloseTo(1)
     expect(score.top1).toBe(1)
     expect(score.value).toBeCloseTo(0.625, 4)
@@ -50,7 +50,7 @@ describe('rating units', () => {
   })
 })
 
-describe('robust score', () => {
+describe('filtered score', () => {
   it('does not punish independent agreement', () => {
     const fb = [
       ...Array.from({ length: 50 }, (_, i) => row(addr(i + 1), 100, { tag1: 'starred', createdAt: NOW })),
@@ -97,11 +97,11 @@ describe('robust score', () => {
 
   it('prices a forced score in fresh wallets', () => {
     const high = buildRatingLayer(Array.from({ length: 20 }, (_, i) => row(addr(i + 1), 100, { tag1: 'starred', createdAt: NOW })), { now: NOW })
-    const score = robustScore(high.wallets)
+    const score = filteredScore(high.wallets)
     // Already above 0.9, so nothing to buy.
     expect(score.cost).toBeNull()
     const low = buildRatingLayer(Array.from({ length: 10 }, (_, i) => row(addr(i + 1), 20, { tag1: 'starred', createdAt: NOW })), { now: NOW })
-    expect(robustScore(low.wallets).cost).toBeGreaterThan(0)
+    expect(filteredScore(low.wallets).cost).toBeGreaterThan(0)
   })
 
   it('flags one wallet writing most rating rows', () => {

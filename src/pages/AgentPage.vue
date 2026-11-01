@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import BookmarkButton from '../bookmarks/BookmarkButton.vue'
+import StarButton from '../stars/StarButton.vue'
 import { addressExplorerUrl, agentScanUrl, findChainBySlug } from '../chains'
 import AddressIdenticon from '../components/AddressIdenticon.vue'
 import AgentAvatar from '../components/AgentAvatar.vue'
@@ -93,7 +93,7 @@ const rawJson = computed(() => (file.value ? JSON.stringify(file.value.raw, null
             <span v-if="file?.x402Support" class="chip accent">x402</span>
             <span v-for="trust in file?.supportedTrust ?? []" :key="trust" class="chip">{{ trust }}</span>
           </template>
-          <BookmarkButton :chain-id="chain.chainId" :token-id="agent.tokenId" :testnet="chain.testnet" />
+          <StarButton kind="agent" :chain-id="chain.chainId" :id="agent.tokenId" :label="name" :image="file?.image" />
           <a :href="agentScanUrl(chain, agent.tokenId)" target="_blank" rel="noopener noreferrer">8004scan ↗</a>
         </p>
       </div>

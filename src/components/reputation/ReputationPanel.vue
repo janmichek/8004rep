@@ -53,7 +53,7 @@ const tiles = computed<Tile[]>(() => {
   const interval = r.interval ? `80% interval ${formatNumber(r.interval[0])}–${formatNumber(r.interval[1])}` : 'too few rating units for an interval'
   return [
     {
-      label: 'Robust score',
+      label: 'Filtered score',
       value: r.unrated ? 'Unrated' : formatNumber(r.score),
       hint: r.unrated ? 'no rating rows' : interval,
       title: r.unrated
@@ -84,7 +84,7 @@ const tiles = computed<Tile[]>(() => {
     {
       label: 'Raw on-chain',
       value: formatNumber(rawValue),
-      hint: `n = ${onchain?.count ?? s.coverage.total}${r.inflation !== null && r.inflation > 0.5 ? ` · +${formatNumber(r.inflation)} vs robust` : ''}`,
+      hint: `n = ${onchain?.count ?? s.coverage.total}${r.inflation !== null && r.inflation > 0.5 ? ` · +${formatNumber(r.inflation)} vs filtered` : ''}`,
       title: "Plain mean of non-revoked rows, as the registry's getSummary reports it. It mixes ratings with telemetry and quantities, so it is a baseline, not a quality score.",
       meter: rawValue === null || rawValue === undefined ? undefined : { kind: 'gauge', value: rawValue },
     },
@@ -115,7 +115,7 @@ const headline = computed(() => {
   }
   const gap = r.inflation
   const versus = gap === null || Math.abs(gap) < 0.5 ? 'the raw rating mean' : `the raw rating mean ${formatNumber(r.rawRatings)} (${gap > 0 ? '+' : ''}${formatNumber(gap)} of inflation removed)`
-  return `Robust score ${formatNumber(r.score)} (${r.confidence} confidence) on ${r.funnel.wallets} wallet${r.funnel.wallets === 1 ? '' : 's'}, ${versus}.`
+  return `Filtered score ${formatNumber(r.score)} (${r.confidence} confidence) on ${r.funnel.wallets} wallet${r.funnel.wallets === 1 ? '' : 's'}, ${versus}.`
 })
 
 const rowsRead = computed(() => {

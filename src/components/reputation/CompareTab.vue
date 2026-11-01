@@ -83,7 +83,7 @@ const notes = computed(() => {
         <small class="muted">{{ feedback.length }} rows read</small>
       </div>
       <div>
-        <div class="tile-label">Robust here</div>
+        <div class="tile-label">Filtered here</div>
         <div class="compare-value accent">{{ formatNumber(trusted) }}</div>
         <small class="muted">one vote per wallet, ratings only</small>
       </div>
