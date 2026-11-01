@@ -29,7 +29,14 @@ export const LABEL_INFO: Record<ReviewerLabel, { label: string; rule: string; to
   harsh: { label: 'harsh', rule: `${MIN_PATTERN_ROWS}+ reviews averaging ${HARSH_AVERAGE} or less.`, tone: 'info' },
 }
 
-export type AgentShare = { tokenId: bigint; agentName?: string; rows: number; average: number | null; revoked: number }
+export type AgentShare = {
+  tokenId: bigint
+  chainId?: number
+  agentName?: string
+  rows: number
+  average: number | null
+  revoked: number
+}
 
 export type ReviewerProfile = {
   address: Address
@@ -46,6 +53,8 @@ export type ReviewerProfile = {
   peakPerDay: number
   /** Most rows first. */
   perAgent: AgentShare[]
+  /** Networks the rows came from, most rows first; empty when rows carry no chain. */
+  chainIds: number[]
   labels: ReviewerLabel[]
 }
 
@@ -75,17 +84,20 @@ export function buildReviewerProfile(address: Address, rows: FeedbackEvent[]): R
   const mode = top ? { value: top[0], share: top[1] / values.length } : null
   const dates = rows.map((r) => r.createdAt).filter((t): t is number => t !== undefined)
 
+  // Token IDs repeat across chains, so an agent is (chain, token).
   const byAgent = new Map<string, FeedbackEvent[]>()
   for (const r of rows) {
-    const key = r.tokenId.toString()
+    const key = `${r.chainId ?? ''}:${r.tokenId}`
     byAgent.set(key, [...(byAgent.get(key) ?? []), r])
   }
   const perAgent: AgentShare[] = [...byAgent.values()]
     .map((group) => {
       const ok = group.filter((r) => !r.revoked)
       const name = group.find((r) => r.agentName)?.agentName
+      const chainId = group[0].chainId
       return {
         tokenId: group[0].tokenId,
+        ...(chainId !== undefined ? { chainId } : {}),
         ...(name ? { agentName: name } : {}),
         rows: group.length,
         average: mean(ok.map((r) => r.value)),
@@ -96,6 +108,10 @@ export function buildReviewerProfile(address: Address, rows: FeedbackEvent[]): R
 
   const average = mean(values)
   const peakPerDay = peakWithin(dates, DAY)
+  const perChain = new Map<number, number>()
+  for (const r of rows) if (r.chainId !== undefined) perChain.set(r.chainId, (perChain.get(r.chainId) ?? 0) + 1)
+  const chainIds = [...perChain.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0]).map(([id]) => id)
+
   const labels: ReviewerLabel[] = []
   if (mode && live.length >= MIN_PATTERN_ROWS && mode.share >= STAMP_SHARE) labels.push('rubber-stamp')
   if (rows.length >= 3 && perAgent.length === 1) labels.push('single-agent')
@@ -113,6 +129,7 @@ export function buildReviewerProfile(address: Address, rows: FeedbackEvent[]): R
     ...(dates.length ? { first: Math.min(...dates), last: Math.max(...dates) } : {}),
     peakPerDay,
     perAgent,
+    chainIds,
     labels,
   }
 }

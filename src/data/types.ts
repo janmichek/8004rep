@@ -57,7 +57,12 @@ export type FeedbackResponse = {
 }
 
 /** One row of a cross-agent feedback feed. */
-export type FeedbackEvent = Feedback & { tokenId: bigint; agentName?: string }
+export type FeedbackEvent = Feedback & {
+  tokenId: bigint
+  agentName?: string
+  /** Set on rows loaded across several networks; token IDs repeat between chains. */
+  chainId?: number
+}
 
 export type FeedbackQuery = { client?: Address; agent?: bigint; cursor?: string }
 

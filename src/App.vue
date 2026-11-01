@@ -2,7 +2,7 @@
 import { TooltipProvider } from 'reka-ui'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CHAINS, DEFAULT_CHAIN, findChainBySlug } from './chains'
+import { ALL_NETWORKS, CHAINS, DEFAULT_CHAIN, findChainBySlug } from './chains'
 import ChainName from './components/ChainName.vue'
 import SourceBadge from './components/SourceBadge.vue'
 import SelectMenu, { type SelectOption } from './components/ui/SelectMenu.vue'
@@ -19,7 +19,7 @@ const ENV_OPTIONS: SelectOption[] = [
 const route = useRoute()
 const router = useRouter()
 const slug = computed(() => (typeof route.params.slug === 'string' ? route.params.slug : undefined))
-const chain = computed(() => (slug.value ? findChainBySlug(slug.value) : undefined))
+const chain = computed(() => (slug.value && slug.value !== ALL_NETWORKS ? findChainBySlug(slug.value) : undefined))
 // The agent list now spans every network, so a per-chain source badge would mislead there.
 const showSource = computed(() => route.name !== 'agents')
 
@@ -31,12 +31,14 @@ const envFallback = computed(() => CHAINS.find((item) => item.testnet === (netwo
 const activeChain = computed(() =>
   chain.value && chain.value.testnet === (networkEnv.value === 'testnet') ? chain.value : envFallback.value,
 )
+// Owners, reviewers and feedbacks keep the all-networks view when you are on it.
+const listSlug = computed(() => (slug.value === ALL_NETWORKS ? ALL_NETWORKS : activeChain.value.slug))
 
 function switchEnv(value: string | undefined): void {
   if (value !== 'mainnet' && value !== 'testnet') return
   if (value === env.value) return
   setNetworkEnv(value)
-  if (route.name === 'agents') return
+  if (route.name === 'agents' || slug.value === ALL_NETWORKS) return
   const testnet = value === 'testnet'
   const target = CHAINS.find((item) => item.testnet === testnet) ?? DEFAULT_CHAIN
   if (route.name === 'network') {
@@ -57,6 +59,9 @@ const { data: resolved } = useAsync(async () => (chain.value ? sourceFor(chain.v
       </RouterLink>
       <nav class="nav">
         <RouterLink :to="{ name: 'agents', params: { slug: activeChain.slug } }">Agents</RouterLink>
+        <RouterLink :to="{ name: 'owners', params: { slug: listSlug } }">Owners</RouterLink>
+        <RouterLink :to="{ name: 'reviewers', params: { slug: listSlug } }">Reviewers</RouterLink>
+        <RouterLink :to="{ name: 'feedbacks', params: { slug: listSlug } }">Feedbacks</RouterLink>
         <RouterLink :to="{ name: 'network', params: { slug: activeChain.slug } }">Network health</RouterLink>
         <RouterLink :to="{ name: 'about' }">About</RouterLink>
       </nav>
@@ -83,7 +88,7 @@ const { data: resolved } = useAsync(async () => (chain.value ? sourceFor(chain.v
     </header>
 
     <main>
-      <section v-if="slug && !chain" class="state">
+      <section v-if="slug && !chain && slug !== ALL_NETWORKS" class="state">
         <h1>Unknown network “{{ slug }}”</h1>
         <p>Supported networks:</p>
         <ul class="plain">

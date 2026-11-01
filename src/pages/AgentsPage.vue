@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { usePinnedAgents } from '../stars/pinned'
 import ScanAgentRow from '../components/ScanAgentRow.vue'
 import ChainName from '../components/ChainName.vue'
+import { Search, Sparkle } from '@lucide/vue'
 import SelectMenu, { type SelectOption } from '../components/ui/SelectMenu.vue'
 import SortHeader from '../components/ui/SortHeader.vue'
 import Skeleton from '../components/ui/Skeleton.vue'
@@ -136,17 +137,29 @@ function toggleRegistered(): void {
 </script>
 
 <template>
-  <div class="page-head">
-    <h1>
-      Agents
-      <small>
-        {{ networkEnv === 'testnet' ? 'Testnet' : 'Mainnet' }} ·
-        <ChainName v-if="selectedChain" :chain-id="selectedChain.chainId" :name="selectedChain.name" />
-        <template v-else>All networks</template>
-        <template v-if="loading || !data"> · <Skeleton width="8em" height="0.75em" /></template>
-        <template v-else-if="data.total !== undefined"> · {{ data.total.toLocaleString() }} registered</template>
-      </small>
-    </h1>
+  <header class="agents-hero">
+    <Sparkle class="agents-hero-icon" :size="32" aria-hidden="true" />
+    <h1>Explore 8004 agents</h1>
+    <p class="agents-hero-sub">
+      Identity, reputation and validation for trustless agents<template v-if="envChains.length"> across {{ envChains.length }} chains</template>.
+    </p>
+    <form class="agents-hero-search" role="search" @submit.prevent="submit">
+      <label class="agents-hero-field">
+        <Search :size="18" aria-hidden="true" />
+        <input v-model="input" type="search" placeholder="Search by name or token ID" aria-label="Search agents" />
+      </label>
+      <button type="submit">Search</button>
+    </form>
+  </header>
+
+  <div class="agents-toolbar">
+    <p class="agents-meta">
+      {{ networkEnv === 'testnet' ? 'Testnet' : 'Mainnet' }} ·
+      <ChainName v-if="selectedChain" :chain-id="selectedChain.chainId" :name="selectedChain.name" />
+      <template v-else>All networks</template>
+      <template v-if="loading || !data"> · <Skeleton width="8em" height="0.75em" /></template>
+      <template v-else-if="data.total !== undefined"> · {{ data.total.toLocaleString() }} registered</template>
+    </p>
     <div class="agent-tools">
       <button class="filter-toggle" type="button" :aria-pressed="rated" :class="{ on: rated }" @click="toggleRated">
         Most rated
@@ -160,10 +173,6 @@ function toggleRegistered(): void {
         @update:model-value="setNetwork"
       />
     </div>
-    <form class="search" role="search" @submit.prevent="submit">
-      <input v-model="input" type="search" placeholder="Search by name or token ID" aria-label="Search agents" />
-      <button type="submit">Search</button>
-    </form>
   </div>
 
   <section v-if="error" class="state">

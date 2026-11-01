@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { CHAINS, DEFAULT_CHAIN } from '../chains'
 import { GLOSSARY_GROUPS } from '../data/glossary'
 import { METRIC_GROUPS } from '../data/metricsGuide'
 
-const copied = ref<string | null>(null)
 const route = useRoute()
 
 // Landing on a section does not scroll (see router scrollBehavior); it just
@@ -32,19 +31,6 @@ const defaultSlug = DEFAULT_CHAIN.slug
 
 function href(id: string): string {
   return `#/about#${id}`
-}
-
-async function copyLink(id: string): Promise<void> {
-  const url = `${location.origin}${location.pathname}${href(id)}`
-  try {
-    await navigator.clipboard.writeText(url)
-    copied.value = id
-    setTimeout(() => {
-      if (copied.value === id) copied.value = null
-    }, 1600)
-  } catch {
-    copied.value = null
-  }
 }
 </script>
 
@@ -81,9 +67,6 @@ async function copyLink(id: string): Promise<void> {
         <div v-for="entry in group.entries" :id="entry.id" :key="entry.id" class="about-glossary-item">
           <dt>
             <a :href="href(entry.id)" :title="`Link to ${entry.name}`">{{ entry.name }}</a>
-            <button type="button" class="about-copy" @click="copyLink(entry.id)">
-              {{ copied === entry.id ? 'link copied' : 'copy link' }}
-            </button>
           </dt>
           <dd>
             {{ entry.summary }}
@@ -183,14 +166,9 @@ async function copyLink(id: string): Promise<void> {
             <p class="about-group-intro">{{ group.intro }}</p>
 
             <article v-for="metric in group.metrics" :id="metric.id" :key="metric.id" class="about-metric">
-              <div class="about-metric-head">
-                <h3>
-                  <a :href="href(metric.id)" :title="`Link to ${metric.name}`">{{ metric.name }}</a>
-                </h3>
-                <button type="button" class="about-copy" @click="copyLink(metric.id)">
-                  {{ copied === metric.id ? 'link copied' : 'copy link' }}
-                </button>
-              </div>
+              <h3>
+                <a :href="href(metric.id)" :title="`Link to ${metric.name}`">{{ metric.name }}</a>
+              </h3>
               <p>{{ metric.summary }}</p>
               <p v-if="metric.rule" class="about-rule">{{ metric.rule }}</p>
               <p v-if="metric.where" class="about-where"><span>Seen in</span> {{ metric.where }}</p>
@@ -487,15 +465,6 @@ async function copyLink(id: string): Promise<void> {
   color: var(--about-accent);
 }
 
-.about-glossary-item .about-copy {
-  opacity: 0;
-}
-
-.about-glossary-item:hover .about-copy,
-.about-glossary-item .about-copy:focus-visible {
-  opacity: 1;
-}
-
 .about-glossary-item dd {
   margin: 0;
   color: var(--about-muted);
@@ -600,13 +569,6 @@ async function copyLink(id: string): Promise<void> {
   border-top: 0;
 }
 
-.about-metric-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-}
-
 .about-metric h3 {
   margin: 0;
   color: #fff;
@@ -621,29 +583,6 @@ async function copyLink(id: string): Promise<void> {
 .about-metric h3 a:hover {
   color: var(--about-accent);
   text-decoration: none;
-}
-
-.about-copy {
-  flex: none;
-  padding: 3px 8px;
-  border: 1px solid var(--about-line);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--about-muted);
-  font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s ease, color 0.15s ease;
-}
-
-.about-metric:hover .about-copy,
-.about-copy:focus-visible {
-  opacity: 1;
-}
-
-.about-copy:hover {
-  color: var(--about-text);
-  border-color: var(--about-muted);
 }
 
 .about-metric > p {
@@ -747,10 +686,6 @@ async function copyLink(id: string): Promise<void> {
     gap: 2px 12px;
     padding-left: 0;
     border-left: 0;
-  }
-
-  .about-copy {
-    opacity: 1;
   }
 }
 </style>

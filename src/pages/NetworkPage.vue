@@ -2,6 +2,7 @@
 import { computed, shallowRef, watch } from 'vue'
 import { addressExplorerUrl, findChainBySlug } from '../chains'
 import ChainIcon from '../components/ChainIcon.vue'
+import NetworkPicker from '../components/NetworkPicker.vue'
 import ChartSkeleton from '../components/ui/ChartSkeleton.vue'
 import ColumnChart from '../components/ui/ColumnChart.vue'
 import Hint from '../components/ui/Hint.vue'
@@ -169,6 +170,7 @@ function reviewerRoute(address: string) {
         <span class="mono">chain {{ chain.chainId }}</span>
         <a :href="addressExplorerUrl(chain, chain.identity)" target="_blank" rel="noopener noreferrer">Registry ↗</a>
       </p>
+      <NetworkPicker class="scope-pick" route-name="network" :slug="slug" :allow-all="false" />
     </div>
   </div>
   <p class="lede">

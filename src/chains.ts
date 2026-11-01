@@ -241,6 +241,11 @@ export const CHAINS: ChainInfo[] = [
 
 export const DEFAULT_CHAIN = CHAINS[0]
 
+/** First chain of an environment; the one the root path lands on. */
+export function defaultChainFor(testnet: boolean): ChainInfo {
+  return CHAINS.find((c) => c.testnet === testnet) ?? DEFAULT_CHAIN
+}
+
 export function findChainBySlug(slug: string): ChainInfo | undefined {
   return CHAINS.find((c) => c.slug === slug)
 }
@@ -256,4 +261,11 @@ export function txExplorerUrl(chain: ChainInfo, hash: string): string {
 /** 8004scan page of an agent. */
 export function agentScanUrl(chain: ChainInfo, tokenId: bigint): string {
   return `${chain.scanUrl}/agents/${chain.slug}/${tokenId}`
+}
+
+/** Route slug for "every network in the active environment" (owners, reviewers, feedbacks). */
+export const ALL_NETWORKS = 'all'
+
+export function chainById(chainId: number): ChainInfo | undefined {
+  return CHAINS.find((c) => c.chainId === chainId)
 }

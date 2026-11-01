@@ -537,6 +537,100 @@ tr.revoked td {
   gap: 10px;
 }
 
+/* Agents hero: centered title, subtitle and search, like the explore landing. */
+.agents-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 24px auto 28px;
+  max-width: 640px;
+  text-align: center;
+}
+
+.agents-hero-icon {
+  color: var(--text);
+}
+
+.agents-hero h1 {
+  font-size: clamp(28px, 5vw, 40px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.agents-hero-sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.agents-hero-search {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+}
+
+.agents-hero-field {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+}
+
+.agents-hero-field:focus-within {
+  border-color: var(--accent);
+}
+
+.agents-hero-field input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 10px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+}
+
+.agents-hero-field input:focus-visible {
+  outline: none;
+}
+
+.agents-hero-search > button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--panel);
+  font-weight: 600;
+}
+
+.agents-hero-search > button:hover {
+  border-color: var(--muted);
+  background: var(--muted);
+}
+
+.agents-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.agents-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .filter-toggle.on {
   border-color: color-mix(in srgb, var(--accent) 55%, transparent);
   background: color-mix(in srgb, var(--accent) 12%, var(--panel));
@@ -2878,4 +2972,9 @@ summary:hover {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Network picker on owners, reviewers and feedbacks. */
+.scope-pick {
+  margin-top: 10px;
 }

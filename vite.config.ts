@@ -15,6 +15,9 @@ export default defineConfig({
   ],
   // Relative asset paths so the static bundle works from any sub-path.
   base: './',
-  server: { port: 5174 },
+  // strictPort: localStorage is per origin (scheme + host + port), so stars
+  // only follow you while dev always runs on this one port. Vite must fail
+  // instead of silently moving to 5175 and opening an empty star list.
+  server: { port: 5174, strictPort: true },
   test: { environment: 'node' },
 })
