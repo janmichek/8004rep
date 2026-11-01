@@ -123,7 +123,7 @@ export const VOCABULARY: GlossaryGroup = {
       id: 'vocab-rating',
       name: 'Rating',
       summary:
-        'A value that expresses quality. Only ratings are normalised and averaged into the robust score.',
+        'A value that expresses quality. Only ratings are normalised and averaged into the filtered score.',
       seeAlso: 'rating-only',
     },
     {
@@ -134,11 +134,11 @@ export const VOCABULARY: GlossaryGroup = {
       seeAlso: 'scale',
     },
     {
-      id: 'vocab-robust-score',
-      name: 'Robust score',
+      id: 'vocab-filtered-score',
+      name: 'Filtered score',
       summary:
         'The headline 0–100 quality number: one vote per wallet, with a neutral prior when evidence is thin.',
-      seeAlso: 'robust-score',
+      seeAlso: 'filtered-score',
     },
     {
       id: 'vocab-vote',

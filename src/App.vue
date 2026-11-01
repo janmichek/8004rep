@@ -5,14 +5,15 @@ import { useRoute, useRouter } from 'vue-router'
 import { CHAINS, DEFAULT_CHAIN, findChainBySlug } from './chains'
 import ChainName from './components/ChainName.vue'
 import SourceBadge from './components/SourceBadge.vue'
-import Segmented, { type Segment } from './components/ui/Segmented.vue'
+import SelectMenu, { type SelectOption } from './components/ui/SelectMenu.vue'
 import { sourceFor } from './data'
 import { networkEnv, setNetworkEnv, type NetworkEnv } from './env'
+import { starCount } from './stars'
 import { useAsync } from './useAsync'
 
-const ENV_SEGMENTS: Segment[] = [
-  { id: 'mainnet', label: 'Mainnet' },
-  { id: 'testnet', label: 'Testnet' },
+const ENV_OPTIONS: SelectOption[] = [
+  { value: 'mainnet', label: 'Mainnet' },
+  { value: 'testnet', label: 'Testnet' },
 ]
 
 const route = useRoute()
@@ -31,7 +32,7 @@ const activeChain = computed(() =>
   chain.value && chain.value.testnet === (networkEnv.value === 'testnet') ? chain.value : envFallback.value,
 )
 
-function switchEnv(value: string): void {
+function switchEnv(value: string | undefined): void {
   if (value !== 'mainnet' && value !== 'testnet') return
   if (value === env.value) return
   setNetworkEnv(value)
@@ -60,14 +61,24 @@ const { data: resolved } = useAsync(async () => (chain.value ? sourceFor(chain.v
         <RouterLink :to="{ name: 'about' }">About</RouterLink>
       </nav>
       <div class="topbar-right">
-        <Segmented
+        <SelectMenu
           class="env-switch"
+          compact
           :model-value="env"
-          :segments="ENV_SEGMENTS"
+          :options="ENV_OPTIONS"
           label="Network environment"
           @update:model-value="switchEnv"
         />
         <SourceBadge v-if="chain && showSource" :resolved="resolved" />
+        <RouterLink
+          class="star-link"
+          :to="{ name: 'starred' }"
+          :aria-label="`Starred (${starCount})`"
+          title="Starred agents, owners and reviewers"
+        >
+          <span aria-hidden="true">★</span>
+          <span v-if="starCount" class="star-count">{{ starCount }}</span>
+        </RouterLink>
       </div>
     </header>
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import BookmarkButton from '../bookmarks/BookmarkButton.vue'
+import StarButton from '../stars/StarButton.vue'
 import AddressIdenticon from '../components/AddressIdenticon.vue'
 import AgentAvatar from '../components/AgentAvatar.vue'
 import Skeleton from '../components/ui/Skeleton.vue'
@@ -63,11 +63,7 @@ const scanUrl = computed(() => {
           <span v-else-if="agent.active === false" class="chip">inactive</span>
           <span v-if="agent.x402" class="chip accent">x402</span>
           <span v-for="protocol in agent.protocols" :key="protocol" class="chip">{{ protocol }}</span>
-          <BookmarkButton
-            :chain-id="agent.chainId"
-            :token-id="agent.tokenId"
-            :testnet="network?.testnet === true"
-          />
+          <StarButton kind="agent" :chain-id="agent.chainId" :id="agent.tokenId" :label="name" :image="agent.imageUrl" />
           <a :href="scanUrl" target="_blank" rel="noopener noreferrer">View on 8004scan ↗</a>
         </p>
       </div>

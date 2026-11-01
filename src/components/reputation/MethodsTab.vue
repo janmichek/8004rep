@@ -45,7 +45,7 @@ function downloadInputs(): void {
 
 const alternatives = computed<Tile[]>(() => [
   {
-    label: 'Robust score',
+    label: 'Filtered score',
     value: props.rep.unrated ? 'Unrated' : formatNumber(props.rep.score),
     hint: props.rep.interval ? `80% interval ${formatNumber(props.rep.interval[0])}–${formatNumber(props.rep.interval[1])}` : 'no rating units',
     title: '(α0·μ0 + Σ W_c·r̄_c) / (α0 + Σ W_c) — one independent wallet is one vote',
@@ -62,7 +62,7 @@ const alternatives = computed<Tile[]>(() => [
   {
     label: 'Inflation gap',
     value: formatSigned(props.rep.inflation),
-    hint: 'raw rating mean − robust',
+    hint: 'raw rating mean − filtered',
     title: 'Large and positive = the rules removed reviews the raw mean counts in full.',
   },
   {

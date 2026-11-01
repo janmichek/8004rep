@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { usePinnedAgents } from '../bookmarks'
+import { usePinnedAgents } from '../stars/pinned'
 import ScanAgentRow from '../components/ScanAgentRow.vue'
 import ChainName from '../components/ChainName.vue'
 import SelectMenu, { type SelectOption } from '../components/ui/SelectMenu.vue'
@@ -65,10 +65,10 @@ const { data, error, loading, reload } = useAsync(
   () => [page.value, rated.value, search.value, networkEnv.value, selectedChain.value, sort.value, order.value],
 )
 
-// Bookmarks: delete `src/bookmarks/` and replace with `data.items` / empty on `data.items.length === 0`.
+// Starred agents are pinned above the feed; `stars/pinned.ts` holds the logic.
 const feedItems = computed(() => data.value?.items ?? [])
 const selectedChainId = computed(() => selectedChain.value?.chainId)
-const { pinned, feed, hasRows } = usePinnedAgents({ items: feedItems, chainId: selectedChainId, search })
+const { pinned, feed, hasRows } = usePinnedAgents({ items: feedItems, chains, chainId: selectedChainId, search })
 
 const input = ref('')
 watch(search, (value) => (input.value = value), { immediate: true })
@@ -159,11 +159,11 @@ function toggleRegistered(): void {
         compact
         @update:model-value="setNetwork"
       />
-      <form class="search" role="search" @submit.prevent="submit">
-        <input v-model="input" type="search" placeholder="Search by name or token ID" aria-label="Search agents" />
-        <button type="submit">Search</button>
-      </form>
     </div>
+    <form class="search" role="search" @submit.prevent="submit">
+      <input v-model="input" type="search" placeholder="Search by name or token ID" aria-label="Search agents" />
+      <button type="submit">Search</button>
+    </form>
   </div>
 
   <section v-if="error" class="state">
@@ -205,14 +205,13 @@ function toggleRegistered(): void {
           </tr>
         </thead>
         <tbody>
-          <!-- bookmarks: pinned block — drop and loop `data.items` instead -->
           <ScanAgentRow
             v-for="agent in pinned"
             :key="`pin:${agent.chainId}:${agent.tokenId}`"
             :agent="agent"
             :chain-name="chainMap.get(agent.chainId)?.name"
             :chain-key="chainMap.get(agent.chainId)?.key"
-            bookmarked
+            pinned
           />
           <ScanAgentRow
             v-for="agent in feed"

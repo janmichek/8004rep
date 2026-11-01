@@ -4,7 +4,7 @@ import { RouterLink } from 'vue-router'
 
 defineProps<{
   text?: string
-  /** About page metric id — shown as a “More in About” link under the tip. */
+  /** About page section id to land on. Without it the link opens the About page top. */
   about?: string
 }>()
 </script>
@@ -17,7 +17,7 @@ defineProps<{
     <TooltipPortal>
       <TooltipContent class="hint" side="top" :side-offset="6">
         <p class="hint-text">{{ text }}</p>
-        <RouterLink v-if="about" class="hint-more" :to="{ name: 'about', hash: `#${about}` }">More in About</RouterLink>
+        <RouterLink class="hint-more" :to="about ? { name: 'about', hash: `#${about}` } : { name: 'about' }">More</RouterLink>
       </TooltipContent>
     </TooltipPortal>
   </TooltipRoot>

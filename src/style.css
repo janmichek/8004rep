@@ -4,7 +4,7 @@
   --line: #232b38;
   --text: #dfe6f0;
   --muted: #7d8898;
-  --accent: #5eead4;
+  --accent: #22d3ee;
   --link: #8ab4ff;
   --warn: #f5b84b;
   --ok: #4ade80;
@@ -158,6 +158,33 @@ h1 .address-mark {
   align-items: center;
   gap: 10px;
   margin-left: auto;
+}
+
+/* Header link to the starred list; the count shows once something is starred. */
+.star-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.star-link:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.star-link.router-link-active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.star-count {
+  font-family: var(--mono);
+  font-size: 0.8rem;
 }
 
 main {
@@ -489,14 +516,18 @@ tr.revoked td {
   margin-bottom: 16px;
 }
 
+/* Search gets its own full-width row under the title and filters. */
 .search {
   display: flex;
   gap: 6px;
+  flex: 1 1 100%;
+  width: 100%;
 }
 
 .search input {
-  width: 260px;
-  max-width: 60vw;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
 }
 
 .agent-tools {
@@ -1413,6 +1444,13 @@ pre {
   gap: 10px;
 }
 
+/* Content directly under the tiles needs air, or the table border sits on the tile edge. */
+.tiles + .table-wrap,
+.tiles + .state,
+.tiles + .pager {
+  margin-top: 16px;
+}
+
 .tile {
   --tile-tone: var(--muted);
   --tile-glow: color-mix(in srgb, var(--muted) 14%, transparent);
@@ -1685,7 +1723,7 @@ pre {
 }
 
 .waterfall > li {
-  grid-template-columns: minmax(150px, 210px) minmax(48px, 1fr) 52px 52px minmax(72px, 130px);
+  grid-template-columns: minmax(120px, 170px) minmax(96px, 1fr) 44px 44px auto;
 }
 
 .waterfall > li.idle {
@@ -2141,11 +2179,29 @@ button:disabled {
   margin: 0;
 }
 
+.hint::before {
+  /* invisible bridge over the gap to the trigger so the pointer can travel into the popup */
+  content: '';
+  position: absolute;
+  bottom: -12px;
+  left: 0;
+  right: 0;
+  height: 12px;
+}
+
 .hint-more {
-  display: inline-block;
+  display: block;
   margin-top: 4px;
+  padding: 6px 0 2px;
   color: var(--accent);
-  font-size: 11px;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.hint-more:hover,
+.hint-more:focus-visible {
+  text-decoration-thickness: 2px;
 }
 
 .disclosure {

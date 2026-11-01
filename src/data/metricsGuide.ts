@@ -80,16 +80,16 @@ export const METRIC_GROUPS: GuideGroup[] = [
   },
   {
     id: 'score',
-    title: 'The robust score',
+    title: 'The filtered score',
     intro:
       'The headline number is a Bayesian average of one vote per independent wallet, with a neutral prior. It is deliberately conservative when evidence is thin.',
     metrics: [
       {
-        id: 'robust-score',
-        name: 'Robust score',
+        id: 'filtered-score',
+        name: 'Filtered score',
         summary: 'A 0–100 quality score built from rating rows only, with each independent wallet contributing at most one vote.',
         rule: 'score = (α₀·μ₀ + Σ W_c·r̄_c) / (α₀ + Σ W_c), scaled to 0–100. W_c is the capped wallet weight and r̄_c the wallet’s median rating.',
-        where: 'First tile of the Reputation panel; “Robust score” on the Methods tab.',
+        where: 'First tile of the Reputation panel; “Filtered score” on the Methods tab.',
       },
       {
         id: 'prior',
@@ -103,7 +103,7 @@ export const METRIC_GROUPS: GuideGroup[] = [
         name: '80% interval',
         summary: 'The plausible range of the score given the evidence, from a Beta posterior.',
         rule: 'Beta(α, β) with α = α₀·μ₀ + Σ W_c·r̄_c and β = α₀·(1−μ₀) + Σ W_c·(1−r̄_c); the interval runs from the 10th to the 90th percentile.',
-        where: 'Second line of the Robust score tile and the Methods tab.',
+        where: 'Second line of the Filtered score tile and the Methods tab.',
       },
       {
         id: 'confidence',
@@ -118,7 +118,7 @@ export const METRIC_GROUPS: GuideGroup[] = [
         name: 'Unrated',
         summary: 'No rating rows fit any scale. Telemetry and outcomes are shown, but no score is invented.',
         rule: 'Shown when the agent has zero rating units. Reasons may include out-of-scale values or only non-rating tags.',
-        where: 'Robust score tile, Methods tab and the reputation headline.',
+        where: 'Filtered score tile, Methods tab and the reputation headline.',
       },
     ],
   },
@@ -152,9 +152,9 @@ export const METRIC_GROUPS: GuideGroup[] = [
       {
         id: 'inflation',
         name: 'Inflation gap',
-        summary: 'The raw rating mean minus the robust score. A large positive gap means the rules removed weight the raw average counts in full.',
-        rule: 'inflation = rawRatings − robust score. Only rating rows enter rawRatings, so this is not the same as the registry’s all-row average.',
-        where: 'Methods tab alternative tiles; “vs robust” in the Raw on-chain tile.',
+        summary: 'The raw rating mean minus the filtered score. A large positive gap means the rules removed weight the raw average counts in full.',
+        rule: 'inflation = rawRatings − filtered score. Only rating rows enter rawRatings, so this is not the same as the registry’s all-row average.',
+        where: 'Methods tab alternative tiles; “vs filtered” in the Raw on-chain tile.',
       },
       {
         id: 'cost-to-fake',

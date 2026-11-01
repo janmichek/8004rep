@@ -16,7 +16,7 @@ export const FAKE_TARGET = 0.9
 
 export type Confidence = 'low' | 'medium' | 'high'
 
-export type RobustScore = {
+export type FilteredScore = {
   /** In [0,1]; null when no rating units exist. */
   value: number | null
   /** 80% interval from the Beta posterior, in [0,1]. */
@@ -101,11 +101,11 @@ export function betaQuantile(p: number, a: number, b: number): number {
   return (lo + hi) / 2
 }
 
-/** Robust score with a Beta interval, confidence, and the cost of forcing it up. */
-export function robustScore(
+/** Filtered score with a Beta interval, confidence, and the cost of forcing it up. */
+export function filteredScore(
   wallets: readonly WalletRating[],
   opts: { alpha0?: number; mu0?: number; target?: number } = {},
-): RobustScore {
+): FilteredScore {
   const alpha0 = opts.alpha0 ?? ALPHA0
   const mu0 = opts.mu0 ?? MU0
   const target = opts.target ?? FAKE_TARGET

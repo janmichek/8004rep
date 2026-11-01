@@ -1,11 +1,30 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
 import { CHAINS, DEFAULT_CHAIN } from '../chains'
 import { GLOSSARY_GROUPS } from '../data/glossary'
 import { METRIC_GROUPS } from '../data/metricsGuide'
 
 const copied = ref<string | null>(null)
+const route = useRoute()
+
+// Landing on a section does not scroll (see router scrollBehavior); it just
+// flashes the target so the reader's eye finds it.
+function flashSection(hash: string): void {
+  const id = hash.replace(/^#/, '')
+  if (!id) return
+  void nextTick(() => {
+    const el = document.getElementById(id)
+    if (!el) return
+    el.classList.remove('about-flash')
+    void el.offsetWidth
+    el.classList.add('about-flash')
+    setTimeout(() => el.classList.remove('about-flash'), 2200)
+  })
+}
+
+onMounted(() => flashSection(route.hash))
+watch(() => route.hash, flashSection)
 
 const mainnets = computed(() => CHAINS.filter((chain) => !chain.testnet))
 const testnets = computed(() => CHAINS.filter((chain) => chain.testnet))
@@ -235,6 +254,26 @@ async function copyLink(id: string): Promise<void> {
 </template>
 
 <style scoped>
+.about-flash {
+  border-radius: 6px;
+  animation: about-flash 2.2s ease-out;
+}
+
+@keyframes about-flash {
+  0% {
+    background-color: color-mix(in srgb, var(--accent) 38%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+  35% {
+    background-color: color-mix(in srgb, var(--accent) 30%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
 .about {
   --about-bg: #0b0e13;
   --about-panel: #121722;

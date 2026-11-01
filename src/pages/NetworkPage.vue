@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
-import { findChainBySlug } from '../chains'
-import ChainName from '../components/ChainName.vue'
+import { addressExplorerUrl, findChainBySlug } from '../chains'
+import ChainIcon from '../components/ChainIcon.vue'
 import ChartSkeleton from '../components/ui/ChartSkeleton.vue'
 import ColumnChart from '../components/ui/ColumnChart.vue'
 import Hint from '../components/ui/Hint.vue'
@@ -160,8 +160,16 @@ function reviewerRoute(address: string) {
 </script>
 
 <template>
-  <div class="page-head">
-    <h1><ChainName :chain-id="chain.chainId" :name="chain.name" :size="22" /> <small>feedback health</small></h1>
+  <div class="agent-head">
+    <ChainIcon :chain-id="chain.chainId" :name="chain.name" :size="64" />
+    <div>
+      <h1>{{ chain.name }}</h1>
+      <p class="meta">
+        <span class="chip">feedback health</span>
+        <span class="mono">chain {{ chain.chainId }}</span>
+        <a :href="addressExplorerUrl(chain, chain.identity)" target="_blank" rel="noopener noreferrer">Registry ↗</a>
+      </p>
+    </div>
   </div>
   <p class="lede">
     Patterns across the latest feedback of the network. Everything is computed from the rows loaded here — load older rows to widen the window.

@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { DEFAULT_CHAIN } from './chains'
 import AboutPage from './pages/AboutPage.vue'
+import StarredPage from './pages/StarredPage.vue'
 import type { PageSet } from './variants/registry'
 
 // Paths mirror 8004scan (`/agents/<network>/<tokenId>`); hash history keeps
@@ -21,15 +22,17 @@ export function makeRouter(pages: PageSet) {
         ? [{ path: '/scan/:chainId/:id', name: 'scan-agent', component: pages.scanAgent, props: true }]
         : []),
       { path: '/network/:slug', name: 'network', component: pages.network, props: true },
-      { path: '/owners/:slug/:address', name: 'owner', component: pages.owner, props: true },
-      { path: '/reviewers/:slug/:address', name: 'reviewer', component: pages.reviewer, props: true },
+      ...(pages.owner ? [{ path: '/owners/:slug/:address', name: 'owner', component: pages.owner, props: true }] : []),
+      ...(pages.reviewer ? [{ path: '/reviewers/:slug/:address', name: 'reviewer', component: pages.reviewer, props: true }] : []),
       // Shared across every design: the metric guide has its own styles and anchors.
       { path: '/about', name: 'about', component: AboutPage },
+      { path: '/starred', name: 'starred', component: StarredPage },
       { path: '/:rest(.*)*', redirect: '/' },
     ],
-    // Switching tabs only changes the query: keep the scroll position then.
+    // Anchors jump straight to the section (no smooth animation); AboutPage then
+    // flashes it. Tab switches (query only) keep the scroll position.
     scrollBehavior: (to, from) => {
-      if (to.hash) return { el: to.hash, top: 84, behavior: 'smooth' }
+      if (to.hash) return { el: to.hash, top: 84, behavior: 'auto' }
       return to.path === from.path ? false : { top: 0 }
     },
   })

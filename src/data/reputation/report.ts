@@ -1,6 +1,6 @@
 import type { Feedback } from '../types'
 import { KIND_INFO, type Kind } from './kinds'
-import { robustScore, type Confidence } from './score'
+import { filteredScore, type Confidence } from './score'
 import { buildRatingLayer, HALF_LIFE_DAYS, median, UNIT_WINDOW_DAYS, type RatingLayer } from './units'
 
 export const FORMULA_VERSION = 'rep-1.0'
@@ -51,7 +51,7 @@ export type ReputationReport = {
     mu0: number
     fakeTarget: number
   }
-  /** 0–100 robust score; null when the agent has no rating units. */
+  /** 0–100 filtered score; null when the agent has no rating units. */
   score: number | null
   /** 80% Beta interval, 0–100. */
   interval: [number, number] | null
@@ -113,7 +113,7 @@ function pct(x: number | null): number | null {
 
 /**
  * The whole classic reputation view from one pass: kinds, rating units,
- * wallet caps, robust score, inflation gap, funnel, concentration, telemetry.
+ * wallet caps, filtered score, inflation gap, funnel, concentration, telemetry.
  * Every number is re-derivable from the rows the page already holds.
  */
 export function buildReputationReport(
@@ -121,7 +121,7 @@ export function buildReputationReport(
   opts: { self?: readonly string[]; now?: number } = {},
 ): ReputationReport {
   const layer = buildRatingLayer(feedback, opts)
-  const score = robustScore(layer.wallets)
+  const score = filteredScore(layer.wallets)
 
   const valid = feedback.filter((f) => !f.revoked)
   const raw = mean(valid.map((f) => f.value))
