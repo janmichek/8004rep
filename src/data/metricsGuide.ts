@@ -1,7 +1,7 @@
 /**
  * The vocabulary of the explorer. Every entry has a stable `id` so a number in
  * the app can link back to the paragraph that defines it:
- *   { name: 'about', hash: `#${id}` }
+ *   { name: 'docs', hash: `#${id}` }
  * Keep ids stable; they are part of the page's addresses.
  */
 
@@ -340,6 +340,3 @@ export const METRIC_GROUPS: GuideGroup[] = [
     ],
   },
 ]
-
-/** Flat lookup for future links from a metric name to its anchor. */
-export const METRICS_BY_ID = new Map(METRIC_GROUPS.flatMap((group) => group.metrics.map((metric) => [metric.id, { ...metric, group }])))

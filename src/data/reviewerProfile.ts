@@ -88,7 +88,9 @@ export function buildReviewerProfile(address: Address, rows: FeedbackEvent[]): R
   const byAgent = new Map<string, FeedbackEvent[]>()
   for (const r of rows) {
     const key = `${r.chainId ?? ''}:${r.tokenId}`
-    byAgent.set(key, [...(byAgent.get(key) ?? []), r])
+    const group = byAgent.get(key)
+    if (group) group.push(r)
+    else byAgent.set(key, [r])
   }
   const perAgent: AgentShare[] = [...byAgent.values()]
     .map((group) => {

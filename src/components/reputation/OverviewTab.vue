@@ -11,12 +11,13 @@ import { formatNumber, formatPercent, formatSigned } from '../../format'
 import ActivityGrid from '../ui/ActivityGrid.vue'
 import ColumnChart from '../ui/ColumnChart.vue'
 import Hint from '../ui/Hint.vue'
+import SeverityIcon from '../ui/SeverityIcon.vue'
 import { COUNT_SERIES, WEIGHT_LABELS, WEIGHT_SERIES, weightClass } from '../ui/palette'
 
 const props = defineProps<{ feedback: Feedback[]; stats: FeedbackStats; report: TrustReport; rep: ReputationReport }>()
 
-/** Waterfall step → About page metric anchor. */
-const STEP_ABOUT: Record<string, string> = {
+/** Waterfall step → Docs page metric anchor. */
+const STEP_DOCS: Record<string, string> = {
   all: 'raw-onchain',
   revoked: 'revoked',
   ratings: 'rating-only',
@@ -56,13 +57,31 @@ const ladderTotal = computed(() => props.report.ladder.reduce((a, r) => a + r.ro
 
 const kinds = computed(() => props.rep.byKind.filter((k) => k.rows > 0))
 
+// Drop report findings that restate a risk signal already shown above them
+// (e.g. "one wallet wrote all the rows" next to "X wrote N of N feedback").
+const dedupedFindings = computed(() => {
+  const hasConcentration = props.stats.signals.some((s) => s.code === 'concentration')
+  return props.rep.findings.filter((f) => !(hasConcentration && f.code === 'repeat'))
+})
+
+// Drop strength reasons that restate a risk signal already shown (e.g. "a single
+// reviewer carries all the weight" next to a concentration signal).
+const dedupedReasons = computed(() => {
+  const hasConcentration = props.stats.signals.some((s) => s.code === 'concentration')
+  return props.report.strength.reasons.filter((r) => {
+    if (!hasConcentration) return true
+    const lower = r.toLowerCase()
+    return !lower.includes('reviewer') && !lower.includes('weight')
+  })
+})
+
 const coverage = computed(() => {
   const c = props.stats.coverage
   return [
-    { label: 'Dated', n: c.dated, rule: 'Burst, surge and trend checks need a date.', about: 'coverage' },
-    { label: 'Transaction known', n: c.withTx, rule: 'Lets the Tx detail check who sent and paid for the feedback.', about: 'coverage' },
-    { label: 'Feedback file', n: c.withUri, rule: 'Comment, task or payment proof behind the feedback.', about: 'evidence-ladder' },
-    { label: 'Endpoint named', n: c.withEndpoint, rule: 'Says which service was rated.', about: 'coverage' },
+    { label: 'Dated', n: c.dated, rule: 'Burst, surge and trend checks need a date.', docs: 'coverage' },
+    { label: 'Transaction known', n: c.withTx, rule: 'Lets the Tx detail check who sent and paid for the feedback.', docs: 'coverage' },
+    { label: 'Feedback file', n: c.withUri, rule: 'Comment, task or payment proof behind the feedback.', docs: 'evidence-ladder' },
+    { label: 'Endpoint named', n: c.withEndpoint, rule: 'Says which service was rated.', docs: 'coverage' },
   ].map((m) => ({ ...m, share: c.total ? m.n / c.total : 0 }))
 })
 </script>
@@ -71,20 +90,24 @@ const coverage = computed(() => {
   <div class="overview">
     <section class="panel">
       <h3>What stands out</h3>
-      <ul v-if="stats.signals.length" class="signals">
-        <li v-for="signal in stats.signals" :key="signal.code" :class="`level-${signal.level}`">
-          <span class="signal-level">{{ signal.level }}</span> <span>{{ signal.text }}</span>
-        </li>
-      </ul>
-      <p v-else class="muted">No warning signs in this feedback.</p>
-      <ul v-if="rep.findings.length" class="signals">
-        <li v-for="finding in rep.findings" :key="finding.code" :class="`level-${finding.level}`">
-          <span class="signal-level">{{ finding.level }}</span> <span>{{ finding.text }}</span>
-        </li>
-      </ul>
-      <ul class="reasons">
-        <li v-for="reason in report.strength.reasons" :key="reason">{{ reason }}</li>
-      </ul>
+      <table class="signals">
+        <caption class="sr-only">What stands out, by severity</caption>
+        <tbody>
+          <tr v-for="signal in stats.signals" :key="`sig-${signal.code}`" :class="`level-${signal.level}`">
+            <td class="signal-level"><SeverityIcon :level="signal.level" /></td>
+            <td>{{ signal.text }}</td>
+          </tr>
+          <tr v-for="finding in dedupedFindings" :key="`find-${finding.code}`" :class="`level-${finding.level}`">
+            <td class="signal-level"><SeverityIcon :level="finding.level" /></td>
+            <td>{{ finding.text }}</td>
+          </tr>
+          <tr v-for="reason in dedupedReasons" :key="`reason-${reason}`" class="level-info">
+            <td class="signal-level"><SeverityIcon level="info" /></td>
+            <td>{{ reason }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-if="!stats.signals.length" class="muted">No warning signs in this feedback.</p>
     </section>
 
     <ActivityGrid label="Activity" :times="datedTimes" />
@@ -103,13 +126,13 @@ const coverage = computed(() => {
       <h3>
         What the values mean
         <small class="muted">
-          <RouterLink :to="{ name: 'about', hash: '#rating-only' }">only ratings are scored</RouterLink>
+          <RouterLink :to="{ name: 'docs', hash: '#rating-only' }">only ratings are scored</RouterLink>
         </small>
       </h3>
       <dl class="metric-list">
         <template v-for="k in kinds" :key="k.kind">
           <dt>
-            <Hint :text="KIND_INFO[k.kind].rule" :about="k.kind === 'telemetry' ? 'telemetry' : 'rating-only'">
+            <Hint :text="KIND_INFO[k.kind].rule" :docs="k.kind === 'telemetry' ? 'telemetry' : 'rating-only'">
               <span class="tip">{{ k.label }}</span>
             </Hint>
           </dt>
@@ -118,7 +141,7 @@ const coverage = computed(() => {
       </dl>
       <p v-if="rep.counts.outOfScale" class="muted note">
         {{ rep.counts.outOfScale }} rating row{{ rep.counts.outOfScale === 1 ? '' : 's' }} fall outside the scale inferred for the tag and are listed but not scored.
-        <RouterLink :to="{ name: 'about', hash: '#off-scale' }">About</RouterLink>
+        <RouterLink :to="{ name: 'docs', hash: '#off-scale' }">Docs</RouterLink>
       </p>
     </section>
 
@@ -127,12 +150,12 @@ const coverage = computed(() => {
       <h3>
         How the score is built
         <small class="muted">
-          <RouterLink :to="{ name: 'about', hash: '#score' }">how it works</RouterLink>
+          <RouterLink :to="{ name: 'docs', hash: '#score' }">how it works</RouterLink>
         </small>
       </h3>
       <ol class="bars waterfall">
         <li v-for="step in rep.waterfall" :key="step.id" :class="{ idle: step.id !== 'all' && step.rows === 0 }">
-          <Hint :text="step.rule" :about="STEP_ABOUT[step.id]">
+          <Hint :text="step.rule" :docs="STEP_DOCS[step.id]">
             <span class="bar-label tip">{{ step.label }}</span>
           </Hint>
           <span class="bar-track" aria-hidden="true"><span :style="{ width: barWidth(step.average) }" /></span>
@@ -149,7 +172,7 @@ const coverage = computed(() => {
       <h3>
         Evidence behind the feedback
         <small class="muted">
-          <RouterLink :to="{ name: 'about', hash: '#evidence-ladder' }">About</RouterLink>
+          <RouterLink :to="{ name: 'docs', hash: '#evidence-ladder' }">Docs</RouterLink>
         </small>
       </h3>
       <div v-if="ladderTotal" class="stack-bar" role="img" :aria-label="report.ladder.map((r) => `${r.label}: ${r.rows}`).join(', ')">
@@ -157,7 +180,7 @@ const coverage = computed(() => {
           v-for="rung in report.ladder.filter((r) => r.rows > 0)"
           :key="rung.id"
           :text="`${rung.label}: ${rung.rows} — ${rung.rule}`"
-          about="evidence-ladder"
+          docs="evidence-ladder"
         >
           <span :style="{ flexGrow: rung.rows, background: LADDER_COLOR[rung.id] }" />
         </Hint>
@@ -165,7 +188,7 @@ const coverage = computed(() => {
       <ul class="legend-list">
         <li v-for="rung in report.ladder" :key="rung.id">
           <span class="swatch" :style="{ background: LADDER_COLOR[rung.id] }" />
-          <Hint :text="rung.rule" about="evidence-ladder">
+          <Hint :text="rung.rule" docs="evidence-ladder">
             <span class="tip">{{ rung.label }}</span>
           </Hint>
           <b>{{ rung.rows }}</b>
@@ -173,7 +196,7 @@ const coverage = computed(() => {
       </ul>
       <ul class="meters">
         <li v-for="m in coverage" :key="m.label">
-          <Hint :text="m.rule" :about="m.about">
+          <Hint :text="m.rule" :docs="m.docs">
             <span class="bar-label tip">{{ m.label }}</span>
           </Hint>
           <span class="bar-track" aria-hidden="true"><span :style="{ width: `${m.share * 100}%` }" /></span>

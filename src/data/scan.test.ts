@@ -1,5 +1,21 @@
-import { describe, expect, it } from 'vitest'
-import { parseScanAgent, parseScanAgentDetail, parseScanAgentPage, parseScanChains, parseScanScore, parseScanStats } from './scan'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  fetchScanChainFeedback,
+  parseFeedbackGrowth,
+  parseScanAgent,
+  parseScanAgentDetail,
+  parseScanAgentPage,
+  parseScanChains,
+  parseScanPageTotal,
+  parseScanScore,
+  parseScanStats,
+} from './scan'
+
+function jsonResponse(body: unknown): Response {
+  return { ok: true, status: 200, json: async () => body } as Response
+}
+
+afterEach(() => vi.unstubAllGlobals())
 
 // Trimmed from GET /agents/1/22771 (2026-10-18).
 const AGENT = {
@@ -58,6 +74,73 @@ describe('parseScanStats', () => {
       totalAgents: 1003923,
     })
     expect(parseScanStats({ average_feedback_score: 92.86 })).toBeNull()
+  })
+})
+
+describe('parseScanPageTotal', () => {
+  it('reads the pager total from a list envelope', () => {
+    expect(parseScanPageTotal({ success: true, meta: { pagination: { total: 648682 } } })).toBe(648682)
+    expect(parseScanPageTotal({ success: true, meta: { pagination: {} } })).toBeNull()
+    expect(parseScanPageTotal({ success: true, data: [] })).toBeNull()
+    expect(parseScanPageTotal(null)).toBeNull()
+  })
+})
+
+describe('parseFeedbackGrowth', () => {
+  const body = {
+    period: '30d',
+    chains: [
+      { chain_id: 1, data: [{ feedbacks: 17683 }, { feedbacks: 35236 }] },
+      { chain_id: 8453, data: [{ feedbacks: 512236 }, { date: 'gap' }, { feedbacks: 648046 }] },
+    ],
+  }
+
+  it('subtracts the first cumulative point from the last', () => {
+    expect(parseFeedbackGrowth(body, 1)).toBe(17553)
+    expect(parseFeedbackGrowth(body, 8453)).toBe(135810)
+  })
+
+  it('returns null for a missing chain, too few points, or a shrunk series', () => {
+    expect(parseFeedbackGrowth(body, 999)).toBeNull()
+    expect(parseFeedbackGrowth({ chains: [{ chain_id: 1, data: [{ feedbacks: 5 }] }] }, 1)).toBeNull()
+    expect(parseFeedbackGrowth({ chains: [{ chain_id: 1, data: [{ feedbacks: 9 }, { feedbacks: 4 }] }] }, 1)).toBeNull()
+    expect(parseFeedbackGrowth(null, 1)).toBeNull()
+  })
+})
+
+describe('fetchScanChainFeedback', () => {
+  it('reads total feedbacks, rated agents and 30-day growth', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('/feedbacks?')) return jsonResponse({ success: true, data: [], meta: { pagination: { total: 648682 } } })
+      if (url.includes('/agents?')) return jsonResponse({ success: true, data: [], meta: { pagination: { total: 127804 } } })
+      if (url.includes('/stats/growth/chains')) {
+        return jsonResponse({ chains: [{ chain_id: 8453, data: [{ feedbacks: 512236 }, { feedbacks: 648046 }] }] })
+      }
+      throw new Error(`unexpected ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(fetchScanChainFeedback(8453)).resolves.toEqual({
+      totalFeedback: 648682,
+      ratedAgents: 127804,
+      feedback30d: 135810,
+    })
+  })
+
+  it('keeps the totals that answered when one call fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.includes('/stats/growth/chains')) throw new Error('growth is down')
+        return jsonResponse({ success: true, data: [], meta: { pagination: { total: 7 } } })
+      }),
+    )
+    await expect(fetchScanChainFeedback(8454)).resolves.toEqual({
+      totalFeedback: 7,
+      ratedAgents: 7,
+      feedback30d: null,
+    })
   })
 })
 

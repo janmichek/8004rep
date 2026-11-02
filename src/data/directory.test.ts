@@ -34,6 +34,27 @@ describe('ownerDirectory', () => {
     expect(list[0]).toMatchObject({ owner: A, agents: 3, chainIds: [1, 8453], latest: { chainId: 1, tokenId: 7n } })
   })
 
+  it('breaks an equal agent count between chains by chain id, and takes `latest` from that chain', () => {
+    const list = ownerDirectory([agent(3, A, 8453), agent(9, A, 1)])
+    expect(list[0].chainIds).toEqual([1, 8453])
+    expect(list[0].latest).toEqual({ chainId: 1, tokenId: 9n })
+  })
+
+  it('takes `latest` from the chain holding most of the agents, not the highest token', () => {
+    const list = ownerDirectory([agent(99, A, 8453), agent(2, A, 1), agent(1, A, 1)])
+    expect(list[0].latest).toEqual({ chainId: 1, tokenId: 2n })
+  })
+
+  it('returns nothing when no agent has an owner', () => {
+    expect(ownerDirectory([agent(2, null), agent(1, null)])).toEqual([])
+    expect(ownerDirectory([])).toEqual([])
+  })
+
+  it('keeps the first spelling of an owner address it saw', () => {
+    const upper = A.toUpperCase().replace('0X', '0x') as Address
+    expect(ownerDirectory([agent(2, upper), agent(1, A)])[0].owner).toBe(upper)
+  })
+
   it('merges owners that differ only in address case', () => {
     const upper = A.toUpperCase().replace('0X', '0x') as Address
     expect(ownerDirectory([agent(2, A), agent(1, upper)])).toHaveLength(1)
@@ -60,6 +81,13 @@ describe('reviewerDirectory', () => {
     expect(profile.chainIds).toEqual([1, 8453])
   })
 
+  it('merges reviewers that differ only in address case', () => {
+    const upper = A.toUpperCase().replace('0X', '0x') as Address
+    const list = reviewerDirectory([row(A, 80), { ...row(upper, 100), tokenId: 2n }])
+    expect(list).toHaveLength(1)
+    expect(list[0].rows).toBe(2)
+  })
+
   it('returns nothing for an empty window', () => {
     expect(reviewerDirectory([])).toEqual([])
   })
@@ -77,6 +105,24 @@ describe('loadAgentWindow', () => {
     const items = await loadAgentWindow(source, { minRows: 10, maxSteps: 5 })
     expect(pages).toEqual([0, 1])
     expect(items).toHaveLength(2)
+  })
+
+  it('stops after maxSteps even while the source offers more', async () => {
+    let calls = 0
+    const source = {
+      listAgents: async () => {
+        calls++
+        return { items: [agent(calls, A)], hasMore: true }
+      },
+    } as unknown as DataSource
+    const items = await loadAgentWindow(source, { minRows: 999, maxSteps: 3 })
+    expect(calls).toBe(3)
+    expect(items).toHaveLength(3)
+  })
+
+  it('returns nothing when the first page is empty and final', async () => {
+    const source = { listAgents: async () => ({ items: [], hasMore: false }) } as unknown as DataSource
+    expect(await loadAgentWindow(source, { minRows: 10, maxSteps: 5 })).toEqual([])
   })
 
   it('stops at the row target', async () => {

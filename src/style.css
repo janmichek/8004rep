@@ -299,6 +299,43 @@ footer {
   --flag: #a3a3a3;
 }
 
+/* Reviewer labels: one hue and one Lucide icon per rating habit. */
+
+.reviewer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px 1px 6px;
+  border-color: color-mix(in srgb, var(--reviewer) 50%, transparent);
+  background: color-mix(in srgb, var(--reviewer) 10%, transparent);
+  color: var(--reviewer);
+  cursor: help;
+}
+
+.reviewer-chip svg {
+  flex: none;
+}
+
+.reviewer-rubber-stamp {
+  --reviewer: #fbbf24;
+}
+
+.reviewer-single-agent {
+  --reviewer: #60a5fa;
+}
+
+.reviewer-bulk {
+  --reviewer: #f472b6;
+}
+
+.reviewer-mass {
+  --reviewer: #a78bfa;
+}
+
+.reviewer-harsh {
+  --reviewer: #fb7185;
+}
+
 .notice {
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
@@ -514,6 +551,131 @@ tr.revoked td {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
+}
+
+/* Directory headers (owners, reviewers, feedbacks): a mark, one title and a
+   strip of facts about the loaded window. */
+.page-header {
+  margin: 4px 0 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.page-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.page-header-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+
+.page-header-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 7%, var(--panel));
+  color: var(--accent);
+}
+
+.page-header-title {
+  min-width: 0;
+}
+
+.page-header h1 {
+  font-size: clamp(26px, 3.2vw, 32px);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.page-header-sub {
+  max-width: 62ch;
+  margin: 7px 0 0;
+  color: var(--muted);
+}
+
+.page-header-actions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  align-items: center;
+  padding-top: 8px;
+}
+
+.page-header-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.page-header-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.page-fact {
+  display: inline-flex;
+  gap: 5px;
+  align-items: baseline;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 65%, transparent);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.page-fact b {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-fact.tone-warn {
+  border-color: color-mix(in srgb, var(--warn) 35%, transparent);
+}
+
+.page-fact.tone-warn b {
+  color: var(--warn);
+}
+
+.page-fact.tone-good {
+  border-color: color-mix(in srgb, var(--ok) 35%, transparent);
+}
+
+.page-fact.tone-good b {
+  color: var(--ok);
+}
+
+.page-header-note {
+  max-width: 80ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .page-header-actions {
+    width: 100%;
+    padding-top: 0;
+  }
 }
 
 /* Search gets its own full-width row under the title and filters. */
@@ -847,7 +1009,7 @@ dl {
 dt,
 dd {
   margin: 0;
-  padding: 9px 12px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--line);
   min-width: 0;
 }
@@ -1004,33 +1166,68 @@ pre {
 }
 
 .signals {
+  width: 100%;
   margin: 12px 0 0;
   padding: 0;
+  border-collapse: separate;
+  border-spacing: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
-  list-style: none;
   font-size: 13px;
+  overflow: hidden;
+  table-layout: fixed;
 }
 
-.signals li {
-  display: flex;
-  gap: 10px;
-  padding: 7px 12px;
+.signals tr {
   border-bottom: 1px solid var(--line);
 }
 
-.signals li:last-child {
+.signals tr:last-child {
   border-bottom: 0;
 }
 
-.signal-level {
-  flex: none;
-  min-width: 3.2em;
+.signals th {
+  padding: 7px 12px;
+  text-align: left;
   font-size: 11px;
   letter-spacing: 0.04em;
-  line-height: 20px;
   text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
+}
+
+.signals td {
+  padding: 7px 12px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+}
+
+.signals tr:last-child td {
+  border-bottom: 0;
+}
+
+.signals td:first-child {
+  width: 2.6em;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.signal-level {
+  min-width: 0;
+}
+
+.severity-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: -2px;
+  cursor: help;
+}
+
+.severity-icon svg {
+  flex: none;
 }
 
 .level-high,
@@ -1454,7 +1651,7 @@ pre {
 }
 
 .panel h3 {
-  margin: 0 0 8px;
+  margin: 0 0 14px;
   font-size: 13px;
 }
 
@@ -1535,14 +1732,43 @@ pre {
 .tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 /* Content directly under the tiles needs air, or the table border sits on the tile edge. */
 .tiles + .table-wrap,
+.tiles + .metric-list,
 .tiles + .state,
-.tiles + .pager {
+.tiles + .pager,
+.tiles + .notice {
   margin-top: 16px;
+}
+
+/* Caption above a row of tiles, e.g. "Network totals · via 8004scan". */
+.stat-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 24px 0 9px;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.stat-heading:first-of-type {
+  margin-top: 0;
+}
+
+.stat-heading small {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .tile {
@@ -1550,8 +1776,8 @@ pre {
   --tile-glow: color-mix(in srgb, var(--muted) 14%, transparent);
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 12px 14px 11px;
+  gap: 4px;
+  padding: 14px 16px 13px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background:
@@ -1929,7 +2155,7 @@ pre {
 }
 
 .metric-list dd small {
-  margin-left: 6px;
+  margin-left: 8px;
 }
 
 /* Charts */
@@ -2065,19 +2291,6 @@ pre {
   background: var(--bg);
   color: var(--text);
   transform: translateX(-50%);
-}
-
-.chart-table {
-  margin-top: 4px;
-}
-
-.chart-table summary {
-  font-size: 12px;
-}
-
-.chart-table table {
-  margin-top: 6px;
-  font-size: 12px;
 }
 
 /* Comparison, groups, replies */
@@ -2372,6 +2585,7 @@ button:disabled {
 }
 
 html {
+  overflow-x: clip;
   scrollbar-color: var(--line) transparent;
 }
 
@@ -2832,7 +3046,7 @@ tr.detail-row > td:first-child {
   transition: background-color 0.2s var(--ease);
 }
 
-.signals li:hover,
+.signals tr:hover,
 .tx-group li:hover {
   background: color-mix(in srgb, var(--line) 30%, transparent);
 }

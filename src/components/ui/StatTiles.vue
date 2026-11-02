@@ -57,7 +57,7 @@ function clampPct(n: number): number {
         :tabindex="tile.title ? 0 : undefined"
       >
         <div class="tile-label">{{ tile.label }}</div>
-        <div class="tile-value" :class="{ word: tile.word && !tile.loading }">
+        <div class="tile-value" :class="{ word: tile.word && !tile.loading }" :style="tile.tone ? { color: 'color-mix(in srgb, var(--tile-tone) 72%, var(--text))' } : {}">
           <Skeleton v-if="tile.loading" width="3.2em" height="1.25em" />
           <CountUp v-else :value="tile.value" />
         </div>

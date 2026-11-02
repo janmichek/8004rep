@@ -133,7 +133,9 @@ function strengthOf(feedback: Feedback[], stats: FeedbackStats, self: readonly s
       : `${counted.length} reviewers carry weight, worth ${fmt(independent)} equally weighted voices.`,
     `${fmt(scores.effectiveCount)} full votes after discounts, out of ${scores.nValid} counted feedback.`,
   ]
-  if (top && topShare >= DOMINANT_SHARE) {
+  // When a single reviewer carries everything, the line above already says so;
+  // repeating it here as "the largest reviewer holds 100%" is the same message.
+  if (top && topShare >= DOMINANT_SHARE && counted.length > 1) {
     reasons.push(`The largest reviewer, ${shortAddress(top.client)}, holds ${Math.round(topShare * 100)}% of the weight.`)
   }
 

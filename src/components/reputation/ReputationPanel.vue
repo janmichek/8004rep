@@ -106,26 +106,6 @@ const tiles = computed<Tile[]>(() => {
   ]
 })
 
-const headline = computed(() => {
-  const r = rep.value
-  if (r.unrated) {
-    return r.counts.rating > 0
-      ? `Unrated: ${r.counts.rating} rating row${r.counts.rating === 1 ? '' : 's'} sit outside every inferred scale. Telemetry and outcomes are listed separately.`
-      : 'Unrated: no review here is a rating. Telemetry, outcomes and quantities are listed, never averaged into a score.'
-  }
-  const gap = r.inflation
-  const versus = gap === null || Math.abs(gap) < 0.5 ? 'the raw rating mean' : `the raw rating mean ${formatNumber(r.rawRatings)} (${gap > 0 ? '+' : ''}${formatNumber(gap)} of inflation removed)`
-  return `Filtered score ${formatNumber(r.score)} (${r.confidence} confidence) on ${r.funnel.wallets} wallet${r.funnel.wallets === 1 ? '' : 's'}, ${versus}.`
-})
-
-const rowsRead = computed(() => {
-  const total = props.agent.totalFeedback
-  if (!total || total <= props.agent.feedback.length) return ''
-  return `Computed on ${props.agent.feedback.length.toLocaleString('en-US')} of ${total.toLocaleString('en-US')} reviews (source cap).`
-})
-
-const flagged = computed(() => stats.value.rows.filter((r) => !r.flags.includes('revoked') && r.weight < 1).length)
-
 const tabs = computed<Tab[]>(() => [
   { id: 'overview', label: 'Overview', icon: Gauge },
   { id: 'feedback', label: 'Feedback', icon: MessageSquare, count: props.agent.feedback.length },
@@ -155,11 +135,6 @@ const tabs = computed<Tab[]>(() => [
           Feedback dated back to {{ formatDate(agent.feedbackSince) }} (log scan window).
         </p>
         <StatTiles :tiles="tiles" />
-        <p class="headline">
-          {{ headline }}
-          <span v-if="flagged" class="muted">{{ flagged }} of {{ agent.feedback.length }} rows count less than a full vote.</span>
-          <span v-if="rowsRead" class="muted">{{ rowsRead }}</span>
-        </p>
 
         <OverviewTab :feedback="agent.feedback" :stats="stats" :report="report" :rep="rep" />
       </template>

@@ -40,12 +40,14 @@ function switchEnv(value: string | undefined): void {
   setNetworkEnv(value)
   if (route.name === 'agents' || slug.value === ALL_NETWORKS) return
   const testnet = value === 'testnet'
+  if (chain.value?.testnet === testnet) return
   const target = CHAINS.find((item) => item.testnet === testnet) ?? DEFAULT_CHAIN
-  if (route.name === 'network') {
-    if (chain.value?.testnet !== testnet) void router.push({ name: 'network', params: { slug: target.slug } })
-    return
-  }
-  if (chain.value?.testnet !== testnet) void router.push({ name: 'agents', params: { slug: target.slug } })
+  // A per-network page swaps its chain and stays put. A record of one chain
+  // (agent, owner, reviewer, feedback) has no counterpart on the other side,
+  // so it falls back to the agent list.
+  const name = route.name
+  const stays = name === 'network' || name === 'owners' || name === 'reviewers' || name === 'feedbacks'
+  void router.push({ name: stays ? name : 'agents', params: { slug: target.slug } })
 }
 
 const { data: resolved } = useAsync(async () => (chain.value ? sourceFor(chain.value) : undefined), chain)
@@ -63,7 +65,7 @@ const { data: resolved } = useAsync(async () => (chain.value ? sourceFor(chain.v
         <RouterLink :to="{ name: 'reviewers', params: { slug: listSlug } }">Reviewers</RouterLink>
         <RouterLink :to="{ name: 'feedbacks', params: { slug: listSlug } }">Feedbacks</RouterLink>
         <RouterLink :to="{ name: 'network', params: { slug: activeChain.slug } }">Network health</RouterLink>
-        <RouterLink :to="{ name: 'about' }">About</RouterLink>
+        <RouterLink :to="{ name: 'docs' }">Docs</RouterLink>
       </nav>
       <div class="topbar-right">
         <SelectMenu
@@ -104,7 +106,7 @@ const { data: resolved } = useAsync(async () => (chain.value ? sourceFor(chain.v
 
     <footer>
       Read-only: no wallet, no backend. Data comes straight from the ERC-8004 registries and public subgraphs.
-      <RouterLink :to="{ name: 'about' }">How the numbers work</RouterLink>
+      <RouterLink :to="{ name: 'docs' }">How the numbers work</RouterLink>
     </footer>
   </TooltipProvider>
 </template>

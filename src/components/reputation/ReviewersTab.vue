@@ -17,6 +17,8 @@ import AddressIdenticon from '../AddressIdenticon.vue'
 import FlagChip from '../ui/FlagChip.vue'
 import Hint from '../ui/Hint.vue'
 import Skeleton from '../ui/Skeleton.vue'
+import ReviewerChip from '../ui/ReviewerChip.vue'
+import SeverityIcon from '../ui/SeverityIcon.vue'
 import SortHeader from '../ui/SortHeader.vue'
 
 const props = defineProps<{ agent: AgentDetail; chain: ChainInfo; stats: FeedbackStats; self: string[] }>()
@@ -83,24 +85,27 @@ function isSelf(address: string): boolean {
 
   <section v-if="clusters.length" class="panel">
     <h3>Shared funders</h3>
-    <ul class="signals">
-      <li v-for="c in clusters" :key="c.funder" :class="c.self ? 'level-high' : 'level-warn'">
-        <span class="signal-level">{{ c.self ? 'high' : 'warn' }}</span>
-        <span>
-          <a :href="addressExplorerUrl(chain, c.funder)" target="_blank" rel="noopener noreferrer" class="address-mark mono">
-            <AddressIdenticon :address="c.funder" />
-            {{ shortAddress(c.funder) }}
-          </a>
-          <template v-if="c.self"> — the agent's own address — </template>
-          first funded {{ c.reviewers.length }} reviewer{{ c.reviewers.length === 1 ? '' : 's' }}:
-          <span v-for="r in c.reviewers" :key="r" class="address-mark mono">
-            <AddressIdenticon :address="r" />
-            {{ shortAddress(r) }}
-          </span>.
-          <small v-if="chain.testnet && !c.self" class="muted"> On testnets a faucet often funds many wallets — open the funder before concluding.</small>
-        </span>
-      </li>
-    </ul>
+    <table class="signals">
+      <caption class="sr-only">Shared funders, by severity</caption>
+      <tbody>
+        <tr v-for="c in clusters" :key="c.funder" :class="c.self ? 'level-high' : 'level-warn'">
+          <td class="signal-level"><SeverityIcon :level="c.self ? 'high' : 'warn'" /></td>
+          <td>
+            <a :href="addressExplorerUrl(chain, c.funder)" target="_blank" rel="noopener noreferrer" class="address-mark mono">
+              <AddressIdenticon :address="c.funder" />
+              {{ shortAddress(c.funder) }}
+            </a>
+            <template v-if="c.self"> — the agent's own address — </template>
+            first funded {{ c.reviewers.length }} reviewer{{ c.reviewers.length === 1 ? '' : 's' }}:
+            <span v-for="r in c.reviewers" :key="r" class="address-mark mono">
+              <AddressIdenticon :address="r" />
+              {{ shortAddress(r) }}
+            </span>.
+            <small v-if="chain.testnet && !c.self" class="muted"> On testnets a faucet often funds many wallets — open the funder before concluding.</small>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </section>
   <p v-else-if="!loading && fundingChecked > 1" class="muted note">No two of the {{ fundingChecked }} traced reviewers share a funder.</p>
 
@@ -165,9 +170,7 @@ function isSelf(address: string): boolean {
                 :key="label"
                 :text="LABEL_INFO[label].rule"
               >
-                <span class="chip" :class="LABEL_INFO[label].tone === 'warn' ? 'warn' : ''">
-                  {{ LABEL_INFO[label].label }}
-                </span>
+                <ReviewerChip :label="label" />
               </Hint>
             </template>
             <Hint v-else-if="insightOf(r.client)" :text="insightOf(r.client)!.errors.join('\n')">

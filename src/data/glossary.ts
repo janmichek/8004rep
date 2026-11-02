@@ -1,6 +1,6 @@
 /**
- * Cast and vocabulary for the About page. Stable `id`s are page anchors:
- *   { name: 'about', hash: `#${id}` }
+ * Cast and vocabulary for the Docs page. Stable `id`s are page anchors:
+ *   { name: 'docs', hash: `#${id}` }
  */
 
 export type GlossaryEntry = {
@@ -65,29 +65,10 @@ export const ENTITIES: GlossaryGroup = {
       seeAlso: 'responsiveness',
     },
     {
-      id: 'entity-registration',
-      name: 'Registration file',
-      summary:
-        'The JSON behind an agent’s URI: name, services, endpoints and trust hints. Endpoints named in feedback are checked against it.',
-    },
-    {
-      id: 'entity-identity-registry',
-      name: 'Identity registry',
-      summary:
-        'The ERC-8004 contract that mints and tracks agent NFTs on a chain.',
-    },
-    {
       id: 'entity-reputation-registry',
       name: 'Reputation registry',
       summary:
         'The ERC-8004 contract that stores feedback rows, revocations and responses for agents on a chain.',
-    },
-    {
-      id: 'entity-endpoint',
-      name: 'Endpoint',
-      summary:
-        'A service URL a review may name. Unlisted endpoints (not in the registration file) stay visible as a warning.',
-      seeAlso: 'unlisted-endpoint',
     },
     {
       id: 'entity-tag',
@@ -134,34 +115,6 @@ export const VOCABULARY: GlossaryGroup = {
       seeAlso: 'scale',
     },
     {
-      id: 'vocab-filtered-score',
-      name: 'Filtered score',
-      summary:
-        'The headline 0–100 quality number: one vote per wallet, with a neutral prior when evidence is thin.',
-      seeAlso: 'filtered-score',
-    },
-    {
-      id: 'vocab-vote',
-      name: 'Vote / weight',
-      summary:
-        'How much a wallet counts toward the score. No wallet can hold more than one full vote after the cap and time decay.',
-      seeAlso: 'wallet-vote',
-    },
-    {
-      id: 'vocab-unit',
-      name: 'Rating unit',
-      summary:
-        'One reviewer’s ratings of one tag inside one 30-day window, collapsed to a median so repeats are not a louder voice.',
-      seeAlso: 'rating-unit',
-    },
-    {
-      id: 'vocab-prior',
-      name: 'Neutral prior',
-      summary:
-        'Three imaginary wallets at 50/100 that pull a thin record toward the middle instead of the extremes.',
-      seeAlso: 'prior',
-    },
-    {
       id: 'vocab-revoke',
       name: 'Revoke',
       summary:
@@ -182,25 +135,7 @@ export const VOCABULARY: GlossaryGroup = {
         'How much independent weight stands behind the score: low, medium or high. It measures quantity and concentration, not honesty.',
       seeAlso: 'confidence',
     },
-    {
-      id: 'vocab-signal',
-      name: 'Signal',
-      summary:
-        'A warning or note on the Overview tab (self-reviews, concentrated wallets, surges, off-scale values…). Risk level is the worst of them.',
-      seeAlso: 'risk-level',
-    },
-    {
-      id: 'vocab-network',
-      name: 'Network health',
-      summary:
-        'A window of a chain’s feedback feed: averages, perfect-share, suspect reviewers and lookalike agents — habits invisible on one agent page.',
-      seeAlso: 'network-average',
-    },
   ],
 }
 
 export const GLOSSARY_GROUPS: GlossaryGroup[] = [ENTITIES, VOCABULARY]
-
-export const GLOSSARY_BY_ID = new Map(
-  GLOSSARY_GROUPS.flatMap((group) => group.entries.map((entry) => [entry.id, { ...entry, group }])),
-)

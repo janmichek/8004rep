@@ -1,57 +1,47 @@
 <script setup lang="ts">
-import { computed, shallowRef, watch } from 'vue'
-import { chainById } from '../chains'
+import { Wallet } from '@lucide/vue'
+import { computed } from 'vue'
+import { chainById, networkNames } from '../chains'
 import AddressIdenticon from '../components/AddressIdenticon.vue'
 import ChainIcon from '../components/ChainIcon.vue'
-import ChainName from '../components/ChainName.vue'
 import NetworkPicker from '../components/NetworkPicker.vue'
+import PageHeader, { type PageFact } from '../components/ui/PageHeader.vue'
 import SortHeader from '../components/ui/SortHeader.vue'
 import TableSkeleton from '../components/ui/TableSkeleton.vue'
 import { sourceFor } from '../data'
 import { loadAgentWindow, ownerDirectory, type OwnerEntry } from '../data/directory'
-import { networkEnv } from '../env'
 import { shortAddress } from '../format'
-import { loadChains, useScope, type ChainFailure } from '../scope'
+import { useScope } from '../scope'
+import { useChainLoad } from '../useChainLoad'
 import { useRowLink } from '../useRowLink'
 import { useSort } from '../useSort'
 
 const props = defineProps<{ slug: string }>()
 const scope = useScope(() => props.slug)
-const single = computed(() => (scope.all.value ? undefined : scope.chains.value[0]))
 
-const owners = shallowRef<OwnerEntry[]>()
-const windowSize = shallowRef(0)
-const failed = shallowRef<ChainFailure[]>([])
-const error = shallowRef<string>()
-const loading = shallowRef(false)
+const { values, loaded, failed, error, loading, load } = useChainLoad(scope, async (chain) => {
+  const { source } = await sourceFor(chain)
+  return loadAgentWindow(source)
+})
 
-let run = 0
-async function load(): Promise<void> {
-  const current = ++run
-  const targets = scope.chains.value
-  loading.value = true
-  error.value = undefined
-  owners.value = undefined
-  try {
-    const result = await loadChains(targets, async (chain) => {
-      const { source } = await sourceFor(chain)
-      return loadAgentWindow(source)
-    })
-    if (current !== run) return
-    failed.value = result.failed
-    if (!result.values.length && result.failed.length) {
-      error.value = `${result.failed[0].chain.name}: ${result.failed[0].message}`
-      return
-    }
-    const agents = result.values.flatMap((v) => v.value)
-    windowSize.value = agents.length
-    owners.value = ownerDirectory(agents)
-  } finally {
-    if (current === run) loading.value = false
-  }
-}
+const agents = computed(() => Object.values(values.value).flat())
+const owners = computed(() => (loaded.value ? ownerDirectory(agents.value) : undefined))
+const windowSize = computed(() => agents.value.length)
 
-watch(scope.key, () => void load(), { immediate: true })
+const facts = computed<PageFact[]>(() => {
+  if (!owners.value) return []
+  return [
+    { value: owners.value.length.toLocaleString(), label: 'owners' },
+    { value: windowSize.value.toLocaleString(), label: 'agents scanned' },
+    ...(scope.all.value ? [{ value: String(scope.chains.value.length), label: 'networks' }] : []),
+  ]
+})
+
+const note = computed(() => {
+  if (!owners.value) return undefined
+  const where = scope.all.value ? 'across these networks' : 'on this network'
+  return `Built from the ${windowSize.value.toLocaleString()} newest agents ${where}. An owner may hold more agents in the registry than shown here; open the owner page for the full count.`
+})
 
 const rows = useSort(
   computed(() => owners.value ?? []),
@@ -74,29 +64,21 @@ function agentRoute(o: OwnerEntry) {
     params: { slug: chainById(o.latest.chainId)?.slug ?? props.slug, id: o.latest.tokenId.toString() },
   }
 }
-function networkNames(o: OwnerEntry): string {
-  return o.chainIds.map((id) => chainById(id)?.shortName ?? String(id)).join(', ')
-}
 </script>
 
 <template>
-  <div class="page-head">
-    <h1>
-      Owners
-      <small>
-        <template v-if="scope.all.value">All networks · {{ networkEnv === 'testnet' ? 'Testnet' : 'Mainnet' }}</template>
-        <ChainName v-else-if="single" :chain-id="single.chainId" :name="single.name" />
-      </small>
-    </h1>
-    <p class="meta">Owners of the newest registered agents {{ scope.all.value ? 'across these networks' : 'on this network' }}.</p>
-    <NetworkPicker class="scope-pick" route-name="owners" :slug="slug" />
-  </div>
-
-  <p class="lede">
-    Built from the {{ windowSize || 'latest' }} newest agents loaded
-    {{ scope.all.value ? 'across every network here' : 'here' }}. An owner with more agents in the registry than shown
-    may hold more elsewhere; open the owner page for the full count.
-  </p>
+  <PageHeader
+    title="Owners"
+    description="Who holds the newest registered agents, one row per address."
+    :icon="Wallet"
+    :facts="facts"
+    :note="note"
+    :loading="loading && !owners"
+  >
+    <template #actions>
+      <NetworkPicker route-name="owners" :slug="slug" />
+    </template>
+  </PageHeader>
 
   <p v-if="failed.length && owners" class="notice">
     Could not load agents on {{ failed.map((f) => f.chain.name).join(', ') }}; those networks are left out.
@@ -107,7 +89,7 @@ function networkNames(o: OwnerEntry): string {
     v-else-if="loading || !owners"
     label="Loading owners"
     :headers="scope.all.value ? ['Owner', 'Agents', 'Networks', 'Newest agent'] : ['Owner', 'Agents', 'Newest agent']"
-    :numeric="scope.all.value ? ['Agents', 'Newest agent'] : ['Agents', 'Newest agent']"
+    :numeric="['Agents', 'Newest agent']"
   />
 
   <p v-else-if="!owners.length" class="state muted">No owners found in the newest agents.</p>
@@ -141,7 +123,7 @@ function networkNames(o: OwnerEntry): string {
             </span>
           </td>
           <td class="num">{{ o.agents }}</td>
-          <td v-if="scope.all.value" :title="networkNames(o)">
+          <td v-if="scope.all.value" :title="networkNames(o.chainIds)">
             <span v-for="id in o.chainIds" :key="id" class="chain-cell">
               <ChainIcon :chain-id="id" :name="chainById(id)?.name ?? String(id)" :size="14" />
               <span class="chain-name">{{ chainById(id)?.shortName ?? id }}</span>

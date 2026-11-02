@@ -12,6 +12,13 @@ function jsonResponse(body: unknown, ok = true): Response {
   return { ok, status: ok ? 200 : 500, json: async () => body } as Response
 }
 
+/** base64 of `text` compressed with the given coding, as feedback files ship it. */
+async function compressed(text: string, coding: 'gzip' | 'deflate'): Promise<string> {
+  const body = new Response(text).body!
+  const packed = await new Response(body.pipeThrough(new CompressionStream(coding))).arrayBuffer()
+  return btoa(String.fromCharCode(...new Uint8Array(packed)))
+}
+
 afterEach(() => vi.unstubAllGlobals())
 
 describe('toDisplayUrl', () => {
@@ -168,6 +175,18 @@ describe('fetchJsonUri', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('inflates gzip/deflate data URIs, declared or sniffed', async () => {
+    vi.stubGlobal('fetch', vi.fn())
+    const json = '{"comment":"compressed but readable"}'
+    const gzip = await compressed(json, 'gzip')
+    const deflate = await compressed(json, 'deflate')
+    expect(await fetchJsonUri(`data:application/json;enc=gzip;base64,${gzip}`)).toEqual({ comment: 'compressed but readable' })
+    expect(await fetchJsonUri(`data:application/json;gzip;base64,${gzip}`)).toEqual({ comment: 'compressed but readable' })
+    expect(await fetchJsonUri(`data:application/json;base64,${gzip}`)).toEqual({ comment: 'compressed but readable' })
+    expect(await fetchJsonUri(`data:application/json;enc=deflate;base64,${deflate}`)).toEqual({ comment: 'compressed but readable' })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it('rejects on unreachable hosts and retries next time', async () => {
     const fetchMock = vi
       .fn()
@@ -193,12 +212,14 @@ describe('CORS relay', () => {
 })
 
 describe('resolveFeedbackText', () => {
-  it('reads text, falling back to comment', async () => {
+  it('reads text, falling back to comment and reasoning', async () => {
     vi.stubGlobal('fetch', vi.fn())
     const text = `data:application/json,${encodeURIComponent('{"text":"great work"}')}`
     const comment = `data:application/json,${encodeURIComponent('{"comment":"ok but slow"}')}`
+    const reasoning = `data:,${encodeURIComponent('{"reasoning":"A2A at 683ms"}')}`
     expect(await resolveFeedbackText(text)).toBe('great work')
     expect(await resolveFeedbackText(comment)).toBe('ok but slow')
+    expect(await resolveFeedbackText(reasoning)).toBe('A2A at 683ms')
   })
 
   it('resolves undefined for non-objects, missing text, and unreachable URIs', async () => {
@@ -219,6 +240,13 @@ describe('fetchUriBytes', () => {
     expect(text(await fetchUriBytes(`data:application/json;base64,${btoa('{"a":1}')}`))).toBe('{"a":1}')
     expect(text(await fetchUriBytes('data:text/plain,%7B%22a%22%3A1%7D'))).toBe('{"a":1}')
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('keeps compressed data: payloads as served, for hashing', async () => {
+    vi.stubGlobal('fetch', vi.fn())
+    const gzip = await compressed('{"a":1}', 'gzip')
+    const raw = await fetchUriBytes(`data:application/json;enc=gzip;base64,${gzip}`)
+    expect([raw[0], raw[1]]).toEqual([0x1f, 0x8b])
   })
 
   it('returns the served bytes untouched, falling back across IPFS gateways', async () => {

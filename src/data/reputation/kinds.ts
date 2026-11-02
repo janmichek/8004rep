@@ -16,16 +16,6 @@ export const KIND_INFO: Record<Kind, { label: string; rule: string }> = {
   unknown: { label: 'other', rule: 'A tag this explorer has no meaning for. Shown raw, never averaged.' },
 }
 
-export const SCALE_LABEL: Record<Scale, string> = {
-  binary: '0/1',
-  unit: '0–1',
-  five: '0–5',
-  ten: '0–10',
-  hundred: '0–100',
-  signed: '±',
-  unbounded: 'no scale',
-}
-
 /** Tag spelling folded: case, separators and camel/snake case do not matter. */
 export function tagKey(tag: string | undefined): string {
   return (tag ?? '').trim().toLowerCase().replace(/[^a-z0-9:]/g, '')

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { Column } from '../../data/chartData'
-import Disclosure from './Disclosure.vue'
 
 export type Series = { key: string; label: string; color: string }
 
@@ -151,21 +150,5 @@ const tooltip = computed(() => {
       </div>
       <div v-if="tooltip" class="chart-tip" :style="{ left: `${tooltip.left}%` }">{{ tooltip.text }}</div>
     </div>
-    <Disclosure v-if="columns.length" class="chart-table" label="Table">
-      <table>
-        <thead>
-          <tr>
-            <th>{{ columns[0].label.match(/^\d{4}-/) ? 'Date' : 'Range' }}</th>
-            <th v-for="s in series" :key="s.key" class="num">{{ s.label }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="col in columns.filter((c) => c.segments.length)" :key="col.label">
-            <td>{{ col.label }}</td>
-            <td v-for="s in series" :key="s.key" class="num">{{ col.segments.find((x) => x.key === s.key)?.value ?? 0 }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </Disclosure>
   </figure>
 </template>

@@ -8,6 +8,7 @@ import ColumnChart from '../components/ui/ColumnChart.vue'
 import Hint from '../components/ui/Hint.vue'
 import { COUNT_SERIES, WEIGHT_SERIES } from '../components/ui/palette'
 import SortHeader from '../components/ui/SortHeader.vue'
+import ReviewerChip from '../components/ui/ReviewerChip.vue'
 import StatTiles, { type Tile } from '../components/ui/StatTiles.vue'
 import TilesSkeleton from '../components/ui/TilesSkeleton.vue'
 import TabBar, { type Tab } from '../components/ui/TabBar.vue'
@@ -16,7 +17,7 @@ import { dailyColumns, valueHistogram } from '../data/chartData'
 import { loadFeedWindow, type FeedWindow } from '../data/feed'
 import { computeNetworkStats } from '../data/networkStats'
 import { LABEL_INFO } from '../data/reviewerProfile'
-import { fetchScanStats } from '../data/scan'
+import { fetchScanChainFeedback, fetchScanStats } from '../data/scan'
 import { errorMessage, formatDate, formatNumber, formatPercent, formatScore, formatTimeline, shortAddress } from '../format'
 import { toDisplayUrl } from '../data/metadata'
 import AddressIdenticon from '../components/AddressIdenticon.vue'
@@ -56,7 +57,43 @@ watch(
 )
 
 const ecosystem = useAsync(() => fetchScanStats(), () => true)
+const network = useAsync(() => fetchScanChainFeedback(chain.value.chainId), chain)
 const stats = computed(() => (feed.value ? computeNetworkStats(feed.value.items) : undefined))
+
+/** Thousands separators for the network-wide counts; '—' while unknown. */
+function count(value: number | null | undefined): string {
+  return value === null || value === undefined ? '—' : value.toLocaleString()
+}
+
+const totals = computed<Tile[]>(() => {
+  const s = network.data.value
+  const loading = network.loading.value
+  const missing = 'not reported by 8004scan'
+  return [
+    {
+      label: '30d activity',
+      value: count(s?.feedback30d),
+      hint: s?.feedback30d != null ? 'feedback added in the last 30 days' : missing,
+      tone: 'main',
+      loading,
+      title: "The latest day of 8004scan's 30-day feedback series minus its first day.",
+    },
+    {
+      label: 'Total feedbacks',
+      value: count(s?.totalFeedback),
+      hint: s?.totalFeedback != null ? 'indexed by 8004scan' : missing,
+      loading,
+      title: 'Every feedback row 8004scan has indexed on this chain; the window below is a bounded sample.',
+    },
+    {
+      label: 'Rated agents',
+      value: count(s?.ratedAgents),
+      hint: s?.ratedAgents != null ? 'with at least one feedback' : missing,
+      loading,
+      title: "Agents carrying one or more feedback rows in 8004scan's index.",
+    },
+  ]
+})
 
 function daySpan(from: number, to: number): string {
   const day = (t: number) => new Date(t * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
@@ -174,11 +211,16 @@ function reviewerRoute(address: string) {
     </div>
   </div>
   <p class="lede">
-    Patterns across the latest feedback of the network. Everything is computed from the rows loaded here — load older rows to widen the window.
+    Network totals come from 8004scan's index. The window metrics are computed from the feedback rows loaded
+    here — load older rows to widen the window.
   </p>
+
+  <h2 class="stat-heading">Network totals <small>via 8004scan</small></h2>
+  <StatTiles :tiles="totals" />
 
   <p v-if="error" class="notice">Could not load the feed: {{ error }} <button @click="load()">Retry</button></p>
   <div v-else-if="!stats" aria-busy="true" aria-live="polite">
+    <h2 class="stat-heading">Loaded window <small>computed here</small></h2>
     <span class="sr-only">Loading the latest feedback</span>
     <TilesSkeleton :count="6" />
     <div class="chart-grid">
@@ -188,6 +230,7 @@ function reviewerRoute(address: string) {
   </div>
 
   <template v-if="stats && feed">
+    <h2 class="stat-heading">Loaded window <small>computed here</small></h2>
     <StatTiles :tiles="tiles" />
     <p class="muted note">
       Window: {{ stats.rows }} newest rows<template v-if="feed.since"> since {{ formatDate(feed.since) }}</template>.
@@ -242,9 +285,7 @@ function reviewerRoute(address: string) {
                 <td class="num">{{ formatNumber(s.average) }}</td>
                 <td>
                   <Hint v-for="l in s.labels" :key="l" :text="LABEL_INFO[l].rule">
-                    <span class="chip" :class="LABEL_INFO[l].tone === 'warn' ? 'warn' : ''">
-                      {{ LABEL_INFO[l].label }}
-                    </span>
+                    <ReviewerChip :label="l" />
                   </Hint>
                 </td>
               </tr>
@@ -257,7 +298,7 @@ function reviewerRoute(address: string) {
         <p class="muted note">Agents rated by nearly the same set of reviewers (overlap ≥ 80%, at least 2 shared). One crowd reviewing several agents together is how feedback rings and agent farms look — and also how a test suite looks.</p>
         <p v-if="!stats.lookalikes.length" class="muted">No lookalike groups in this window.</p>
         <ul v-else class="groups">
-          <li v-for="(g, i) in stats.lookalikes.slice(0, 30)" :key="i" class="panel">
+          <li v-for="g in stats.lookalikes.slice(0, 30)" :key="g.agents.map((a) => a.tokenId).join('-')" class="panel">
             <b>{{ g.agents.length }} agents</b> · {{ g.reviewers.length }} shared reviewers · overlap {{ formatPercent(g.similarity) }}
             <div>
               <RouterLink v-for="a in g.agents" :key="a.tokenId.toString()" :to="agentRoute(a.tokenId)" class="chip">
@@ -325,8 +366,8 @@ function reviewerRoute(address: string) {
             </thead>
             <tbody>
               <tr
-                v-for="(r, i) in latestRows.sorted.value.slice(0, 100)"
-                :key="i"
+                v-for="r in latestRows.sorted.value.slice(0, 100)"
+                :key="`${r.chainId ?? 0}:${r.tokenId}:${r.client}:${r.index ?? ''}`"
                 class="row-link"
                 :class="{ revoked: r.revoked }"
                 role="link"

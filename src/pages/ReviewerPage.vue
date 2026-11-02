@@ -9,6 +9,7 @@ import ChainName from '../components/ChainName.vue'
 import ChartSkeleton from '../components/ui/ChartSkeleton.vue'
 import ColumnChart from '../components/ui/ColumnChart.vue'
 import { COUNT_SERIES } from '../components/ui/palette'
+import ReviewerChip from '../components/ui/ReviewerChip.vue'
 import Skeleton from '../components/ui/Skeleton.vue'
 import SortHeader from '../components/ui/SortHeader.vue'
 import StatTiles, { type Tile } from '../components/ui/StatTiles.vue'
@@ -188,11 +189,20 @@ function agentRoute(tokenId: bigint) {
 
         <section class="panel">
           <h3>What its habits say</h3>
-          <ul v-if="profile.labels.length" class="signals">
-            <li v-for="label in profile.labels" :key="label" :class="`level-${LABEL_INFO[label].tone}`">
-              <span class="signal-level">{{ LABEL_INFO[label].label }}</span> <span>{{ LABEL_INFO[label].rule }}</span>
-            </li>
-          </ul>
+          <table v-if="profile.labels.length" class="signals">
+            <thead>
+              <tr>
+                <th>Label</th>
+                <th>Finding</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="label in profile.labels" :key="label" :class="`level-${LABEL_INFO[label].tone}`">
+                <td><ReviewerChip :label="label" /></td>
+                <td>{{ LABEL_INFO[label].rule }}</td>
+              </tr>
+            </tbody>
+          </table>
           <p v-else class="muted">No reviewer rule fired: varied values, more than one agent, no bulk days.</p>
           <p class="note">
             <template v-if="wallet.data.value?.funding">
@@ -278,8 +288,8 @@ function agentRoute(tokenId: bigint) {
               </thead>
               <tbody>
                 <tr
-                  v-for="(r, i) in latestRows.sorted.value.slice(0, 50)"
-                  :key="i"
+                  v-for="r in latestRows.sorted.value.slice(0, 50)"
+                  :key="`${r.chainId ?? 0}:${r.tokenId}:${r.client}:${r.index ?? ''}`"
                   class="row-link"
                   :class="{ revoked: r.revoked }"
                   role="link"

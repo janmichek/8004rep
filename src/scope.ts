@@ -1,5 +1,5 @@
 import { computed } from 'vue'
-import { CHAINS, findChainBySlug, ALL_NETWORKS, type ChainInfo } from './chains'
+import { chainsOfEnv, findChainBySlug, ALL_NETWORKS, type ChainInfo } from './chains'
 import { errorMessage } from './format'
 import { networkEnv } from './env'
 
@@ -15,12 +15,14 @@ export function useScope(slug: () => string) {
       const chain = findChainBySlug(slug())
       return chain ? [chain] : []
     }
-    const testnet = networkEnv.value === 'testnet'
-    return CHAINS.filter((c) => c.testnet === testnet)
+    return chainsOfEnv(networkEnv.value === 'testnet')
   })
   const key = computed(() => chains.value.map((c) => c.chainId).join(','))
   return { all, chains, key }
 }
+
+/** What `useScope` returns: the chains a list page reads, and the key to reload on. */
+export type Scope = ReturnType<typeof useScope>
 
 export type ChainFailure = { chain: ChainInfo; message: string }
 

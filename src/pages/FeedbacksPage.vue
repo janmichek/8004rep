@@ -1,75 +1,40 @@
 <script setup lang="ts">
-import { computed, shallowRef, watch } from 'vue'
+import { MessageSquareText } from '@lucide/vue'
+import { computed } from 'vue'
 import { chainById } from '../chains'
 import AddressIdenticon from '../components/AddressIdenticon.vue'
 import ChainName from '../components/ChainName.vue'
 import FeedbackNote from '../components/FeedbackNote.vue'
 import NetworkPicker from '../components/NetworkPicker.vue'
+import PageHeader, { type PageFact } from '../components/ui/PageHeader.vue'
 import SortHeader from '../components/ui/SortHeader.vue'
 import TableSkeleton from '../components/ui/TableSkeleton.vue'
-import { sourceFor } from '../data'
-import { loadFeedWindow, type FeedWindow } from '../data/feed'
 import { toDisplayUrl } from '../data/metadata'
 import type { FeedbackEvent } from '../data/types'
-import { networkEnv } from '../env'
 import { formatDate, formatScore, formatTimeline, shortAddress } from '../format'
-import { loadChains, useScope, type ChainFailure } from '../scope'
+import { useScope } from '../scope'
+import { useFeedRows } from '../useFeedRows'
 import { useRowLink } from '../useRowLink'
 import { useSort } from '../useSort'
 
 const props = defineProps<{ slug: string }>()
 const scope = useScope(() => props.slug)
-const single = computed(() => (scope.all.value ? undefined : scope.chains.value[0]))
 
-/** Feed window per chain id; each row is tagged with its chain. */
-const windows = shallowRef<Record<number, FeedWindow>>({})
-const loaded = shallowRef(false)
-const failed = shallowRef<ChainFailure[]>([])
-const error = shallowRef<string>()
-const loading = shallowRef(false)
+const { rows: items, hasMore, since, loaded, failed, error, loading, load } = useFeedRows(scope, { minRows: 100, maxSteps: 6 })
 
-let run = 0
-async function load(extend = false): Promise<void> {
-  const current = ++run
-  const targets = scope.chains.value
-  loading.value = true
-  error.value = undefined
-  try {
-    const result = await loadChains(targets, async (chain) => {
-      const { source } = await sourceFor(chain)
-      const from = extend ? windows.value[chain.chainId] : undefined
-      return loadFeedWindow(source, {}, { minRows: 100, maxSteps: 6, ...(from ? { from } : {}) })
-    })
-    if (current !== run) return
-    failed.value = result.failed
-    if (!result.values.length && result.failed.length) {
-      error.value = `${result.failed[0].chain.name}: ${result.failed[0].message}`
-      return
-    }
-    const next: Record<number, FeedWindow> = extend ? { ...windows.value } : {}
-    for (const { chain, value } of result.values) next[chain.chainId] = value
-    windows.value = next
-    loaded.value = true
-  } finally {
-    if (current === run) loading.value = false
-  }
-}
+const agentCount = computed(() => new Set(items.value.map((r) => `${r.chainId ?? 0}:${r.tokenId}`)).size)
+const reviewerCount = computed(() => new Set(items.value.map((r) => r.client.toLowerCase())).size)
 
-watch(
-  scope.key,
-  () => {
-    windows.value = {}
-    loaded.value = false
-    void load()
-  },
-  { immediate: true },
-)
+const facts = computed<PageFact[]>(() => {
+  if (!loaded.value) return []
+  return [
+    { value: items.value.length.toLocaleString(), label: 'feedback rows' },
+    { value: agentCount.value.toLocaleString(), label: 'agents rated' },
+    { value: reviewerCount.value.toLocaleString(), label: 'reviewers' },
+  ]
+})
 
-const items = computed<FeedbackEvent[]>(() =>
-  Object.entries(windows.value).flatMap(([id, w]) => w.items.map((r) => ({ ...r, chainId: r.chainId ?? Number(id) }))),
-)
-const since = computed(() => (scope.all.value ? undefined : Object.values(windows.value)[0]?.since))
-const hasMore = computed(() => Object.values(windows.value).some((w) => w.cursor))
+const note = computed(() => (since.value ? `Newest rows since ${formatDate(since.value)}.` : undefined))
 
 const rows = useSort(items, [
   { key: 'agent', value: (r) => r.agentName ?? `Agent #${r.tokenId}` },
@@ -93,20 +58,18 @@ function reviewerRoute(r: FeedbackEvent) {
 </script>
 
 <template>
-  <div class="page-head">
-    <h1>
-      Feedbacks
-      <small>
-        <template v-if="scope.all.value">All networks · {{ networkEnv === 'testnet' ? 'Testnet' : 'Mainnet' }}</template>
-        <ChainName v-else-if="single" :chain-id="single.chainId" :name="single.name" />
-      </small>
-    </h1>
-    <p class="meta">
-      Newest feedback left on agents {{ scope.all.value ? 'across these networks' : 'in this network' }}.
-      <template v-if="since"> Since {{ formatDate(since) }}.</template>
-    </p>
-    <NetworkPicker class="scope-pick" route-name="feedbacks" :slug="slug" />
-  </div>
+  <PageHeader
+    title="Feedbacks"
+    description="Every review left on the newest agents, one row per feedback."
+    :icon="MessageSquareText"
+    :facts="facts"
+    :note="note"
+    :loading="loading && !loaded"
+  >
+    <template #actions>
+      <NetworkPicker route-name="feedbacks" :slug="slug" />
+    </template>
+  </PageHeader>
 
   <p v-if="failed.length && loaded" class="notice">
     Could not load feedback on {{ failed.map((f) => f.chain.name).join(', ') }}; those networks are left out.
@@ -139,7 +102,7 @@ function reviewerRoute(r: FeedbackEvent) {
         <tbody>
           <tr
             v-for="(r, i) in rows.sorted.value"
-            :key="i"
+            :key="`${r.chainId ?? 0}:${r.tokenId}:${r.client}:${r.index ?? `i${i}`}`"
             class="row-link"
             :class="{ revoked: r.revoked }"
             role="link"

@@ -16,11 +16,6 @@ export function seriesOf(score: number | null | undefined): Series {
   return { code: 'E', name: 'Contested', rule: 'Trusted mean below 40.', stamp: 'CONTESTED', tone: 'poor' }
 }
 
-/** File references for the reviewer cards and deposit slips. */
-export function fileNumberOf(tokenId: bigint | string): string {
-  return `R/${String(tokenId).padStart(4, '0')}`
-}
-
 /** A short condition note for an item list. */
 export function conditionOf(revoked: number, flags: number): string {
   if (revoked + flags === 0) return 'clean'

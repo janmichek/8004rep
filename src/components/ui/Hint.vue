@@ -4,8 +4,8 @@ import { RouterLink } from 'vue-router'
 
 defineProps<{
   text?: string
-  /** About page section id to land on. Without it the link opens the About page top. */
-  about?: string
+  /** Docs page section id to land on. Without it the link opens the Docs page top. */
+  docs?: string
 }>()
 </script>
 
@@ -17,7 +17,7 @@ defineProps<{
     <TooltipPortal>
       <TooltipContent class="hint" side="top" :side-offset="6">
         <p class="hint-text">{{ text }}</p>
-        <RouterLink class="hint-more" :to="about ? { name: 'about', hash: `#${about}` } : { name: 'about' }">More</RouterLink>
+        <RouterLink class="hint-more" :to="docs ? { name: 'docs', hash: `#${docs}` } : { name: 'docs' }">More</RouterLink>
       </TooltipContent>
     </TooltipPortal>
   </TooltipRoot>

@@ -1,76 +1,40 @@
 <script setup lang="ts">
-import { computed, shallowRef, watch } from 'vue'
-import { chainById } from '../chains'
+import { MessagesSquare } from '@lucide/vue'
+import { computed } from 'vue'
+import { chainById, networkNames } from '../chains'
 import AddressIdenticon from '../components/AddressIdenticon.vue'
-import ChainName from '../components/ChainName.vue'
 import NetworkPicker from '../components/NetworkPicker.vue'
 import Hint from '../components/ui/Hint.vue'
+import PageHeader, { type PageFact } from '../components/ui/PageHeader.vue'
+import ReviewerChip from '../components/ui/ReviewerChip.vue'
 import SortHeader from '../components/ui/SortHeader.vue'
 import TableSkeleton from '../components/ui/TableSkeleton.vue'
-import { sourceFor } from '../data'
-import { loadFeedWindow, type FeedWindow } from '../data/feed'
 import { reviewerDirectory } from '../data/directory'
 import { LABEL_INFO, type ReviewerProfile } from '../data/reviewerProfile'
-import type { FeedbackEvent } from '../data/types'
-import { networkEnv } from '../env'
 import { formatNumber, shortAddress } from '../format'
-import { loadChains, useScope, type ChainFailure } from '../scope'
+import { useScope } from '../scope'
+import { useFeedRows } from '../useFeedRows'
 import { useRowLink } from '../useRowLink'
 import { useSort } from '../useSort'
 
 const props = defineProps<{ slug: string }>()
 const scope = useScope(() => props.slug)
-const single = computed(() => (scope.all.value ? undefined : scope.chains.value[0]))
 
-/** Feed window per chain id; each row is tagged with its chain. */
-const windows = shallowRef<Record<number, FeedWindow>>({})
-const loaded = shallowRef(false)
-const failed = shallowRef<ChainFailure[]>([])
-const error = shallowRef<string>()
-const loading = shallowRef(false)
+const { rows: feedRows, hasMore, loaded, failed, error, loading, load } = useFeedRows(scope, { minRows: 250, maxSteps: 12 })
 
-let run = 0
-async function load(extend = false): Promise<void> {
-  const current = ++run
-  const targets = scope.chains.value
-  loading.value = true
-  error.value = undefined
-  try {
-    const result = await loadChains(targets, async (chain) => {
-      const { source } = await sourceFor(chain)
-      const from = extend ? windows.value[chain.chainId] : undefined
-      return loadFeedWindow(source, {}, { minRows: 250, maxSteps: 12, ...(from ? { from } : {}) })
-    })
-    if (current !== run) return
-    failed.value = result.failed
-    if (!result.values.length && result.failed.length) {
-      error.value = `${result.failed[0].chain.name}: ${result.failed[0].message}`
-      return
-    }
-    const next: Record<number, FeedWindow> = extend ? { ...windows.value } : {}
-    for (const { chain, value } of result.values) next[chain.chainId] = value
-    windows.value = next
-    loaded.value = true
-  } finally {
-    if (current === run) loading.value = false
-  }
-}
-
-watch(
-  scope.key,
-  () => {
-    windows.value = {}
-    loaded.value = false
-    void load()
-  },
-  { immediate: true },
-)
-
-const feedRows = computed<FeedbackEvent[]>(() =>
-  Object.entries(windows.value).flatMap(([id, w]) => w.items.map((r) => ({ ...r, chainId: r.chainId ?? Number(id) }))),
-)
 const reviewers = computed<ReviewerProfile[]>(() => reviewerDirectory(feedRows.value))
-const hasMore = computed(() => Object.values(windows.value).some((w) => w.cursor))
+const flagged = computed(() => reviewers.value.filter((r) => r.labels.length).length)
+
+const facts = computed<PageFact[]>(() => {
+  if (!loaded.value) return []
+  return [
+    { value: reviewers.value.length.toLocaleString(), label: 'reviewers' },
+    { value: feedRows.value.length.toLocaleString(), label: 'feedback rows' },
+    ...(flagged.value ? [{ value: flagged.value.toLocaleString(), label: 'flagged', tone: 'warn' as const }] : []),
+  ]
+})
+
+const note = 'Built from the newest feedback rows. Flags use the same rules as Network health; a flag is a prompt to look closer, not a verdict.'
 
 const rows = useSort(reviewers, [
   { key: 'reviewer', value: (r) => r.address.toLowerCase() },
@@ -86,29 +50,21 @@ const { open } = useRowLink()
 function reviewerRoute(r: ReviewerProfile) {
   return { name: 'reviewer', params: { slug: chainById(r.chainIds[0] ?? 0)?.slug ?? props.slug, address: r.address } }
 }
-function networkNames(r: ReviewerProfile): string {
-  return r.chainIds.map((id) => chainById(id)?.shortName ?? String(id)).join(', ')
-}
 </script>
 
 <template>
-  <div class="page-head">
-    <h1>
-      Reviewers
-      <small>
-        <template v-if="scope.all.value">All networks · {{ networkEnv === 'testnet' ? 'Testnet' : 'Mainnet' }}</template>
-        <ChainName v-else-if="single" :chain-id="single.chainId" :name="single.name" />
-      </small>
-    </h1>
-    <p class="meta">Addresses that left feedback in the latest rows {{ scope.all.value ? 'of these networks' : 'of this network' }}.</p>
-    <NetworkPicker class="scope-pick" route-name="reviewers" :slug="slug" />
-  </div>
-
-  <p class="lede">
-    Built from the newest feedback loaded
-    <template v-if="feedRows.length">({{ feedRows.length.toLocaleString() }} rows)</template>. Flags use the same rules as
-    Network health; a flag is a prompt to look closer, not a verdict.
-  </p>
+  <PageHeader
+    title="Reviewers"
+    description="Addresses that rated agents in the latest feedback, with the flags the rules raise."
+    :icon="MessagesSquare"
+    :facts="facts"
+    :note="note"
+    :loading="loading && !loaded"
+  >
+    <template #actions>
+      <NetworkPicker route-name="reviewers" :slug="slug" />
+    </template>
+  </PageHeader>
 
   <p v-if="failed.length && loaded" class="notice">
     Could not load feedback on {{ failed.map((f) => f.chain.name).join(', ') }}; those networks are left out.
@@ -157,11 +113,11 @@ function networkNames(r: ReviewerProfile): string {
             </td>
             <td class="num">{{ r.rows }}</td>
             <td class="num">{{ r.agents }}</td>
-            <td v-if="scope.all.value" :title="networkNames(r)">{{ networkNames(r) }}</td>
+            <td v-if="scope.all.value" :title="networkNames(r.chainIds)">{{ networkNames(r.chainIds) }}</td>
             <td class="num">{{ formatNumber(r.average) }}</td>
             <td>
               <Hint v-for="l in r.labels" :key="l" :text="LABEL_INFO[l].rule">
-                <span class="chip" :class="LABEL_INFO[l].tone === 'warn' ? 'warn' : ''">{{ LABEL_INFO[l].label }}</span>
+                <ReviewerChip :label="l" />
               </Hint>
               <span v-if="!r.labels.length" class="muted">—</span>
             </td>

@@ -3,6 +3,7 @@
  * Not `www.`: that host answers with a redirect that carries no CORS header.
  */
 export const SCAN_API = 'https://8004scan.io/api/v1/public'
+const SCAN_SITE = 'https://8004scan.io'
 
 const FETCH_TIMEOUT_MS = 10_000
 
@@ -40,6 +41,19 @@ export type ScanScore = {
 
 /** Ecosystem-wide numbers, for a baseline. */
 export type ScanStats = { averageFeedback: number; totalFeedback: number; totalAgents: number }
+
+/**
+ * Network-wide feedback totals. The registries do not aggregate these, so they
+ * come from 8004scan's index rather than the window this app loads from chain.
+ */
+export type ScanChainFeedback = {
+  /** Every feedback row 8004scan has indexed on the chain. */
+  totalFeedback: number | null
+  /** Agents carrying at least one feedback row. */
+  ratedAgents: number | null
+  /** Feedbacks added over the last 30 days; null when the growth series is unavailable. */
+  feedback30d: number | null
+}
 
 /** One network as 8004scan lists it. */
 export type ScanChain = { chainId: number; name: string; key: string; testnet: boolean }
@@ -189,6 +203,31 @@ export function parseScanStats(data: unknown): ScanStats | null {
   return { averageFeedback, totalFeedback, totalAgents }
 }
 
+/** Reads `meta.pagination.total` from any 8004scan list envelope. */
+export function parseScanPageTotal(body: unknown): number | null {
+  if (!isRecord(body) || !isRecord(body.meta) || !isRecord(body.meta.pagination)) return null
+  return num(body.meta.pagination.total) ?? null
+}
+
+/**
+ * Feedbacks added over the 30-day growth series: the last cumulative point
+ * minus the first. Null when the chain has no series or fewer than two points.
+ */
+export function parseFeedbackGrowth(body: unknown, chainId: number): number | null {
+  if (!isRecord(body) || !Array.isArray(body.chains)) return null
+  const chain = body.chains.find(
+    (row): row is Record<string, unknown> => isRecord(row) && num(row.chain_id) === chainId,
+  )
+  if (!chain || !Array.isArray(chain.data)) return null
+  const totals = chain.data.flatMap((row) => {
+    const feedbacks = isRecord(row) ? num(row.feedbacks) : undefined
+    return feedbacks === undefined ? [] : [feedbacks]
+  })
+  if (totals.length < 2) return null
+  const change = totals[totals.length - 1] - totals[0]
+  return change >= 0 ? change : null
+}
+
 export function parseScanChains(data: unknown): ScanChain[] {
   if (!isRecord(data) || !Array.isArray(data.supported_chains)) return []
   return data.supported_chains.flatMap((value) => {
@@ -306,6 +345,26 @@ async function getData(path: string): Promise<unknown> {
   return isRecord(body) && body.success === true ? body.data : null
 }
 
+/**
+ * JSON from any 8004scan URL. Some internal endpoints (the growth series) do
+ * not send CORS headers; a browser TypeError is retried through the same
+ * `/api/fetch-json` relay the registration files use.
+ */
+async function getJson(url: string): Promise<unknown> {
+  let res: Response
+  try {
+    res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+  } catch (err) {
+    if (!(err instanceof TypeError)) throw err
+    res = await fetch(`${import.meta.env.BASE_URL}api/fetch-json?url=${encodeURIComponent(url)}`, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    })
+  }
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`8004scan answered ${res.status}`)
+  return res.json().catch(() => null)
+}
+
 async function getPage(path: string): Promise<ScanAgentPage> {
   const res = await fetch(`${SCAN_API}${path}`, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
   if (!res.ok) throw new Error(`8004scan answered ${res.status}`)
@@ -349,6 +408,38 @@ export function fetchScanStats(): Promise<ScanStats | null> {
     statsCache.catch(() => (statsCache = undefined))
   }
   return statsCache
+}
+
+const chainFeedbackCache = new Map<number, Promise<ScanChainFeedback>>()
+
+/** Each total is independent: a failed request leaves that one null, not the card. */
+async function loadChainFeedback(chainId: number): Promise<ScanChainFeedback> {
+  const [total, rated, growth] = await Promise.allSettled([
+    getJson(`${SCAN_API}/feedbacks?chainId=${chainId}&limit=1`).then(parseScanPageTotal),
+    // `minFeedbacks=1` counts agents that have been rated, not every registered one.
+    getJson(`${SCAN_API}/agents?chainId=${chainId}&limit=1&minFeedbacks=1`).then(parseScanPageTotal),
+    getJson(`${SCAN_SITE}/api/v1/stats/growth/chains?period=30d`).then((body) => parseFeedbackGrowth(body, chainId)),
+  ])
+  const result: ScanChainFeedback = {
+    totalFeedback: total.status === 'fulfilled' ? total.value : null,
+    ratedAgents: rated.status === 'fulfilled' ? rated.value : null,
+    feedback30d: growth.status === 'fulfilled' ? growth.value : null,
+  }
+  if (result.totalFeedback === null && result.ratedAgents === null && result.feedback30d === null) {
+    throw new Error('8004scan returned no network feedback totals')
+  }
+  return result
+}
+
+/** Network-wide totals for a chain; one lookup per chain per session. */
+export function fetchScanChainFeedback(chainId: number): Promise<ScanChainFeedback> {
+  let hit = chainFeedbackCache.get(chainId)
+  if (!hit) {
+    hit = loadChainFeedback(chainId)
+    hit.catch(() => chainFeedbackCache.delete(chainId))
+    chainFeedbackCache.set(chainId, hit)
+  }
+  return hit
 }
 
 /** Every network 8004scan indexes, for naming rows and linking those this app cannot open. */

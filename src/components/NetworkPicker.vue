@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ALL_NETWORKS, CHAINS } from '../chains'
+import { ALL_NETWORKS, chainsOfEnv } from '../chains'
 import { networkEnv } from '../env'
 import SelectMenu, { type SelectOption } from './ui/SelectMenu.vue'
 
@@ -13,7 +13,7 @@ const router = useRouter()
 
 const options = computed<SelectOption[]>(() => [
   ...(props.allowAll ? [{ value: ALL_NETWORKS, label: 'All networks' }] : []),
-  ...CHAINS.filter((c) => c.testnet === (networkEnv.value === 'testnet')).map((c) => ({
+  ...chainsOfEnv(networkEnv.value === 'testnet').map((c) => ({
     value: c.slug,
     label: c.name,
     chainId: c.chainId,

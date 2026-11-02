@@ -105,6 +105,11 @@ export const CHAINS: ChainInfo[] = [
     viemChain: base,
     logRange: 10_000n,
     explorerApiUrl: endpoint('EXPLORER_API', 8453, 'https://base.blockscout.com/api'),
+    subgraphUrl: endpoint(
+      'SUBGRAPH',
+      8453,
+      'https://gateway.thegraph.com/api/536c6d8572876cabea4a4ad0fa49aa57/subgraphs/id/43s9hQRurMGjuYnC1r2ZwS6xSQktbFyXMPMqGKUFJojb',
+    ),
   },
   {
     ...MAINNET,
@@ -128,6 +133,13 @@ export const CHAINS: ChainInfo[] = [
     rpcUrl: endpoint('RPC', 1, 'https://ethereum-rpc.publicnode.com')!,
     viemChain: mainnet,
     logRange: 50_000n,
+    // Public node only serves ~5k blocks of eth_getLogs history, so the log
+    // scan cannot fill old rows; the subgraph carries the whole history.
+    subgraphUrl: endpoint(
+      'SUBGRAPH',
+      1,
+      'https://gateway.thegraph.com/api/7fd2e7d89ce3ef24cd0d4590298f0b2c/subgraphs/id/FV6RR6y13rsnCxBAicKuQEwDp8ioEGiNaWaZUmvr1F8k',
+    ),
   },
   {
     ...MAINNET,
@@ -139,6 +151,11 @@ export const CHAINS: ChainInfo[] = [
     rpcUrl: endpoint('RPC', 137, 'https://polygon-bor-rpc.publicnode.com')!,
     viemChain: polygon,
     logRange: 10_000n,
+    subgraphUrl: endpoint(
+      'SUBGRAPH',
+      137,
+      'https://gateway.thegraph.com/api/782d61ed390e625b8867995389699b4c/subgraphs/id/9q16PZv1JudvtnCAf44cBoxg82yK9SSsFvrjCY9xnneF',
+    ),
   },
   {
     ...MAINNET,
@@ -241,11 +258,6 @@ export const CHAINS: ChainInfo[] = [
 
 export const DEFAULT_CHAIN = CHAINS[0]
 
-/** First chain of an environment; the one the root path lands on. */
-export function defaultChainFor(testnet: boolean): ChainInfo {
-  return CHAINS.find((c) => c.testnet === testnet) ?? DEFAULT_CHAIN
-}
-
 export function findChainBySlug(slug: string): ChainInfo | undefined {
   return CHAINS.find((c) => c.slug === slug)
 }
@@ -268,4 +280,14 @@ export const ALL_NETWORKS = 'all'
 
 export function chainById(chainId: number): ChainInfo | undefined {
   return CHAINS.find((c) => c.chainId === chainId)
+}
+
+/** The chains of one environment, in table order; the `all` scope and the picker share it. */
+export function chainsOfEnv(testnet: boolean): ChainInfo[] {
+  return CHAINS.filter((c) => c.testnet === testnet)
+}
+
+/** Chain ids as a readable list, for a cell title; an unknown id shows as its number. */
+export function networkNames(chainIds: number[]): string {
+  return chainIds.map((id) => chainById(id)?.shortName ?? String(id)).join(', ')
 }

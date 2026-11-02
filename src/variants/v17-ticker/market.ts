@@ -22,12 +22,6 @@ export function ratingOf(score: number | null | undefined): Credit {
   return 'D'
 }
 
-/** Direction class for a numeric change. */
-export function dirOf(n: number | null | undefined): 'up' | 'down' | 'flat' {
-  if (n === null || n === undefined || Math.abs(n) < 0.05) return 'flat'
-  return n > 0 ? 'up' : 'down'
-}
-
 /** Percentage change from `from` to `to`; null when `from` is 0 or missing. */
 export function pctOf(from: number | null | undefined, to: number | null | undefined): number | null {
   if (from === null || from === undefined || to === null || to === undefined || from === 0) return null

@@ -72,14 +72,42 @@ export function normalizeRegistrationFile(json: unknown): RegistrationFile | nul
   }
 }
 
-function decodeDataUri(uri: string): unknown {
-  const match = /^data:application\/json([^,]*),(.*)$/is.exec(uri)
+type Coding = 'gzip' | 'deflate'
+
+/** Content coding declared in the media-type parameters: `;enc=gzip` or the older `;gzip`. */
+function declaredCoding(params: string): Coding | undefined {
+  const match = /;\s*(?:enc=)?(gzip|deflate)\b/i.exec(params)
+  return match ? (match[1]!.toLowerCase() as Coding) : undefined
+}
+
+/** A payload that was compressed without saying so: gzip magic, or a zlib header passing the mod-31 check. */
+function sniffCoding(bytes: Uint8Array): Coding | undefined {
+  if (bytes[0] === 0x1f && bytes[1] === 0x8b) return 'gzip'
+  if (bytes[0] === 0x78 && ((bytes[0]! << 8) | (bytes[1] ?? 0)) % 31 === 0) return 'deflate'
+  return undefined
+}
+
+async function inflate(bytes: Uint8Array, coding: Coding): Promise<Uint8Array> {
+  // Copy into a plain ArrayBuffer so the body type is BodyInit under TS's Uint8Array<ArrayBufferLike>.
+  const body = new Response(new Uint8Array(bytes).buffer).body
+  if (!body) return bytes
+  return new Uint8Array(await new Response(body.pipeThrough(new DecompressionStream(coding))).arrayBuffer())
+}
+
+async function decodeDataUri(uri: string): Promise<unknown> {
+  const match = /^data:([^,]*),(.*)$/is.exec(uri)
   if (!match) return null
   const [, params, payload] = match
-  const text = /;base64/i.test(params)
-    ? new TextDecoder().decode(Uint8Array.from(atob(payload), (c) => c.charCodeAt(0)))
-    : decodeURIComponent(payload)
-  return JSON.parse(text)
+  // Registration/feedback files are JSON; an empty media type (`data:,{…}`) is still one.
+  const mediaType = params.split(';')[0]!.trim().toLowerCase()
+  if (mediaType && mediaType !== 'application/json') return null
+  const bytes = /;base64/i.test(params)
+    ? Uint8Array.from(atob(payload), (c) => c.charCodeAt(0))
+    : new TextEncoder().encode(decodeURIComponent(payload))
+  // Files like `data:application/json;enc=gzip;base64,H4sI…` hash as served but
+  // must be inflated before parsing; `fetchUriBytes` keeps the raw bytes for that.
+  const coding = declaredCoding(params) ?? sniffCoding(bytes)
+  return JSON.parse(new TextDecoder().decode(coding ? await inflate(bytes, coding) : bytes))
 }
 
 let activeFetches = 0
@@ -213,12 +241,12 @@ export function resolveAgentURI(uri: string | null | undefined): Promise<Registr
 }
 
 /**
- * Comment behind a feedback URI (`text` or legacy `comment` field).
+ * Comment behind a feedback URI (`text`, legacy `comment`, or `reasoning`).
  * Undefined when absent, not a string, or unreachable. Never rejects.
  */
 export function resolveFeedbackText(uri: string | null | undefined): Promise<string | undefined> {
   return fetchJsonUri(uri).then(
-    (json) => (isRecord(json) ? (str(json.text) ?? str(json.comment)) : undefined),
+    (json) => (isRecord(json) ? (str(json.text) ?? str(json.comment) ?? str(json.reasoning)) : undefined),
     () => undefined,
   )
 }

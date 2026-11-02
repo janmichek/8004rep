@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { FLAG_INFO, type RowFlag } from '../../data/feedbackStats'
 import type { ReputationReport } from '../../data/reputation/report'
-import { DOMINANT_SHARE, STRONG_NEFF, STRONG_WEIGHT, THIN_WALLETS, THIN_WEIGHT } from '../../data/reputation/score'
-import { LABEL_INFO } from '../../data/reviewerProfile'
 import type { Feedback } from '../../data/types'
 import { formatNumber, formatPercent, formatSigned } from '../../format'
-import FlagChip from '../ui/FlagChip.vue'
+
 import StatTiles, { type Tile } from '../ui/StatTiles.vue'
 
 const props = defineProps<{ rep: ReputationReport; feedback: Feedback[] }>()
@@ -89,8 +86,7 @@ const funnel = computed(() => [
   { label: 'Wallets carrying weight', n: props.rep.funnel.walletsAfterCap },
 ])
 
-const flags = (Object.entries(FLAG_INFO) as [RowFlag, { label: string; rule: string }][]).map(([id, info]) => ({ id, ...info }))
-const labels = Object.entries(LABEL_INFO).map(([id, info]) => ({ id, ...info }))
+
 </script>
 
 <template>
@@ -136,40 +132,6 @@ const labels = Object.entries(LABEL_INFO).map(([id, info]) => ({ id, ...info }))
   </section>
 
   <section class="panel">
-    <h3>Parameters</h3>
-    <dl class="metric-list">
-      <dt>Unit window</dt>
-      <dd>{{ props.rep.params.unitWindowDays }} days</dd>
-      <dt>Half-life</dt>
-      <dd>{{ props.rep.params.halfLifeDays }} days</dd>
-      <dt>Prior</dt>
-      <dd>{{ props.rep.params.alpha0 }} wallets at {{ formatNumber(props.rep.params.mu0 * 100) }}/100</dd>
-      <dt>Formula</dt>
-      <dd><code>{{ props.rep.formulaVersion }}</code></dd>
-    </dl>
-  </section>
-
-  <section class="panel">
-    <h3>Rules on each feedback</h3>
-    <dl class="metric-list">
-      <template v-for="f in flags" :key="f.id">
-        <dt><FlagChip :flag="f.id" /></dt>
-        <dd>{{ f.rule }}</dd>
-      </template>
-    </dl>
-  </section>
-
-  <section class="panel">
-    <h3>Rules on a reviewer <small class="muted">from its feedback across agents</small></h3>
-    <dl class="metric-list">
-      <template v-for="l in labels" :key="l.id">
-        <dt><span class="chip" :class="l.tone === 'warn' ? 'warn' : ''">{{ l.label }}</span></dt>
-        <dd>{{ l.rule }}</dd>
-      </template>
-    </dl>
-  </section>
-
-  <section class="panel">
     <h3>Responsiveness <small class="muted">how often a low rating gets an answer</small></h3>
     <dl class="metric-list">
       <dt>Low ratings</dt>
@@ -184,25 +146,22 @@ const labels = Object.entries(LABEL_INFO).map(([id, info]) => ({ id, ...info }))
   </section>
 
   <section class="panel">
-    <h3>Confidence</h3>
+    <h3>Parameters</h3>
     <dl class="metric-list">
-      <dt>low</dt>
-      <dd>Under {{ THIN_WEIGHT }} full votes or under {{ THIN_WALLETS }} wallets.</dd>
-      <dt>moderate</dt>
-      <dd>Anything between low and high.</dd>
-      <dt>high</dt>
-      <dd>{{ STRONG_WEIGHT }}+ full votes, {{ STRONG_NEFF }}+ effective voices, and no wallet holding {{ DOMINANT_SHARE * 100 }}% of the weight.</dd>
-      <dt>Unrated</dt>
-      <dd>No rating rows at all. Telemetry and outcomes are shown but never scored.</dd>
+      <dt>Unit window</dt>
+      <dd>{{ props.rep.params.unitWindowDays }} days</dd>
+      <dt>Half-life</dt>
+      <dd>{{ props.rep.params.halfLifeDays }} days</dd>
+      <dt>Prior</dt>
+      <dd>{{ props.rep.params.alpha0 }} wallets at {{ formatNumber(props.rep.params.mu0 * 100) }}/100</dd>
+      <dt>Formula</dt>
+      <dd><code>{{ props.rep.formulaVersion }}</code></dd>
     </dl>
-    <p class="muted note">
-      Everything here is computed in your browser from on-chain rows. No IP, device or text signals exist on-chain; a reviewer
-      with many fresh wallets that each rate once at varied values passes every rule. Shared funders on the Reviewers tab are
-      the check for that.
-    </p>
+  </section>
+
+  <section class="panel">
     <p class="toolbar">
       <button type="button" class="btn" @click="downloadInputs">Download inputs (JSON)</button>
-      <small class="muted">Every row, its kind, scale and rating, the units and the wallet weights — enough to recompute the score.</small>
     </p>
   </section>
 </template>

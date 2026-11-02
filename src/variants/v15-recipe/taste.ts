@@ -6,10 +6,6 @@ export function starsOf(score: number | null | undefined): Star[] {
   return Array.from({ length: 5 }, (_, i) => (value >= i + 1 ? 'full' : value >= i + 0.5 ? 'half' : 'off'))
 }
 
-export function starGlyph(star: Star): string {
-  return star === 'full' ? '★' : star === 'half' ? '⯨' : '☆'
-}
-
 /** How much evidence is in the pot, in kitchen words. */
 export function confidenceOf(count: number | undefined): { word: string; detail: string } {
   if (!count) return { word: 'untasted', detail: 'no tastings' }
