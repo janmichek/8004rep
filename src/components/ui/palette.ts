@@ -1,19 +1,19 @@
 import type { Series } from './ColumnChart.vue'
 
 /**
- * Chart colors. Weight classes are ordered states, so they take the status
- * steps (good → warning → critical) plus a neutral for revoked; a legend and
- * per-column tooltips always carry the meaning alongside the color.
+ * Chart colors. Every series is a shade of the brand cyan (#22d3ee); weight
+ * classes are ordered states, so they run light → dark (full weight → revoked).
+ * A legend and per-column tooltips always carry the meaning alongside the color.
  */
 export const WEIGHT_SERIES: Series[] = [
-  { key: 'clean', label: 'full weight', color: '#0ca30c' },
-  { key: 'discounted', label: 'discounted', color: '#fab219' },
-  { key: 'zero', label: 'weight 0', color: '#d03b3b' },
-  { key: 'revoked', label: 'revoked', color: '#5b6472' },
+  { key: 'clean', label: 'full weight', color: 'var(--cyan-300)' },
+  { key: 'discounted', label: 'discounted', color: 'var(--cyan-400)' },
+  { key: 'zero', label: 'weight 0', color: 'var(--cyan-500)' },
+  { key: 'revoked', label: 'revoked', color: 'var(--cyan-600)' },
 ]
 
 /** Single-series magnitude (distributions, volumes). */
-export const COUNT_SERIES: Series[] = [{ key: 'count', label: 'reviews', color: '#3987e5' }]
+export const COUNT_SERIES: Series[] = [{ key: 'count', label: 'reviews', color: 'var(--cyan-400)' }]
 
 export type WeightClass = 'clean' | 'discounted' | 'zero' | 'revoked'
 

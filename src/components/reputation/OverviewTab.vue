@@ -29,9 +29,9 @@ const STEP_DOCS: Record<string, string> = {
 
 /** Rating rows are the ones that enter the score; everything else is shown, not scored. */
 const ACTIVITY_SERIES: Series[] = [
-  { key: 'rating', label: 'scored rating', color: '#0ca30c' },
-  { key: 'other', label: 'not scored', color: '#3987e5' },
-  { key: 'revoked', label: 'revoked', color: '#5b6472' },
+  { key: 'rating', label: 'scored rating', color: 'var(--cyan-400)' },
+  { key: 'other', label: 'not scored', color: 'var(--cyan-500)' },
+  { key: 'revoked', label: 'revoked', color: 'var(--cyan-600)' },
 ]
 const activity = computed(() =>
   dailyColumns(
@@ -59,7 +59,8 @@ function barWidth(value: number | null): string {
   return `${Math.max(0, Math.min(100, value))}%`
 }
 
-const LADDER_COLOR: Record<LadderId, string> = { bare: '#5b6472', context: '#3987e5', file: '#0ca30c' }
+/** Evidence rungs run dim → bright as the evidence gets stronger. */
+const LADDER_COLOR: Record<LadderId, string> = { bare: 'var(--cyan-600)', context: 'var(--cyan-400)', file: 'var(--cyan-300)' }
 const ladderTotal = computed(() => props.report.ladder.reduce((a, r) => a + r.rows, 0))
 
 const kinds = computed(() => props.rep.byKind.filter((k) => k.rows > 0))
