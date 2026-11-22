@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { compress } from 'hono/compress'
 import { cors } from 'hono/cors'
 import type { Address } from 'viem'
 import { createRpcSource, createRpcClient } from '../../src/data/rpc'
@@ -17,6 +18,8 @@ import { coverage, upsertAgent, upsertFeedback } from './sync'
 export const app = new Hono()
 
 app.use('*', cors({ origin: CORS_ORIGIN, allowMethods: ['GET', 'OPTIONS'], maxAge: 86400 }))
+// Detail reports for busy agents are megabytes of JSON; gzip cuts the wire size by ~4x.
+app.use('*', compress())
 
 function int(value: string | undefined, fallback: number, min: number, max: number): number {
   const parsed = Number(value)
@@ -54,12 +57,26 @@ function serializeAgent(row: AgentRow, score: ScoreRow | undefined, feedbackCoun
     ...base,
     ...(reports
       ? {
-          report: parseJson<unknown>(score?.report_json ?? null, null),
+          report: slimReport(parseJson<unknown>(score?.report_json ?? null, null)),
           stats: parseJson<unknown>(score?.stats_json ?? null, null),
           trust: parseJson<unknown>(score?.trust_report_json ?? null, null),
         }
       : {}),
   }
+}
+
+/**
+ * The full layer keeps one entry per unit and wallet; Methods only needs the
+ * per-row classification, so drop the two largest arrays from the API payload.
+ */
+function slimReport(report: unknown): unknown {
+  if (!report || typeof report !== 'object' || Array.isArray(report)) return report
+  const layer = (report as { layer?: unknown }).layer
+  if (!layer || typeof layer !== 'object' || Array.isArray(layer)) return report
+  const { units: _units, wallets: _wallets, ...rest } = layer as Record<string, unknown>
+  void _units
+  void _wallets
+  return { ...(report as Record<string, unknown>), layer: rest }
 }
 
 async function resolveFile(agentURI: string | null): Promise<{ file: ReturnType<typeof normalizeRegistrationFile>; error?: string }> {

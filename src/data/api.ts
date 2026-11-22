@@ -70,12 +70,12 @@ export type ApiAgentPage = {
   source: 'index'
 }
 
-async function apiGet<T>(path: string, params: Record<string, string | number | undefined> = {}): Promise<T> {
+async function apiGet<T>(path: string, params: Record<string, string | number | undefined> = {}, timeoutMs = API_TIMEOUT_MS): Promise<T> {
   const url = new URL(`${API_URL}${path}`)
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== '') url.searchParams.set(key, String(value))
   }
-  const res = await fetch(url, { signal: AbortSignal.timeout(API_TIMEOUT_MS) })
+  const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) })
   if (!res.ok) throw new Error(`API responded with HTTP ${res.status}`)
   return (await res.json()) as T
 }
@@ -127,7 +127,7 @@ export async function fetchApiAgents(options: {
 }
 
 export async function fetchApiAgent(chainId: number, tokenId: bigint): Promise<ApiAgentDetail | null> {
-  const data = await apiGet<ApiAgentDetail>(`/api/agents/${chainId}/${tokenId.toString()}`)
+  const data = await apiGet<ApiAgentDetail>(`/api/agents/${chainId}/${tokenId.toString()}`, {}, 15_000)
   const feedback = (data.feedback ?? []).map((row) => ({
     ...row,
     chainId: data.chainId,

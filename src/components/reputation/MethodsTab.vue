@@ -28,8 +28,8 @@ function downloadInputs(): void {
       scale: r.layer.classified[i]?.scale ?? null,
       rating: r.layer.classified[i]?.r ?? null,
     })),
-    units: r.layer.units.map((u) => ({ client: u.client, tag: u.tag, window: u.bucket, rating: u.r, rows: u.rows, weight: u.time })),
-    wallets: r.layer.wallets.map((w) => ({ client: w.client, rating: w.r, weight: w.weight, units: w.units.length, rows: w.rows })),
+    units: (r.layer.units ?? []).map((u) => ({ client: u.client, tag: u.tag, window: u.bucket, rating: u.r, rows: u.rows, weight: u.time })),
+    wallets: (r.layer.wallets ?? []).map((w) => ({ client: w.client, rating: w.r, weight: w.weight, units: w.units.length, rows: w.rows })),
   }
   const blob = new Blob([JSON.stringify(inputs, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
