@@ -68,7 +68,7 @@ type SubgraphFeedback = {
   isRevoked: boolean
   createdAt?: string | null
   responses?: { responder: string; responseUri?: string | null; createdAt?: string | null }[] | null
-  agent?: { agentId: string; owner?: string | null } | null
+  agent?: { agentId: string; owner?: string | null; createdAt?: string | null } | null
 }
 
 function mapFile(row: FileRow | null | undefined): RegistrationFile | null {
@@ -106,6 +106,18 @@ export function upsertAgent(chainId: number, agent: {
   const now = Math.floor(Date.now() / 1000)
   const file = agent.file ?? null
   const owner = agent.owner?.toLowerCase() ?? null
+  const dirty = `(
+    excluded.owner IS NOT NULL AND excluded.owner IS NOT agents.owner AND (
+      agents.owner IS NULL
+      OR (excluded.owner_block IS NOT NULL
+        AND (agents.owner_block IS NULL OR CAST(excluded.owner_block AS INTEGER) >= CAST(agents.owner_block AS INTEGER)))
+    )
+  )
+  OR (excluded.agent_wallet IS NOT NULL AND excluded.agent_wallet IS NOT agents.agent_wallet)
+  OR (excluded.agent_uri IS NOT NULL AND excluded.agent_uri IS NOT agents.agent_uri)
+  OR (excluded.raw_file_json IS NOT NULL AND excluded.raw_file_json IS NOT agents.raw_file_json)
+  OR (excluded.services_json IS NOT NULL AND excluded.services_json IS NOT agents.services_json)
+  OR (excluded.name IS NOT NULL AND excluded.name IS NOT agents.name)`
   run(
     `INSERT INTO agents (chain_id, token_id, owner, owner_block, agent_wallet, agent_uri, created_at, created_block,
        name, description, image, active, x402, services_json, supported_trust_json, raw_file_json,
@@ -154,20 +166,10 @@ export function upsertAgent(chainId: number, agent: {
          THEN NULL ELSE agents.file_next_try_at END,
        file_attempts = CASE WHEN excluded.agent_uri IS NOT NULL AND excluded.agent_uri IS NOT agents.agent_uri
          THEN 0 ELSE agents.file_attempts END,
+       score_attempts = CASE WHEN (${dirty}) OR excluded.needs_recompute = 1 THEN 0 ELSE agents.score_attempts END,
+       score_next_try_at = CASE WHEN (${dirty}) OR excluded.needs_recompute = 1 THEN NULL ELSE agents.score_next_try_at END,
        needs_recompute = MAX(agents.needs_recompute, excluded.needs_recompute,
-         CASE WHEN (
-           excluded.owner IS NOT NULL AND excluded.owner IS NOT agents.owner AND (
-             agents.owner IS NULL
-             OR (excluded.owner_block IS NOT NULL
-               AND (agents.owner_block IS NULL OR CAST(excluded.owner_block AS INTEGER) >= CAST(agents.owner_block AS INTEGER)))
-           )
-         )
-           OR (excluded.agent_wallet IS NOT NULL AND excluded.agent_wallet IS NOT agents.agent_wallet)
-           OR (excluded.agent_uri IS NOT NULL AND excluded.agent_uri IS NOT agents.agent_uri)
-           OR (excluded.raw_file_json IS NOT NULL AND excluded.raw_file_json IS NOT agents.raw_file_json)
-           OR (excluded.services_json IS NOT NULL AND excluded.services_json IS NOT agents.services_json)
-           OR (excluded.name IS NOT NULL AND excluded.name IS NOT agents.name)
-           THEN 1 ELSE 0 END),
+         CASE WHEN ${dirty} THEN 1 ELSE 0 END),
        updated_at = excluded.updated_at`,
     chainId,
     agent.tokenId,
@@ -273,12 +275,22 @@ export function upsertFeedback(chainId: number, row: {
   if (changed) markDirty(chainId, row.tokenId)
 }
 
-function ensureAgent(chainId: number, tokenId: string, owner?: string | null): void {
-  upsertAgent(chainId, { tokenId, owner: owner ?? null })
+function ensureAgent(
+  chainId: number,
+  tokenId: string,
+  owner?: string | null,
+  createdAt?: number | null,
+  ownerBlock?: string | null,
+): void {
+  upsertAgent(chainId, { tokenId, owner: owner ?? null, createdAt: createdAt ?? null, ownerBlock: ownerBlock ?? null })
 }
 
 function markDirty(chainId: number, tokenId: string): void {
-  run('UPDATE agents SET needs_recompute = 1 WHERE chain_id = ? AND token_id = ?', chainId, tokenId)
+  run(
+    'UPDATE agents SET needs_recompute = 1, score_attempts = 0, score_next_try_at = NULL WHERE chain_id = ? AND token_id = ?',
+    chainId,
+    tokenId,
+  )
 }
 
 /** Idempotent response insert; subgraph rows get a deterministic synthetic log key. */
@@ -391,12 +403,12 @@ export async function syncSubgraphAgents(chain: ServerChain): Promise<void> {
   }
 }
 
-function ingestSubgraphFeedback(chain: ServerChain, rows: SubgraphFeedback[]): void {
+function ingestSubgraphFeedback(chain: ServerChain, rows: SubgraphFeedback[], ownerBlock?: string | null): void {
   transaction(() => {
     for (const row of rows) {
       const tokenId = row.agent?.agentId
       if (!tokenId) continue
-      ensureAgent(chain.chainId, tokenId, row.agent?.owner ?? null)
+      ensureAgent(chain.chainId, tokenId, row.agent?.owner ?? null, row.agent?.createdAt ? Number(row.agent.createdAt) : null, ownerBlock)
       const index = Number(row.feedbackIndex ?? 0)
       upsertFeedback(chain.chainId, {
         tokenId,
@@ -445,20 +457,22 @@ export async function syncSubgraphFeedback(chain: ServerChain): Promise<void> {
   let stored = 0
   while (stored < chain.feedbackLimit) {
     const first = Math.min(GRAPH_PAGE, chain.feedbackLimit - stored)
-    const data = await gql<{ feedbacks: SubgraphFeedback[] }>(
+    const data = await gql<{ feedbacks: SubgraphFeedback[]; _meta?: { block: { number: number } } }>(
       url,
       `query Feedback($first: Int!, $cursor: BigInt!) {
+        _meta { block { number } }
         feedbacks(first: $first, where: { createdAt_lte: $cursor }, orderBy: createdAt, orderDirection: desc) {
           id clientAddress feedbackIndex value tag1 tag2 endpoint feedbackURI isRevoked createdAt
           responses(orderBy: createdAt, orderDirection: asc) { responder responseUri createdAt }
-          agent { agentId owner }
+          agent { agentId owner createdAt }
         }
       }`,
       { first, cursor: cursor.toString() },
     )
     const rows = data.feedbacks ?? []
     if (!rows.length) break
-    ingestSubgraphFeedback(chain, rows)
+    const block = data._meta?.block.number?.toString() ?? null
+    ingestSubgraphFeedback(chain, rows, block)
     stored += rows.length
     if (stored >= chain.feedbackLimit || rows.length < first) break
 
@@ -467,19 +481,20 @@ export async function syncSubgraphFeedback(chain: ServerChain): Promise<void> {
     const boundary = Number(rows[rows.length - 1]!.createdAt ?? 0)
     if (!Number.isFinite(boundary) || boundary <= 0) break
     for (let skip = 0; ; skip += GRAPH_PAGE) {
-      const bucket = await gql<{ feedbacks: SubgraphFeedback[] }>(
+      const bucket = await gql<{ feedbacks: SubgraphFeedback[]; _meta?: { block: { number: number } } }>(
         url,
         `query FeedbackAt($first: Int!, $skip: Int!, $at: BigInt!) {
+          _meta { block { number } }
           feedbacks(first: $first, skip: $skip, where: { createdAt: $at }, orderBy: id, orderDirection: asc) {
             id clientAddress feedbackIndex value tag1 tag2 endpoint feedbackURI isRevoked createdAt
             responses(orderBy: createdAt, orderDirection: asc) { responder responseUri createdAt }
-            agent { agentId owner }
+            agent { agentId owner createdAt }
           }
         }`,
         { first: GRAPH_PAGE, skip, at: boundary.toString() },
       )
       const tied = bucket.feedbacks ?? []
-      ingestSubgraphFeedback(chain, tied)
+      ingestSubgraphFeedback(chain, tied, bucket._meta?.block.number?.toString() ?? block)
       if (tied.length < GRAPH_PAGE) break
     }
     cursor = boundary - 1
@@ -578,8 +593,12 @@ async function syncRpcAgent(chain: ServerChain, client: PublicClient, tokenId: b
     ])
     if (wallet && wallet !== zeroAddress) {
       run(
-        `UPDATE agents SET agent_wallet = ?, needs_recompute = CASE WHEN agent_wallet IS NOT ? THEN 1 ELSE needs_recompute END
+        `UPDATE agents SET agent_wallet = ?, needs_recompute = CASE WHEN agent_wallet IS NOT ? THEN 1 ELSE needs_recompute END,
+           score_attempts = CASE WHEN agent_wallet IS NOT ? THEN 0 ELSE score_attempts END,
+           score_next_try_at = CASE WHEN agent_wallet IS NOT ? THEN NULL ELSE score_next_try_at END
          WHERE chain_id = ? AND token_id = ?`,
+        wallet,
+        wallet,
         wallet,
         wallet,
         chain.chainId,
@@ -678,15 +697,23 @@ export async function refreshRpcChain(chain: ServerChain): Promise<void> {
  */
 async function backfillRpcTimestamps(chain: ServerChain, client: PublicClient): Promise<void> {
   if (chain.subgraphUrl) return
+  const state = getSync(chain.chainId, 'rpc_timestamps')
+  const head = await client.getBlockNumber()
   const missing = get<{ n: number }>(
     'SELECT COUNT(*) AS n FROM feedback WHERE chain_id = ? AND created_at IS NULL',
     chain.chainId,
   )?.n ?? 0
-  if (!missing) return
-  const head = await client.getBlockNumber()
+  if (!missing) {
+    // Remember that the head has been examined; new feedback appears above it.
+    if (!state) touchSync(chain.chainId, 'rpc_timestamps', head, head, null)
+    return
+  }
   const floor = chain.reputationFromBlock ?? 0n
   const span = BigInt(process.env.RPC_TIMESTAMP_BACKFILL_BLOCKS ?? 250_000)
-  const from = head > span + floor ? head - span : floor
+  const saved = state ? BigInt(state.last_block) : 0n
+  const windowStart = head > span + floor ? head - span : floor
+  const from = saved > 0n ? saved + 1n : windowStart
+  if (from > head) return
   const timestamps = new Map<string, number>()
   for (let cursor = from; cursor <= head; cursor += chain.logRange) {
     const to = cursor + chain.logRange - 1n > head ? head : cursor + chain.logRange - 1n
@@ -698,13 +725,11 @@ async function backfillRpcTimestamps(chain: ServerChain, client: PublicClient): 
       if (at) timestamps.set(`${args.agentId}:${args.clientAddress.toLowerCase()}:${Number(args.feedbackIndex)}`, at)
     }
   }
-  if (!timestamps.size) return
   transaction(() => {
     const tokens = new Set<string>()
     for (const [key, at] of timestamps) {
       const [tokenId, client, index] = key.split(':')
-      tokens.add(tokenId!)
-      run(
+      const result = run(
         'UPDATE feedback SET created_at = ? WHERE chain_id = ? AND token_id = ? AND client = ? AND feedback_index = ? AND created_at IS NULL',
         at,
         chain.chainId,
@@ -712,9 +737,11 @@ async function backfillRpcTimestamps(chain: ServerChain, client: PublicClient): 
         client,
         Number(index),
       )
+      if (Number(result.changes) > 0) tokens.add(tokenId!)
     }
     for (const tokenId of tokens) markDirty(chain.chainId, tokenId)
   })
+  touchSync(chain.chainId, 'rpc_timestamps', head, head, null)
 }
 
 type Log = {
@@ -751,18 +778,19 @@ export async function refreshRecent(chain: ServerChain): Promise<void> {
         }
       }`,
     ),
-    gql<{ feedbacks: SubgraphFeedback[] }>(
+    gql<{ feedbacks: SubgraphFeedback[]; _meta?: { block: { number: number } } }>(
       url,
       `query RecentFeedback {
+        _meta { block { number } }
         feedbacks(first: 1000, orderBy: createdAt, orderDirection: desc) {
           id clientAddress feedbackIndex value tag1 tag2 endpoint feedbackURI isRevoked createdAt
           responses(orderBy: createdAt, orderDirection: asc) { responder responseUri createdAt }
-          agent { agentId owner }
+          agent { agentId owner createdAt }
         }
       }`,
     ),
   ])
-  const block = agents._meta?.block.number?.toString() ?? null
+  const block = agents._meta?.block.number?.toString() ?? feedback._meta?.block.number?.toString() ?? null
   transaction(() => {
     for (const row of agents.agents ?? []) {
       upsertAgent(chain.chainId, {
@@ -777,7 +805,7 @@ export async function refreshRecent(chain: ServerChain): Promise<void> {
       })
     }
   })
-  ingestSubgraphFeedback(chain, feedback.feedbacks ?? [])
+  ingestSubgraphFeedback(chain, feedback.feedbacks ?? [], block)
 }
 
 export async function refreshAll(): Promise<void> {
@@ -837,15 +865,23 @@ function rewindLogs(chainId: number, toBlock: bigint): void {
         chainId,
         token.token_id,
       )
+      if (!last) {
+        // The mint itself was reorged: the agent never existed.
+        run('DELETE FROM feedback_responses WHERE chain_id = ? AND token_id = ?', chainId, token.token_id)
+        run('DELETE FROM feedback WHERE chain_id = ? AND token_id = ?', chainId, token.token_id)
+        run('DELETE FROM agent_scores WHERE chain_id = ? AND token_id = ?', chainId, token.token_id)
+        run('DELETE FROM agents WHERE chain_id = ? AND token_id = ?', chainId, token.token_id)
+        continue
+      }
       run(
-        'UPDATE agents SET owner = ?, owner_block = ?, needs_recompute = 1 WHERE chain_id = ? AND token_id = ?',
-        last?.to_addr?.toLowerCase() ?? null,
-        last?.block_number ?? null,
+        'UPDATE agents SET owner = ?, owner_block = ?, needs_recompute = 1, score_attempts = 0, score_next_try_at = NULL WHERE chain_id = ? AND token_id = ?',
+        last.to_addr?.toLowerCase() ?? null,
+        last.block_number,
         chainId,
         token.token_id,
       )
     }
-    run('UPDATE agents SET needs_recompute = 1 WHERE chain_id = ?', chainId)
+    run('UPDATE agents SET needs_recompute = 1, score_attempts = 0, score_next_try_at = NULL WHERE chain_id = ?', chainId)
   })
 }
 
@@ -950,7 +986,11 @@ export async function tailChain(chain: ServerChain): Promise<void> {
           args.clientAddress.toLowerCase(),
           Number(args.feedbackIndex),
         )
-        run('UPDATE agents SET needs_recompute = 1 WHERE chain_id = ? AND token_id = ?', chain.chainId, args.agentId.toString())
+        run(
+          'UPDATE agents SET needs_recompute = 1, score_attempts = 0, score_next_try_at = NULL WHERE chain_id = ? AND token_id = ?',
+          chain.chainId,
+          args.agentId.toString(),
+        )
       }
       for (const log of responses as unknown as Log[]) {
         const args = log.args as { agentId: bigint; clientAddress: Address; feedbackIndex: bigint; responder: Address; responseURI: string }
@@ -1056,7 +1096,7 @@ export function pruneChain(chain: ServerChain): void {
     const removed = all<{ token_id: string }>(
       `SELECT DISTINCT token_id FROM feedback WHERE chain_id = ? AND rowid NOT IN (
          SELECT rowid FROM feedback WHERE chain_id = ?
-         ORDER BY COALESCE(created_at, 0) DESC, CAST(token_id AS INTEGER) DESC, feedback_index DESC LIMIT ?
+         ORDER BY CASE WHEN created_at IS NULL THEN 1 ELSE 0 END DESC, created_at DESC, CAST(token_id AS INTEGER) DESC, feedback_index DESC LIMIT ?
        )`,
       chain.chainId,
       chain.chainId,
@@ -1066,7 +1106,7 @@ export function pruneChain(chain: ServerChain): void {
     run(
       `DELETE FROM feedback WHERE chain_id = ? AND rowid NOT IN (
          SELECT rowid FROM feedback WHERE chain_id = ?
-         ORDER BY COALESCE(created_at, 0) DESC, CAST(token_id AS INTEGER) DESC, feedback_index DESC LIMIT ?
+         ORDER BY CASE WHEN created_at IS NULL THEN 1 ELSE 0 END DESC, created_at DESC, CAST(token_id AS INTEGER) DESC, feedback_index DESC LIMIT ?
        )`,
       chain.chainId,
       chain.chainId,
@@ -1080,18 +1120,17 @@ export function pruneChain(chain: ServerChain): void {
        )`,
       chain.chainId,
     )
-    // Keep the newest agents plus every agent still referenced by retained
-    // feedback. Deleting the second group would empty the feedback table on a
-    // chain where the newest agents and the newest feedback do not overlap.
+    // Keep the agent table inside the advertised limit. Feedback rows are not
+    // deleted with their agent; `/api/feedbacks` still serves them with a null
+    // agent name until the agent is indexed again.
     run(
       `DELETE FROM agents WHERE chain_id = ? AND rowid NOT IN (
          SELECT rowid FROM agents WHERE chain_id = ?
-         ORDER BY COALESCE(created_at, 0) DESC, CAST(token_id AS INTEGER) DESC LIMIT ?
-       ) AND token_id NOT IN (SELECT token_id FROM feedback WHERE chain_id = ?)`,
+         ORDER BY COALESCE(created_at, updated_at, 0) DESC, CAST(token_id AS INTEGER) DESC LIMIT ?
+       )`,
       chain.chainId,
       chain.chainId,
       chain.agentLimit,
-      chain.chainId,
     )
     run(
       'DELETE FROM agent_transfers WHERE chain_id = ? AND token_id NOT IN (SELECT token_id FROM agents WHERE chain_id = ?)',
