@@ -2,8 +2,6 @@
 
 Read-only ERC-8004 agent reputation explorer, built on the strict Feature-Sliced React template from `dev-template-2026`.
 
-Start non-trivial changes with the `template-workflow` skill in `.agents/skills/`.
-
 ## Start
 
 You need [Bun](https://bun.sh) and Docker.

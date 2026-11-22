@@ -36,7 +36,7 @@ Single-context: root `GLOSSARY.md` + `docs/adr/`. See `docs/agents/domain.md`.
 
 ### Skill scope
 
-Global skills (`~/.agents/skills`) are personal and invisible to the repo; project skills live in `.agents/skills/` and ship with it. `template-workflow` is the example.
+Global skills (`~/.agents/skills`) are personal and invisible to the repo; project skills live in `.agents/skills/` and ship with it. `design-taste-frontend` is the project skill.
 
 To add a published skill at project scope, run `npx skills add <owner/repo> --skill <name> -y` (no `-g`), then link it into `.claude/skills/` and `.cursor/skills/`. The CLI pins the commit in `skills-lock.json`; restore with `npx skills experimental_install`.
 
