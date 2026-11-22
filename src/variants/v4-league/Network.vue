@@ -9,8 +9,8 @@ import { tierOf } from './league'
 const props = defineProps<{ slug: string }>()
 const chain = useChain(() => props.slug)
 const to = routes(() => chain.value)
-const { feed, error, loading, load, stats, ecosystem } = useNetwork(chain)
-const prior = computed(() => stats.value?.average ?? 50)
+const { feed, error, loading, load, stats } = useNetwork(chain)
+const prior = computed(() => stats.value?.rawAverage ?? 50)
 // Window table: every agent seen in the window, ranked by shrunk average.
 const table = computed(() => {
   const by = new Map<string, { tokenId: bigint; name?: string; n: number; sum: number; refs: Set<string> }>()
@@ -48,7 +48,7 @@ const cards = computed(() => (stats.value?.suspects ?? []).map((s) => ({ ...s, r
       <div class="g-stat"><b>{{ stats.rows }}</b><small>Matches</small></div>
       <div class="g-stat"><b>{{ stats.agents }}</b><small>Players</small></div>
       <div class="g-stat"><b>{{ stats.reviewers }}</b><small>Referees</small></div>
-      <div class="g-stat"><b>{{ formatNumber(stats.average) }}</b><small>Avg · eco {{ formatNumber(ecosystem.data.value?.averageFeedback) }}</small></div>
+      <div class="g-stat"><b>{{ formatNumber(stats.average) }}</b><small>Mean rating</small></div>
       <div class="g-stat"><b :class="{ volt: (stats.perfectShare ?? 0) > 0.7 }">{{ formatPercent(stats.perfectShare) }}</b><small>Perfect 100s</small></div>
       <div class="g-stat"><b>{{ stats.suspects.length }}</b><small>Carded refs</small></div>
     </div>

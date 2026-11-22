@@ -146,13 +146,31 @@ describe('computeFeedbackStats signals', () => {
   })
 
   it('reports a surge only against a quieter month', () => {
-    const burst = [A, B, C].map((c, i) => row(c, 80 + i, { createdAt: NOW - DAY * (i + 1) }))
+    const burst = [A, B, C].map((c, i) => row(c, 80 + i, { tag1: 'starred', createdAt: NOW - DAY * (i + 1) }))
     expect(codes(burst)).toContain('surge')
     const steady = [
       ...burst,
-      ...[10, 14, 18, 22, 26, 30].map((d, i) => row(C, 60 + i, { createdAt: NOW - d * DAY })),
+      ...[10, 14, 18, 22, 26, 30].map((d, i) => row(C, 60 + i, { tag1: 'starred', createdAt: NOW - d * DAY })),
     ]
     expect(codes(steady)).not.toContain('surge')
+  })
+
+  it('does not call telemetry a rating surge', () => {
+    const telemetry = Array.from({ length: 6 }, (_, i) =>
+      row(A, 99, { tag1: 'uptime', createdAt: NOW - i * 2 * DAY }),
+    )
+    expect(codes(telemetry)).not.toContain('surge')
+  })
+
+  it('does not count self-reviews as unscored feedback', () => {
+    const feedback = [
+      ...Array.from({ length: 4 }, (_, i) => row(OWNER, 100 + i, { tag1: 'starred' })),
+      row(A, 80, { tag1: 'starred' }),
+      row(B, 90, { tag1: 'starred' }),
+    ]
+    const stats = computeFeedbackStats(feedback, { owner: OWNER, now: NOW })
+    const unscored = stats.signals.find((s) => s.code === 'unscored')
+    expect(unscored).toBeUndefined()
   })
 
   it('reports a falling recent rating average', () => {

@@ -176,6 +176,35 @@ describe('computeNetworkStats', () => {
     expect(s.topAgents[0].reviewers).toBe(1)
   })
 
+  it('drops the registered agent wallet’s self-review too', () => {
+    const owner = addr(9)
+    const wallet = addr(8)
+    const rows = [
+      ev(wallet, 1, 100, { tag1: 'starred', agentOwner: owner, agentWallet: wallet }),
+      ev(addr(2), 1, 20, { tag1: 'starred', agentOwner: owner, agentWallet: wallet }),
+    ]
+    const s = computeNetworkStats(rows)
+    expect(s.average).toBeCloseTo(20)
+    expect(s.topAgents[0].average).toBeCloseTo(20)
+    expect(s.topAgents[0].reviewers).toBe(1)
+    expect(s.reviewers).toBe(1)
+  })
+
+  it('reads a reviewer’s rating on the agent-wide tag scale', () => {
+    const reviewer = addr(1)
+    const rows = [1, 2, 3, 4, 5].flatMap((t) => [
+      ev(reviewer, t, 4, { tag1: 'starred' }),
+      ev(addr(10 + t), t, 60, { tag1: 'starred' }),
+      ev(addr(20 + t), t, 80, { tag1: 'starred' }),
+      ev(addr(30 + t), t, 100, { tag1: 'starred' }),
+    ])
+    const s = computeNetworkStats(rows)
+    // Each agent's whole feedback says 0–100, so the reviewer's 4 is 4/100,
+    // not a perfect 4/5. The network mean pools 4, 60, 80 and 100.
+    expect(s.suspects.find((x) => x.client === reviewer)?.average).toBeCloseTo(4)
+    expect(s.average).toBeCloseTo(61)
+  })
+
   it('ranks labelled reviewers only', () => {
     const rows = [...[1, 2, 3, 4, 5].map((t) => ev(addr(1), t, 100, { tag1: 'starred' })), ev(addr(2), 1, 50)]
     expect(computeNetworkStats(rows).suspects.map((s) => s.client)).toEqual([addr(1)])

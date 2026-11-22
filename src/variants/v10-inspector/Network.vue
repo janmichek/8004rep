@@ -13,7 +13,7 @@ import ReviewerPane from './ReviewerPane.vue'
 const props = defineProps<{ slug: string; address?: string }>()
 const chain = useChain(() => props.slug)
 const router = useRouter()
-const { feed, error, loading, load, stats, ecosystem } = useNetwork(chain)
+const { feed, error, loading, load, stats } = useNetwork(chain)
 const routeAddress = useAddress(() => props.address ?? '')
 
 type Mode = 'suspects' | 'reviewers' | 'agents' | 'rings' | 'feed'
@@ -63,7 +63,7 @@ const agentTarget = computed(() => entries.value.find((e) => e.key === pickedAge
       <header>
         <h2><span>{{ chain.name }}</span><span class="soft">{{ stats ? `${stats.rows} reviews` : '' }}</span></h2>
         <p v-if="stats" class="soft" style="margin: 0">
-          avg {{ formatNumber(stats.average) }} (eco {{ formatNumber(ecosystem.data.value?.averageFeedback) }}) · {{ formatPercent(stats.perfectShare) }} perfect · {{ stats.agents }} agents · {{ stats.reviewers }} reviewers
+          mean rating {{ formatNumber(stats.average) }} (normalised 0–100) · {{ formatPercent(stats.perfectShare) }} perfect · {{ stats.agents }} agents · {{ stats.reviewers }} reviewers
         </p>
         <div style="display: flex; flex-wrap: wrap; gap: 4px">
           <button v-for="m in (['suspects', 'reviewers', 'agents', 'rings', 'feed'] as Mode[])" :key="m" :style="mode === m ? 'background: var(--sel); border-color: var(--sel)' : ''" @click="mode = m">

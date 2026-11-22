@@ -20,7 +20,7 @@ const { feed, error, loading, load, stats } = useNetwork(chain)
       </div>
       <div style="grid-column: span 5; align-self: end">
         <div class="w-cell"><span class="w-label">Suspect reviewers</span><p class="w-big" :class="{ 'w-red': stats.suspects.length }">{{ stats.suspects.length }}</p></div>
-        <div class="w-cell"><span class="w-label">Average value</span><p class="w-big">{{ formatNumber(stats.average) }}</p></div>
+        <div class="w-cell"><span class="w-label">Mean rating</span><p class="w-big">{{ formatNumber(stats.average) }}</p></div>
       </div>
     </div>
     <p><button v-if="feed.cursor" :disabled="loading" @click="load(true)">{{ loading ? 'Loading' : 'Load older' }}</button></p>

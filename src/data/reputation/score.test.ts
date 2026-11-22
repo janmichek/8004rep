@@ -193,8 +193,36 @@ describe('filtered score', () => {
     const [top, low] = report.contributions
     expect(top.client.toLowerCase()).toBe(addr(1))
     expect(top.share).toBeCloseTo(0.5)
-    expect(top.without).toBeLessThan(0)
-    expect(low.without).toBeGreaterThan(0)
+    // Prior (3 × 0.5) plus one 100 and one 50: 3/5 = 0.6. Without the top
+    // wallet, 2/4 = 0.5 → −10 points; without the low, 2.5/4 = 0.625 → +2.5.
+    expect(top.without).toBeCloseTo(-10, 6)
+    expect(low.without).toBeCloseTo(2.5, 6)
+  })
+
+  it('counts contributing wallets, not rating rows, at the wallet-cap step', () => {
+    const fb = [
+      row(addr(1), 100, { tag1: 'starred', createdAt: NOW }),
+      row(addr(1), 100, { tag1: 'starred', createdAt: NOW - 40 * DAY }),
+      row(addr(2), 50, { tag1: 'starred', createdAt: NOW }),
+    ]
+    const report = buildReputationReport(fb, { now: NOW })
+    expect(report.waterfall.find((s) => s.id === 'cap')).toMatchObject({ rows: 2 })
+  })
+
+  it('infers tag scales without self-review values', () => {
+    const owner = addr(50)
+    const fb = [
+      row(owner, 10_000, { tag1: 'starred', createdAt: NOW }),
+      row(owner, 20_000, { tag1: 'starred', createdAt: NOW }),
+      row(addr(1), 4, { tag1: 'starred', createdAt: NOW }),
+      row(addr(2), 5, { tag1: 'starred', createdAt: NOW }),
+    ]
+    const report = buildReputationReport(fb, { now: NOW, self: [owner] })
+    // The two non-self values are 4/5 and 5/5; the owner's huge values do not
+    // make the tag unbounded or turn the real ratings into 4% and 5%.
+    expect(report.rawRatings).toBeCloseTo(90)
+    expect(report.funnel.ratedRows).toBe(2)
+    expect(report.counts.outOfScale).toBe(0)
   })
 
   it('counts out-of-scale ratings but never clamps them', () => {

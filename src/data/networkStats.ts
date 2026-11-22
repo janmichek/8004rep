@@ -1,4 +1,5 @@
 import type { Address } from 'viem'
+import { inferTagScales, type TagScale } from './reputation/kinds'
 import { buildRatingLayer } from './reputation/units'
 import { buildReviewerProfile, suspicionOf, type ReviewerLabel } from './reviewerProfile'
 import type { FeedbackEvent } from './types'
@@ -26,10 +27,13 @@ export type NetworkStats = {
   rows: number
   agents: number
   reviewers: number
+  /** Mean of scored ratings, normalised to 0–100. */
   average: number | null
+  /** Mean of non-revoked, non-self raw values, comparable to 8004scan's raw mean. */
+  rawAverage: number | null
   /** Scored rating values, normalised to 0–100, for charts. */
   ratingValues: number[]
-  /** Share of non-revoked rows at 100 or more. */
+  /** Share of scored ratings at 100 or more. */
   perfectShare: number | null
   revoked: number
   /** Unix seconds of the oldest and newest dated rows. */
@@ -70,15 +74,32 @@ export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkSt
   const dates = rows.map((r) => r.createdAt).filter((t): t is number => t !== undefined)
   // Token IDs repeat between chains; an agent is (chain, token).
   const byAgent = groupBy(rows, (r) => `${r.chainId ?? ''}:${r.tokenId}`)
-  const byClient = groupBy(rows, (r) => r.client.toLowerCase())
+  // The owner and the registered agent wallet are both the agent itself.
+  const selvesOf = (group: FeedbackEvent[]): Address[] => {
+    const found = new Map<string, Address>()
+    for (const row of group) {
+      for (const address of [row.agentOwner, row.agentWallet]) {
+        if (address) found.set(address.toLowerCase(), address)
+      }
+    }
+    return [...found.values()]
+  }
+  const isSelf = (row: FeedbackEvent): boolean =>
+    [row.agentOwner, row.agentWallet].some((a) => Boolean(a) && row.client.toLowerCase() === a!.toLowerCase())
   // The headline average is over ratings only, read on their own scale: a
   // network mean that mixes 5-star reviews, uptime and revenue is not a score.
-  const isSelf = (row: FeedbackEvent): boolean =>
-    Boolean(row.agentOwner) && row.client.toLowerCase() === row.agentOwner!.toLowerCase()
   const ratedOf = (group: FeedbackEvent[]): number[] =>
-    buildRatingLayer(group, { ...(group[0]?.agentOwner ? { self: [group[0].agentOwner] } : {}) })
+    buildRatingLayer(group, { self: selvesOf(group) })
       .classified.flatMap((c, i) => (!group[i].revoked && !isSelf(group[i]) && c.kind === 'rating' && c.r !== null ? [c.r * 100] : []))
   const ratings = [...byAgent.values()].flatMap((group) => ratedOf(group))
+
+  // Reviewer profiles get each agent's whole window, not just that reviewer's
+  // slice, so a 5 on a 0–100 tag is read as 5/100 rather than 5/5.
+  const scalesByAgent = new Map<string, ReadonlyMap<string, TagScale>>()
+  for (const [key, group] of byAgent) {
+    const selves = new Set(selvesOf(group).map((a) => a.toLowerCase()))
+    scalesByAgent.set(key, inferTagScales(group.filter((r) => !selves.has(r.client.toLowerCase()))))
+  }
 
   const topAgents: AgentActivity[] = [...byAgent.values()]
     .map((group) => {
@@ -94,9 +115,15 @@ export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkSt
     .sort((a, b) => b.rows - a.rows)
     .slice(0, topN)
 
+  // Self-reviews are feedback rows but never reviewer evidence: keep them out
+  // of reviewer averages, suspect labels and lookalike reviewer sets.
+  const reviewerRows = rows.filter((r) => !isSelf(r))
+  const byClient = groupBy(reviewerRows, (r) => r.client.toLowerCase())
+  const rawAverage = mean(reviewerRows.filter((r) => !r.revoked).map((r) => r.value))
+
   const suspects: SuspectReviewer[] = [...byClient.values()]
     .map((group) => {
-      const profile = buildReviewerProfile(group[0].client, group)
+      const profile = buildReviewerProfile(group[0].client, group, { scalesByAgent })
       return {
         client: group[0].client,
         rows: profile.rows,
@@ -149,6 +176,7 @@ export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkSt
     agents: byAgent.size,
     reviewers: byClient.size,
     average: ratings.length ? mean(ratings) : null,
+    rawAverage,
     ratingValues: ratings,
     perfectShare: ratings.length ? ratings.filter((r) => r >= 99).length / ratings.length : null,
     revoked: rows.length - live.length,

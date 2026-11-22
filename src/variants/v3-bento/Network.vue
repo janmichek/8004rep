@@ -10,10 +10,10 @@ import Ring from './Ring.vue'
 const props = defineProps<{ slug: string }>()
 const chain = useChain(() => props.slug)
 const to = routes(() => chain.value)
-const { feed, error, loading, load, stats, ecosystem } = useNetwork(chain)
+const { feed, error, loading, load, stats } = useNetwork(chain)
 
 const hist = computed(() => {
-  const cols = valueHistogram((feed.value?.items ?? []).filter((r) => !r.revoked).map((r) => r.value))
+  const cols = valueHistogram(stats.value?.ratingValues ?? [])
   const n = cols.map((c) => c.segments.reduce((a, s) => a + s.value, 0))
   const max = Math.max(1, ...n)
   return cols.map((c, i) => ({ label: c.label, n: n[i], h: (n[i] / max) * 100 }))
@@ -47,10 +47,10 @@ const health = computed(() => {
     <section class="b-card s2"><h3>Feedback</h3><p class="b-big">{{ stats.rows }}</p><p class="soft">{{ formatNumber(velocity(feed.items.map((r) => r.createdAt))) }}/day</p></section>
     <section class="b-card s2"><h3>Agents</h3><p class="b-big">{{ stats.agents }}</p><p class="soft">top 10 take {{ formatPercent(conc.top10) }}</p></section>
     <section class="b-card s2"><h3>Reviewers</h3><p class="b-big">{{ stats.reviewers }}</p><p class="soft">{{ formatNumber(stats.rows / Math.max(1, stats.reviewers)) }} each</p></section>
-    <section class="b-card s2 b-dark"><h3>Average</h3><p class="b-big">{{ formatNumber(stats.average) }}</p><p class="soft">eco {{ formatNumber(ecosystem.data.value?.averageFeedback) }}</p></section>
+    <section class="b-card s2 b-dark"><h3>Mean rating</h3><p class="b-big">{{ formatNumber(stats.average) }}</p><p class="soft">normalised 0–100</p></section>
 
     <section class="b-card s5">
-      <h3>Values given</h3>
+      <h3>Ratings given</h3>
       <div class="b-bars"><span v-for="h in hist" :key="h.label" :style="{ height: `${h.h}%` }" :title="`${h.label}: ${h.n}`" /></div>
       <p class="soft" style="margin: 8px 0 0">{{ formatPercent(stats.perfectShare) }} are a perfect 100<span v-if="(stats.perfectShare ?? 0) > 0.7" class="warn"> — inflated</span></p>
     </section>

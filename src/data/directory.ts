@@ -1,4 +1,5 @@
 import type { Address } from 'viem'
+import { inferTagScales, type TagScale } from './reputation/kinds'
 import { buildReviewerProfile, type ReviewerProfile } from './reviewerProfile'
 import type { AgentSummary, DataSource, FeedbackEvent } from './types'
 
@@ -57,14 +58,24 @@ export function ownerDirectory(agents: AgentSummary[]): OwnerEntry[] {
 /** Reviewers in a feed window, with their profile, most reviews first. */
 export function reviewerDirectory(rows: FeedbackEvent[]): ReviewerProfile[] {
   const byClient = new Map<string, FeedbackEvent[]>()
+  const byAgent = new Map<string, FeedbackEvent[]>()
   for (const row of rows) {
     const key = row.client.toLowerCase()
     const group = byClient.get(key)
     if (group) group.push(row)
     else byClient.set(key, [row])
+    const agentKey = `${row.chainId ?? ''}:${row.tokenId}`
+    const agentGroup = byAgent.get(agentKey)
+    if (agentGroup) agentGroup.push(row)
+    else byAgent.set(agentKey, [row])
+  }
+  const scalesByAgent = new Map<string, ReadonlyMap<string, TagScale>>()
+  for (const [key, group] of byAgent) {
+    const selves = new Set(group.flatMap((r) => [r.agentOwner, r.agentWallet]).filter((a): a is Address => Boolean(a)).map((a) => a.toLowerCase()))
+    scalesByAgent.set(key, inferTagScales(group.filter((r) => !selves.has(r.client.toLowerCase()))))
   }
   return [...byClient.values()]
-    .map((group) => buildReviewerProfile(group[0].client, group))
+    .map((group) => buildReviewerProfile(group[0].client, group, { scalesByAgent }))
     .sort((a, b) => b.rows - a.rows)
 }
 

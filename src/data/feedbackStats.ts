@@ -1,6 +1,6 @@
 import type { Address } from 'viem'
 import { formatScore, shortAddress } from '../format'
-import { classify, type Kind } from './reputation/kinds'
+import { classify, inferTagScales, type Kind } from './reputation/kinds'
 import { computeWeights, medianOf, type WeightReason } from './scores'
 import type { Feedback } from './types'
 
@@ -123,22 +123,23 @@ const LEVEL_ORDER: Record<RiskLevel, number> = { high: 0, warn: 1, info: 2 }
 export function computeFeedbackStats(feedback: Feedback[], context: StatsContext = {}): FeedbackStats {
   const now = context.now ?? Math.floor(Date.now() / 1000)
   const self = [context.owner, context.agentWallet].filter((a): a is Address => Boolean(a))
+  const selves = new Set(self.map((a) => a.toLowerCase()))
+  const isSelf = (row: Feedback): boolean => selves.has(row.client.toLowerCase())
   const { weights, reasons } = computeWeights(feedback, self)
-  const { rows: classified } = classify(feedback)
+  // Scales come from rows that can be scored: a self-review must not change
+  // how every other wallet's value is read on the tag.
+  const scaleRows = feedback.filter((f) => !f.revoked && !isSelf(f))
+  const { rows: classified } = classify(feedback, { scales: inferTagScales(scaleRows) })
   const services = context.services?.map(normEndpoint).filter(Boolean)
 
   const valid = feedback.filter((f) => !f.revoked)
+  const counted = valid.filter((f) => !isSelf(f))
   const values = valid.map((f) => f.value)
   // Spread, outliers and trend signals are about the quality score, so they
   // read normalised ratings only: a $12,000 revenue row is not a rating
   // outlier next to a 90/100 review.
   const ratingIndexes = classified.flatMap((c, i) =>
-    !feedback[i].revoked &&
-    c.kind === 'rating' &&
-    c.r !== null &&
-    !self.some((a) => a.toLowerCase() === feedback[i].client.toLowerCase())
-      ? [i]
-      : [],
+    !feedback[i].revoked && c.kind === 'rating' && c.r !== null && !isSelf(feedback[i]) ? [i] : [],
   )
   const ratingByIndex = new Map(ratingIndexes.map((i) => [i, (classified[i].r as number) * 100]))
   const ratingValues = ratingIndexes.map((i) => ratingByIndex.get(i)!)
@@ -167,11 +168,11 @@ export function computeFeedbackStats(feedback: Feedback[], context: StatsContext
   const rows: RowStats[] = feedback.map((f, i) => {
     const flags: RowFlag[] = [...reasons[i]]
     const isRating = classified[i].kind === 'rating' && classified[i].r !== null
-    const isSelf = self.some((a) => a.toLowerCase() === f.client.toLowerCase())
-    const deviation = isRating && !isSelf && !f.revoked && spread?.scale ? ((classified[i].r as number) * 100 - spread.center) / spread.scale : null
+    const selfRow = isSelf(f)
+    const deviation = isRating && !selfRow && !f.revoked && spread?.scale ? ((classified[i].r as number) * 100 - spread.center) / spread.scale : null
     if (!f.revoked) {
       if (deviation !== null && Math.abs(deviation) > OUTLIER_Z) flags.push('outlier')
-      if (!isSelf && classified[i].kind === 'rating' && classified[i].r === null) flags.push('out-of-range')
+      if (!selfRow && classified[i].kind === 'rating' && classified[i].r === null) flags.push('out-of-range')
       if (services && f.endpoint) {
         const endpoint = normEndpoint(f.endpoint)
         if (!services.some((s) => endpoint === s || endpoint.startsWith(`${s}/`))) flags.push('unlisted-endpoint')
@@ -254,25 +255,30 @@ export function computeFeedbackStats(feedback: Feedback[], context: StatsContext
   }
 
   // The old "discounted" signal described the legacy row weights, which do
-  // not drive the filtered score. Replace it with the actual score coverage.
-  if (valid.length >= 3 && ratingIndexes.length / valid.length < 0.5) {
+  // not drive the filtered score. Replace it with the actual score coverage,
+  // over rows that could score at all: self-reviews are excluded, not counted
+  // as unscored telemetry.
+  if (counted.length >= 3 && ratingIndexes.length / counted.length < 0.5) {
     signals.push({
       level: 'info',
       code: 'unscored',
-      text: `${valid.length - ratingIndexes.length} of ${valid.length} counted feedback are not scored ratings (telemetry, outcomes, metrics, untagged or off-scale)`,
+      text: `${counted.length - ratingIndexes.length} of ${counted.length} counted feedback are not scored ratings (telemetry, outcomes, metrics, untagged or off-scale)`,
     })
   }
 
   const dated = valid.filter((f): f is Feedback & { createdAt: number } => f.createdAt !== undefined)
-  const agedIndexes = (from: number, to: number): number[] =>
-    feedback.flatMap((f, i) => (f.createdAt !== undefined && !f.revoked && now - f.createdAt >= from && now - f.createdAt < to ? [i] : []))
-  const lastWeek = agedIndexes(0, 7 * DAY).length
-  const weeklyBefore = agedIndexes(7 * DAY, 35 * DAY).length / 4
+  const agedRatingIndexes = (from: number, to: number): number[] =>
+    ratingIndexes.filter((i) => {
+      const at = feedback[i].createdAt
+      return at !== undefined && now - at >= from && now - at < to
+    })
+  const lastWeek = agedRatingIndexes(0, 7 * DAY).length
+  const weeklyBefore = agedRatingIndexes(7 * DAY, 35 * DAY).length / 4
   if (lastWeek >= 3 && lastWeek > 3 * weeklyBefore) {
     signals.push({
       level: 'warn',
       code: 'surge',
-      text: `${lastWeek} feedback in the last 7 days vs ${formatScore(weeklyBefore)} per week over the 4 weeks before`,
+      text: `${lastWeek} scored ratings in the last 7 days vs ${formatScore(weeklyBefore)} per week over the 4 weeks before`,
     })
   }
 
@@ -281,8 +287,8 @@ export function computeFeedbackStats(feedback: Feedback[], context: StatsContext
     signals.push({ level: 'warn', code: 'revocations', text: `${revoked} of ${feedback.length} feedback were revoked` })
   }
 
-  const recent = agedIndexes(0, 30 * DAY).flatMap((i) => (ratingByIndex.has(i) ? [ratingByIndex.get(i)!] : []))
-  const earlier = agedIndexes(30 * DAY, Infinity).flatMap((i) => (ratingByIndex.has(i) ? [ratingByIndex.get(i)!] : []))
+  const recent = agedRatingIndexes(0, 30 * DAY).map((i) => ratingByIndex.get(i)!)
+  const earlier = agedRatingIndexes(30 * DAY, Infinity).map((i) => ratingByIndex.get(i)!)
   if (recent.length >= 2 && earlier.length >= 2 && range > 0) {
     const recentAverage = average(recent)!
     const earlierAverage = average(earlier)!
@@ -309,11 +315,11 @@ export function computeFeedbackStats(feedback: Feedback[], context: StatsContext
       text: `${plural(unlisted, 'feedback item')} name an endpoint the registration file does not advertise`,
     })
   }
-  if (valid.length > 0 && dated.length < valid.length) {
+  if (counted.length > 0 && dated.length < counted.length) {
     signals.push({
       level: 'info',
       code: 'undated',
-      text: `${valid.length - dated.length} of ${valid.length} counted feedback have no date; burst, surge and trend checks skip them`,
+      text: `${counted.length - dated.length} of ${counted.length} counted feedback have no date; burst, surge and trend checks skip them`,
     })
   }
 

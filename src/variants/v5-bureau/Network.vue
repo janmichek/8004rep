@@ -8,7 +8,7 @@ import { GRADES, provisionalGrade } from './grade'
 const props = defineProps<{ slug: string }>()
 const chain = useChain(() => props.slug)
 const to = routes(() => chain.value)
-const { feed, error, loading, load, stats, ecosystem } = useNetwork(chain)
+const { feed, error, loading, load, stats } = useNetwork(chain)
 // Provisional grade of every agent seen in the window.
 const grades = computed(() => {
   const by = new Map<string, { n: number; sum: number }>()
@@ -37,7 +37,7 @@ const revokeRate = computed(() => (stats.value ? stats.value.revoked / Math.max(
         <div class="u-field"><label>Reports in window</label><div>{{ stats.rows }}</div><small>{{ stats.from && stats.to ? `${formatDate(stats.from)} – ${formatDate(stats.to)}` : '' }}</small></div>
         <div class="u-field"><label>Subjects reported</label><div>{{ stats.agents }}</div></div>
         <div class="u-field"><label>Reporting sources</label><div>{{ stats.reviewers }}</div></div>
-        <div class="u-field"><label>Mean value</label><div>{{ formatNumber(stats.average) }}</div><small>ecosystem {{ formatNumber(ecosystem.data.value?.averageFeedback) }}</small></div>
+        <div class="u-field"><label>Mean rating</label><div>{{ formatNumber(stats.average) }}</div><small>normalised 0–100</small></div>
         <div class="u-field"><label>Perfect 100s</label><div>{{ formatPercent(stats.perfectShare) }}</div></div>
         <div class="u-field"><label>Withdrawal rate</label><div>{{ formatPercent(revokeRate) }}</div></div>
       </div>

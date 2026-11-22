@@ -8,7 +8,7 @@ import { seriesOf } from './archive'
 const props = defineProps<{ slug: string }>()
 const chain = useChain(() => props.slug)
 const to = routes(() => chain.value)
-const { feed, error, loading, load, stats, ecosystem } = useNetwork(chain)
+const { feed, error, loading, load, stats } = useNetwork(chain)
 const series = computed(() => {
   const rows = ['A', 'B', 'C', 'D', 'E', 'U'].map((code) => ({ code, count: 0, name: '' }))
   for (const a of stats.value?.topAgents ?? []) {
@@ -43,7 +43,7 @@ const maxSeries = computed(() => Math.max(1, ...series.value.map((s) => s.count)
     </div>
     <p class="x-prose" style="font-size: 11.5px">
       <template v-if="stats.from && stats.to">The consultation window runs {{ formatDate(stats.from) }} to {{ formatDate(stats.to) }}. </template>
-      The wider registry benchmark is {{ formatNumber(ecosystem.data.value?.averageFeedback) }}.
+      Scores are normalised to a common 0–100 scale before averaging.
     </p>
 
     <div class="x-columns">

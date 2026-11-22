@@ -1,5 +1,5 @@
 import type { Address } from 'viem'
-import { classify } from './reputation/kinds'
+import { classify, type TagScale } from './reputation/kinds'
 import type { FeedbackEvent } from './types'
 
 const DAY = 86400
@@ -53,6 +53,8 @@ export type ReviewerProfile = {
   /** Scored rating rows only, normalised to 0–100. */
   ratingRows: number
   ratingAverage: number | null
+  /** Every scored rating, normalised to 0–100, for histograms and charts. */
+  ratingValues: number[]
   /** Most common normalised rating and its share of scored ratings, 0–100. */
   ratingMode: { value: number; share: number } | null
   first?: number
@@ -64,6 +66,15 @@ export type ReviewerProfile = {
   /** Networks the rows came from, most rows first; empty when rows carry no chain. */
   chainIds: number[]
   labels: ReviewerLabel[]
+}
+
+export type ReviewerProfileContext = {
+  /**
+   * Tag scales per agent, keyed like `chainId:tokenId`. Supply the scales
+   * inferred from each agent's full feedback so a reviewer's slice cannot
+   * redefine a tag's scale.
+   */
+  scalesByAgent?: ReadonlyMap<string, ReadonlyMap<string, TagScale>>
 }
 
 function mean(xs: number[]): number | null {
@@ -83,7 +94,11 @@ export function peakWithin(times: number[], span: number): number {
 }
 
 /** What one address's feedback, across agents, says about how it reviews. */
-export function buildReviewerProfile(address: Address, rows: FeedbackEvent[]): ReviewerProfile {
+export function buildReviewerProfile(
+  address: Address,
+  rows: FeedbackEvent[],
+  context: ReviewerProfileContext = {},
+): ReviewerProfile {
   const live = rows.filter((r) => !r.revoked)
   const values = live.map((r) => r.value)
   const counts = new Map<number, number>()
@@ -101,12 +116,15 @@ export function buildReviewerProfile(address: Address, rows: FeedbackEvent[]): R
     else byAgent.set(key, [r])
   }
   const ratingValues: number[] = []
-  const perAgent: AgentShare[] = [...byAgent.values()]
-    .map((group) => {
+  const perAgent: AgentShare[] = [...byAgent.entries()]
+    .map(([key, group]) => {
       const ok = group.filter((r) => !r.revoked)
       // Normalise on each agent's own tag scale, then pool the ratings: a
-      // reviewer's 5/5 and 100/100 are the same habit, not 5 and 100.
-      const { rows: rated } = classify(ok)
+      // reviewer's 5/5 and a 5/100 are not the same habit. When the caller
+      // knows the agent-wide scales, use those so this slice cannot redefine
+      // a tag's scale.
+      const scales = context.scalesByAgent?.get(key)
+      const { rows: rated } = scales ? classify(ok, { scales }) : classify(ok)
       const agentRatings = rated.flatMap((c) => (c.kind === 'rating' && c.r !== null ? [c.r * 100] : []))
       ratingValues.push(...agentRatings)
       const name = group.find((r) => r.agentName)?.agentName
@@ -150,6 +168,7 @@ export function buildReviewerProfile(address: Address, rows: FeedbackEvent[]): R
     mode,
     ratingRows: ratingValues.length,
     ratingAverage,
+    ratingValues,
     ratingMode,
     ...(dates.length ? { first: Math.min(...dates), last: Math.max(...dates) } : {}),
     peakPerDay,

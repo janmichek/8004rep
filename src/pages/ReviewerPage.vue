@@ -19,7 +19,6 @@ import { sourceFor } from '../data'
 import { dailyColumns, valueHistogram } from '../data/chartData'
 import { loadFeedWindow, type FeedWindow } from '../data/feed'
 import { fetchFunding } from '../data/funding'
-import { buildRatingLayer } from '../data/reputation/units'
 import { buildReviewerProfile, LABEL_INFO } from '../data/reviewerProfile'
 import { MIN_NONCE } from '../data/txChecks'
 import { errorMessage, formatDate, formatNumber, formatPercent, formatScore, formatTimeline, shortAddress } from '../format'
@@ -123,12 +122,7 @@ const tabs = computed<Tab[]>(() => [
   { id: 'feedback', label: 'Latest feedback', icon: MessageSquare, count: feed.value?.items.length },
 ])
 
-const ratingValues = computed(() => {
-  const items = feed.value?.items ?? []
-  // Ratings only, read on each agent's own scale; telemetry and revenue are
-  // not on a 0–100 quality gauge.
-  return buildRatingLayer(items).classified.flatMap((c, i) => (!items[i].revoked && c.kind === 'rating' && c.r !== null ? [c.r * 100] : []))
-})
+const ratingValues = computed(() => profile.value?.ratingValues ?? [])
 const valueColumns = computed(() => valueHistogram(ratingValues.value))
 const timeColumns = computed(() =>
   dailyColumns(feed.value?.items ?? [], (r) => r.createdAt, () => 'count', ['count'], { count: 'feedback' }),

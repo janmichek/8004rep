@@ -48,20 +48,36 @@ describe('computeWeights', () => {
 
   it('keeps the newest repeat, not the first row in a newest-first feed', () => {
     const fb = [
-      row(A, 90, { tag1: 'starred', createdAt: 1_000 }),
       row(A, 90, { tag1: 'starred', createdAt: 2_000 }),
+      row(A, 90, { tag1: 'starred', createdAt: 1_000 }),
     ]
     const { weights, flaggedDuplicates } = computeWeights(fb)
-    expect(weights).toEqual([0, 1])
+    expect(weights).toEqual([1, 0])
     expect(flaggedDuplicates).toBe(1)
   })
 
-  it('keeps a newer undated first row over an older dated repeat', () => {
+  it('keeps the dated row over an undated repeat at the end of the feed', () => {
     const fb = [
-      row(A, 90, { tag1: 'starred' }),
       row(A, 90, { tag1: 'starred', createdAt: 1_000 }),
+      row(A, 90, { tag1: 'starred' }),
     ]
     expect(computeWeights(fb).weights).toEqual([1, 0])
+  })
+
+  it('breaks a timestamp tie by the per-client feedback index', () => {
+    const fb = [
+      row(A, 90, { tag1: 'starred', createdAt: 1_000, index: 1 }),
+      row(A, 90, { tag1: 'starred', createdAt: 1_000, index: 2 }),
+    ]
+    expect(computeWeights(fb).weights).toEqual([0, 1])
+  })
+
+  it('breaks an undated tie by the per-client feedback index', () => {
+    const fb = [
+      row(A, 90, { tag1: 'starred', index: 1 }),
+      row(A, 90, { tag1: 'starred', index: 2 }),
+    ]
+    expect(computeWeights(fb).weights).toEqual([0, 1])
   })
 
   it('does not let revoked rows make a live row hyperactive', () => {

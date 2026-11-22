@@ -1,5 +1,5 @@
 import type { Feedback } from '../types'
-import { classify, type Classified, type TagProfile } from './kinds'
+import { classify, inferTagScales, type Classified, type TagProfile } from './kinds'
 
 const DAY = 86400
 
@@ -71,7 +71,11 @@ export function median(xs: number[]): number | null {
  */
 export function buildRatingLayer(feedback: Feedback[], opts: { self?: readonly string[]; now?: number } = {}): RatingLayer {
   const selves = new Set((opts.self ?? []).map((a) => a.toLowerCase()))
-  const { rows: classified, tags } = classify(feedback)
+  // Infer scales from rows that can actually be scored. A self-review must not
+  // redefine the tag's scale and change every other wallet's normalized rating.
+  const scaleRows = feedback.filter((f) => !f.revoked && !selves.has(f.client.toLowerCase()))
+  const scales = inferTagScales(scaleRows)
+  const { rows: classified, tags } = classify(feedback, { scales })
   const counts: KindCounts = { total: feedback.length, revoked: 0, rating: 0, outcome: 0, telemetry: 0, metric: 0, unknown: 0, outOfScale: 0, self: 0 }
 
   // Decay is measured against the clock, not against the newest review on the
@@ -87,12 +91,12 @@ export function buildRatingLayer(feedback: Feedback[], opts: { self?: readonly s
       counts.revoked++
       return
     }
-    counts[c.kind]++
-    if (c.kind === 'rating' && c.r === null) counts.outOfScale++
     if (selves.has(f.client.toLowerCase())) {
       counts.self++
       return
     }
+    counts[c.kind]++
+    if (c.kind === 'rating' && c.r === null) counts.outOfScale++
     if (c.kind !== 'rating') return
     if (c.r === null) return
     const bucket = f.createdAt === undefined ? ('undated' as const) : Math.floor(f.createdAt / (UNIT_WINDOW_DAYS * DAY))

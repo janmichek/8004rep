@@ -6,7 +6,7 @@ import { routes, useChain, useNetwork } from '../shared/use'
 const props = defineProps<{ slug: string }>()
 const chain = useChain(() => props.slug)
 const to = routes(() => chain.value)
-const { feed, error, loading, load, stats, ecosystem } = useNetwork(chain)
+const { feed, error, loading, load, stats } = useNetwork(chain)
 </script>
 
 <template>
@@ -22,13 +22,13 @@ const { feed, error, loading, load, stats, ecosystem } = useNetwork(chain)
   <template v-else>
     <div class="r-tiles">
       <div><small>Tastings</small><b>{{ stats.rows }}</b></div>
-      <div><small>Mean score</small><b>{{ formatNumber(stats.average) }}</b></div>
+      <div><small>Mean rating</small><b>{{ formatNumber(stats.average) }}</b></div>
       <div><small>Perfect plates</small><b>{{ formatPercent(stats.perfectShare) }}</b></div>
       <div><small>Sent back</small><b>{{ stats.revoked }}</b></div>
     </div>
     <p class="r-note">
       <template v-if="stats.from && stats.to">Service ran {{ formatDate(stats.from) }} to {{ formatDate(stats.to) }}. </template>
-      The ecosystem mean is {{ formatNumber(ecosystem.data.value?.averageFeedback) }}.
+      The mean rating is normalised to a common 0–100 scale.
     </p>
 
     <div class="r-columns">

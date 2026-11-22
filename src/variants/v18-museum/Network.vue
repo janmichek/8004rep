@@ -8,7 +8,7 @@ import { roomOf } from './museum'
 const props = defineProps<{ slug: string }>()
 const chain = useChain(() => props.slug)
 const to = routes(() => chain.value)
-const { feed, error, loading, load, stats, ecosystem } = useNetwork(chain)
+const { feed, error, loading, load, stats } = useNetwork(chain)
 const rooms = computed(() => {
   const bands = [
     { room: roomOf(95), from: 90, to: 100.1 },
@@ -47,7 +47,7 @@ const maxRoom = computed(() => Math.max(1, ...rooms.value.map((r) => r.count)))
     </div>
     <p class="m-prose" style="font-size: 13px">
       <template v-if="stats.from && stats.to">The season ran {{ formatDate(stats.from) }} to {{ formatDate(stats.to) }}. </template>
-      The wider collection benchmark is {{ formatNumber(ecosystem.data.value?.averageFeedback) }}.
+      The collection's own mean rating is {{ formatNumber(stats.average) }}.
     </p>
 
     <div class="m-columns">

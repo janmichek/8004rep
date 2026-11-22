@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ContractFunctionRevertedError, type Address, type PublicClient } from 'viem'
-import { identityAbi, reputationAbi } from '../abi'
+import { identityAbi, newFeedbackEvent, reputationAbi } from '../abi'
 import { createRpcSource, findCount, getScores, newestFirst, zipFeedback } from './rpc'
 import type { ChainInfo } from '../chains'
 
@@ -129,6 +129,74 @@ describe('getScores', () => {
     const scores = await getScores(client, chain, [3n])
     expect(scores.get(3n)).toMatchObject({ capped: true })
     expect(seen).toHaveLength(200)
+  })
+})
+
+describe('listFeedback metadata', () => {
+  const A = '0x00000000000000000000000000000000000000a1' as Address
+  const OWNER = '0x00000000000000000000000000000000000000b2' as Address
+  const WALLET = '0x00000000000000000000000000000000000000c3' as Address
+  const chain = {
+    chainId: 1,
+    identity: '0x00000000000000000000000000000000000000ff',
+    reputation: '0x00000000000000000000000000000000000000ee',
+    logsLogRange: 10_000n,
+    logRange: 10_000n,
+    reputationFromBlock: 0n,
+  } as unknown as ChainInfo
+
+  function scannedClient(read: (functionName: string) => Address | null) {
+    return {
+      async getBlockNumber() {
+        return 100n
+      },
+      async getBlock() {
+        return { timestamp: 1_700_000_500n }
+      },
+      async getLogs({ event }: { event: unknown }) {
+        if (event !== newFeedbackEvent) return []
+        return [
+          {
+            args: { agentId: 1n, clientAddress: A, feedbackIndex: 0n, value: 90n, valueDecimals: 0, tag1: 'starred' },
+            blockNumber: 100n,
+            logIndex: 0,
+            transactionHash: `0x${'ab'.repeat(32)}`,
+            blockTimestamp: 1_700_000_000n,
+          },
+        ]
+      },
+      async readContract({ functionName }: { functionName: string }) {
+        return read(functionName)
+      },
+    } as unknown as PublicClient
+  }
+
+  it('keeps the page when an owner lookup fails', async () => {
+    const source = createRpcSource(
+      chain,
+      scannedClient((functionName) => {
+        if (functionName === 'getAgentWallet') return WALLET
+        throw new Error('rate limited')
+      }),
+    )
+    const page = await source.listFeedback({})
+    expect(page.items).toHaveLength(1)
+    expect(page.items[0]).toMatchObject({ tokenId: 1n, value: 90 })
+    expect(page.items[0].agentOwner).toBeUndefined()
+    expect(page.items[0].agentWallet).toBe(WALLET)
+  })
+
+  it('keeps the owner when the agent-wallet lookup fails', async () => {
+    const source = createRpcSource(
+      chain,
+      scannedClient((functionName) => {
+        if (functionName === 'ownerOf') return OWNER
+        throw new Error('rate limited')
+      }),
+    )
+    const page = await source.listFeedback({})
+    expect(page.items[0].agentOwner).toBe(OWNER)
+    expect(page.items[0].agentWallet).toBeUndefined()
   })
 })
 

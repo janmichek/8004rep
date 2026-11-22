@@ -9,7 +9,7 @@ import Prompt from './Prompt.vue'
 const props = defineProps<{ slug: string }>()
 const chain = useChain(() => props.slug)
 const to = routes(() => chain.value)
-const { feed, error, loading, load, stats, ecosystem } = useNetwork(chain)
+const { feed, error, loading, load, stats } = useNetwork(chain)
 
 // Concentration over the whole window, not only the top 10 the classic page lists.
 const extra = computed(() => {
@@ -26,7 +26,7 @@ const extra = computed(() => {
   }
 })
 const hist = computed(() => {
-  const cols = valueHistogram((feed.value?.items ?? []).filter((r) => !r.revoked).map((r) => r.value))
+  const cols = valueHistogram(stats.value?.ratingValues ?? [])
   const counts = cols.map((c) => c.segments.reduce((a, s) => a + s.value, 0))
   const max = Math.max(1, ...counts)
   return cols.map((c, i) => ({ label: c.label, n: counts[i], bar: asciiBar(counts[i] / max, 30) }))
@@ -43,7 +43,7 @@ const tab = ref<'suspects' | 'rings' | 'busiest' | 'tail'>('suspects')
         <pre><span class="dim">reviews       </span><b class="hi">{{ stats.rows }}</b> <span class="dim">{{ stats.from && stats.to ? `${formatDate(stats.from)} → ${formatDate(stats.to)}` : '' }}</span>
 <span class="dim">agents rated  </span>{{ stats.agents }}
 <span class="dim">reviewers     </span>{{ stats.reviewers }} <span class="dim">({{ formatNumber(stats.rows / Math.max(1, stats.reviewers)) }} each)</span>
-<span class="dim">average       </span>{{ formatNumber(stats.average) }} <span class="dim">ecosystem {{ formatNumber(ecosystem.data.value?.averageFeedback) }}</span>
+<span class="dim">mean rating   </span>{{ formatNumber(stats.average) }} <span class="dim">normalised 0–100</span>
 <span class="dim">perfect 100s  </span><span :class="(stats.perfectShare ?? 0) > 0.7 ? 'amber' : ''">{{ formatPercent(stats.perfectShare) }}</span>
 <span class="dim">suspects      </span><span :class="stats.suspects.length ? 'amber' : ''">{{ stats.suspects.length }}</span> <span class="dim">· {{ stats.lookalikes.length }} rings</span></pre>
         <pre><span class="dim">reviews/day   </span>{{ formatNumber(extra.velocity) }}
@@ -52,7 +52,7 @@ const tab = ref<'suspects' | 'rings' | 'busiest' | 'tail'>('suspects')
 <span class="dim">agent gini    </span>{{ formatNumber(extra.gini, 2) }} <span class="dim">how unevenly reviews land</span>
 <span class="dim">top-10 share  </span>{{ formatPercent(extra.top10) }} <span class="dim">of reviews go to 10 agents</span></pre>
       </div>
-      <pre class="dim" style="margin-top: 8px">values given (non-revoked):</pre>
+      <pre class="dim" style="margin-top: 8px">scored ratings (normalised):</pre>
       <pre v-for="h in hist" :key="h.label">  {{ h.label.padStart(7) }} <span class="cyan">{{ h.bar }}</span> {{ h.n }}</pre>
       <p>
         <button v-if="feed.cursor" :disabled="loading" @click="load(true)">{{ loading ? 'loading…' : 'fetch --older' }}</button>

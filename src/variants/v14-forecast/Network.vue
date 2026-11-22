@@ -8,9 +8,9 @@ import { conditionOf } from './weather'
 const props = defineProps<{ slug: string }>()
 const chain = useChain(() => props.slug)
 const to = routes(() => chain.value)
-const { feed, error, loading, load, stats, ecosystem } = useNetwork(chain)
+const { feed, error, loading, load, stats } = useNetwork(chain)
 const condition = computed(() => conditionOf(stats.value?.average))
-const bins = computed(() => histogram((feed.value?.items ?? []).filter((r) => !r.revoked).map((r) => r.value), 10))
+const bins = computed(() => histogram(stats.value?.ratingValues ?? [], 10))
 const peak = computed(() => Math.max(1, ...bins.value.map((b) => b.count)))
 </script>
 
@@ -19,7 +19,7 @@ const peak = computed(() => Math.max(1, ...bins.value.map((b) => b.count)))
   <h1 class="f-h1">Reputation weather across the region</h1>
   <p class="f-lede">
     {{ stats?.rows ?? '…' }} readings from {{ stats?.reviewers ?? '…' }} observers at {{ stats?.agents ?? '…' }} stations.
-    The regional temperature is the mean of all live readings; the distribution shows how unevenly it is made.
+    The regional temperature is the mean of scored ratings, normalised to a common 0–100 scale; the distribution shows how unevenly it is made.
   </p>
 
   <p v-if="error" class="f-err">{{ error }} <button @click="load()">Retry</button></p>
@@ -44,7 +44,7 @@ const peak = computed(() => Math.max(1, ...bins.value.map((b) => b.count)))
       <div class="f-stat"><small>Regional mean</small><b>{{ formatNumber(stats.average) }}°</b></div>
       <div class="f-stat"><small>Perfect readings</small><b>{{ formatPercent(stats.perfectShare) }}</b></div>
       <div class="f-stat"><small>Stations</small><b>{{ stats.agents }}</b></div>
-      <div class="f-stat"><small>Ecosystem mean</small><b>{{ formatNumber(ecosystem.data.value?.averageFeedback) }}°</b></div>
+      <div class="f-stat"><small>Raw mean</small><b>{{ formatNumber(stats.rawAverage) }}°</b></div>
     </div>
 
     <div class="f-columns">
@@ -110,7 +110,7 @@ const peak = computed(() => Math.max(1, ...bins.value.map((b) => b.count)))
           <h3>Bulletin notes</h3>
           <p class="f-prose" style="font-size: 13px">
             <template v-if="stats.from && stats.to">The window runs {{ formatDate(stats.from) }} to {{ formatDate(stats.to) }}. </template>
-            Temperatures are raw means; they do not apply the weighting rules used on a station page. Open a station
+            Temperatures are normalised ratings, not raw values: 5-star and 100-point scales are pooled on the same 0–100 gauge. Open a station
             for its trusted temperature and advisories.
           </p>
         </div>

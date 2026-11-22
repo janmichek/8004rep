@@ -9,7 +9,7 @@ import { routes, useChain, useNetwork } from '../shared/use'
 const props = defineProps<{ slug: string }>()
 const chain = useChain(() => props.slug)
 const to = routes(() => chain.value)
-const { feed, error, loading, load, stats, ecosystem } = useNetwork(chain)
+const { feed, error, loading, load, stats } = useNetwork(chain)
 
 const concentration = computed(() => {
   const per = new Map<string, number>()
@@ -43,7 +43,7 @@ const lead = computed(() => {
     }
   return {
     kicker: 'Market report',
-    head: `${s.rows} feedback, ${s.agents} agents, an average of ${formatNumber(s.average)}`,
+    head: `${s.rows} feedback, ${s.agents} agents, a mean rating of ${formatNumber(s.average)}`,
     deck: 'A quiet window: no rule fires on most reviewers, and values are spread.',
   }
 })
@@ -72,10 +72,10 @@ const quote = computed(() => feed.value?.items.find((r) => r.feedbackURI && !r.r
         <div class="l-cols">
           <p>
             In the {{ stats.rows }} most recent feedback on {{ chain.name }}, {{ stats.reviewers }} addresses rated {{ stats.agents }} agents, an
-            average of {{ formatNumber(stats.rows / Math.max(1, stats.reviewers)) }} feedback apiece. The mean value given was {{ formatNumber(stats.average) }}<template v-if="ecosystem.data.value">, against {{ formatNumber(ecosystem.data.value.averageFeedback) }} across every network 8004scan indexes</template>.
+            average of {{ formatNumber(stats.rows / Math.max(1, stats.reviewers)) }} feedback apiece. The mean normalised rating was {{ formatNumber(stats.average) }}.
           </p>
           <p>
-            Perfect scores accounted for {{ formatPercent(stats.perfectShare) }} of non-revoked feedback, and {{ stats.revoked }} were later withdrawn by their authors.
+            Perfect scores accounted for {{ formatPercent(stats.perfectShare) }} of scored ratings, and {{ stats.revoked }} feedback rows were later withdrawn by their authors.
             The attention is {{ (concentration.gini ?? 0) > 0.6 ? 'heavily lopsided' : (concentration.gini ?? 0) > 0.35 ? 'uneven' : 'fairly even' }}: a Gini of
             {{ formatNumber(concentration.gini, 2) }} across agents, with the three busiest taking {{ formatPercent(concentration.top) }} of all feedback.
           </p>
@@ -97,7 +97,7 @@ const quote = computed(() => feed.value?.items.find((r) => r.feedbackURI && !r.r
         <div class="l-figs" style="grid-template-columns: 1fr 1fr">
           <div><b>{{ stats.rows }}</b><small>feedback</small></div>
           <div><b>{{ stats.agents }}</b><small>agents rated</small></div>
-          <div><b>{{ formatNumber(stats.average) }}</b><small>average value</small></div>
+          <div><b>{{ formatNumber(stats.average) }}</b><small>mean rating (normalised)</small></div>
           <div><b :class="{ red: (stats.perfectShare ?? 0) > 0.7 }">{{ formatPercent(stats.perfectShare) }}</b><small>perfect 100s</small></div>
         </div>
         <blockquote v-if="quote?.feedbackURI" class="l-quote">

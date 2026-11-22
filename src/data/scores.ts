@@ -157,9 +157,16 @@ export function computeWeights(
     for (const i of group) {
       const t = feedback[i].createdAt
       const kept = feedback[keep].createdAt
-      // Feed order is newest-first; an undated first row stays the keeper
-      // unless a later row has a date that proves it is newer.
-      if (t !== undefined && kept !== undefined && t > kept) keep = i
+      const idx = feedback[i].index
+      const keptIdx = feedback[keep].index
+      // Feeds arrive newest-first, so an undated first row stays the keeper
+      // unless a later row has a date that proves it is newer. Dates that tie
+      // (or are both missing) fall back to the per-client feedback index.
+      if (t !== undefined && kept !== undefined) {
+        if (t > kept || (t === kept && idx !== undefined && (keptIdx === undefined || idx > keptIdx))) keep = i
+      } else if (t === undefined && kept === undefined && idx !== undefined && (keptIdx === undefined || idx > keptIdx)) {
+        keep = i
+      }
     }
     duplicateKeep.add(keep)
   }

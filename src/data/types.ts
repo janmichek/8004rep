@@ -62,6 +62,8 @@ export type FeedbackEvent = Feedback & {
   agentName?: string
   /** Owner of the rated agent, when the source provides it. Used to drop self-reviews from network scores. */
   agentOwner?: Address
+  /** Registered agent wallet, when it differs from the owner. Also a self-review source. */
+  agentWallet?: Address
   /** Set on rows loaded across several networks; token IDs repeat between chains. */
   chainId?: number
 }

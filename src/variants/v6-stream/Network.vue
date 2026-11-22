@@ -8,7 +8,7 @@ import Post from './Post.vue'
 const props = defineProps<{ slug: string }>()
 const chain = useChain(() => props.slug)
 const to = routes(() => chain.value)
-const { feed, error, loading, load, stats, ecosystem } = useNetwork(chain)
+const { feed, error, loading, load, stats } = useNetwork(chain)
 const days = computed(() => byDay(feed.value?.items ?? []))
 // Trending: most feedback in the newest 24h of the window.
 const trending = computed(() => {
@@ -59,7 +59,7 @@ function dayLabel(day: number | null): string {
   <aside class="s-right">
     <div v-if="stats" class="s-box">
       <h2>Pulse</h2>
-      <p style="margin: 0">Average <b>{{ formatNumber(stats.average) }}</b><span class="soft"> · eco {{ formatNumber(ecosystem.data.value?.averageFeedback) }}</span></p>
+      <p style="margin: 0">Mean rating <b>{{ formatNumber(stats.average) }}</b><span class="soft"> · normalised 0–100</span></p>
       <p style="margin: 4px 0 0">Perfect 100s <b :style="{ color: (stats.perfectShare ?? 0) > 0.7 ? '#f91880' : '' }">{{ formatPercent(stats.perfectShare) }}</b></p>
       <p style="margin: 4px 0 0">{{ stats.agents }} agents · {{ stats.revoked }} deleted</p>
     </div>

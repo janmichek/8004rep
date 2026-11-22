@@ -43,7 +43,7 @@ const families = computed(() => {
   <template v-else>
     <div class="h-tiles">
       <div><small>Observations</small><b>{{ stats.rows }}</b></div>
-      <div><small>Mean value</small><b>{{ formatNumber(stats.average) }}</b></div>
+      <div><small>Mean rating</small><b>{{ formatNumber(stats.average) }}</b></div>
       <div><small>Perfect values</small><b>{{ formatPercent(stats.perfectShare) }}</b></div>
       <div><small>Struck</small><b>{{ stats.revoked }}</b></div>
     </div>
@@ -57,7 +57,7 @@ const families = computed(() => {
         <h2 class="h-h2">Dominant families</h2>
         <p class="h-empty" style="font-size: 13px">Families are the <i>tag1</i> recorded with the sighting; untagged sightings have no family.</p>
         <table class="h-table">
-          <thead><tr><th>Family</th><th class="num">Sightings</th><th class="num">Share</th><th class="num">Mean</th></tr></thead>
+          <thead><tr><th>Family</th><th class="num">Sightings</th><th class="num">Share</th><th class="num">Raw mean</th></tr></thead>
           <tbody>
             <tr v-for="f in families" :key="f.name">
               <td><i>{{ f.name }}</i></td>

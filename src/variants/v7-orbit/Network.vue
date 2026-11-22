@@ -8,7 +8,7 @@ import { AGENT, REVIEWER, SUSPECT } from './orbit'
 const props = defineProps<{ slug: string }>()
 const chain = useChain(() => props.slug)
 const to = routes(() => chain.value)
-const { feed, error, loading, load, stats, ecosystem } = useNetwork(chain)
+const { feed, error, loading, load, stats } = useNetwork(chain)
 
 const S = 700
 const MAX_AGENTS = 24
@@ -103,7 +103,7 @@ const density = computed(() => {
         <dl class="o-kv">
           <dt>Feedback</dt><dd>{{ stats.rows }}</dd>
           <dt>Agents / reviewers</dt><dd>{{ stats.agents }} / {{ stats.reviewers }}</dd>
-          <dt>Average value</dt><dd>{{ formatNumber(stats.average) }} <span class="soft">eco {{ formatNumber(ecosystem.data.value?.averageFeedback) }}</span></dd>
+          <dt>Mean rating</dt><dd>{{ formatNumber(stats.average) }} <span class="soft">normalised 0–100</span></dd>
           <dt>Perfect 100s</dt><dd>{{ formatPercent(stats.perfectShare) }}</dd>
           <dt title="Drawn edges / possible agent–reviewer pairs">Graph density</dt><dd>{{ formatPercent(density) }}</dd>
           <dt title="Gini of feedback per reviewer">Reviewer Gini</dt><dd>{{ formatNumber(gini(graph.reviewers.map((r) => r.n)), 2) }}</dd>

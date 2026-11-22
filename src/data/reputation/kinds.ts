@@ -174,15 +174,41 @@ export type TagProfile = {
   mixedScale: boolean
 }
 
-type Row = { client: string; tag1?: string; value: number; revoked: boolean }
+export type ScaleRow = { client: string; tag1?: string; value: number; revoked: boolean }
+
+export type TagScale = { scale: Scale; span: number }
+
+/**
+ * Tag scales inferred from the non-revoked rows given. Pass one agent's full
+ * feedback here, then classify a reviewer's subset against the result: a
+ * reviewer's few low values must not make a 0–100 tag look like 0–5.
+ */
+export function inferTagScales(rows: readonly ScaleRow[]): Map<string, TagScale> {
+  const byTag = new Map<string, number[]>()
+  for (const row of rows) {
+    if (row.revoked) continue
+    const key = tagKey(row.tag1)
+    const list = byTag.get(key)
+    if (list) list.push(row.value)
+    else byTag.set(key, [row.value])
+  }
+  return new Map([...byTag.entries()].map(([key, values]) => [key, inferScale(values)]))
+}
 
 /**
  * Kind, scale and rating of each row. The scale is inferred per tag over all
  * rows given (one agent today; a whole chain once an indexer exists), and a
  * reviewer with enough values of its own is read on its own scale — the same
  * tag is used 0–5 by some reviewers and 0–100 by others.
+ *
+ * `opts.scales` makes the supplied tag scales authoritative: they are used
+ * instead of inferring from `rows`, and the per-client override is skipped so
+ * a subset cannot redefine the scale it is being read on.
  */
-export function classify(rows: readonly Row[]): { rows: Classified[]; tags: TagProfile[] } {
+export function classify(
+  rows: readonly ScaleRow[],
+  opts: { scales?: ReadonlyMap<string, TagScale> } = {},
+): { rows: Classified[]; tags: TagProfile[] } {
   const byTag = new Map<string, number[]>()
   rows.forEach((row, i) => {
     if (row.revoked) return
@@ -192,12 +218,13 @@ export function classify(rows: readonly Row[]): { rows: Classified[]; tags: TagP
     else byTag.set(key, [i])
   })
 
-  const tagScale = new Map<string, { scale: Scale; span: number }>()
-  const clientScale = new Map<string, { scale: Scale; span: number }>()
+  const tagScale = new Map<string, TagScale>()
+  const clientScale = new Map<string, TagScale>()
   const tags: TagProfile[] = []
   for (const [key, idxs] of byTag) {
     const kind = kindOf(rows[idxs[0]].tag1)
-    const whole = inferScale(idxs.map((i) => rows[i].value))
+    const supplied = opts.scales?.get(key)
+    const whole = supplied ?? inferScale(idxs.map((i) => rows[i].value))
     tagScale.set(key, whole)
     const perClient = new Map<string, number[]>()
     for (const i of idxs) {
@@ -207,12 +234,15 @@ export function classify(rows: readonly Row[]): { rows: Classified[]; tags: TagP
       else perClient.set(c, [rows[i].value])
     }
     let mixedScale = false
-    for (const [c, values] of perClient) {
-      if (values.length < MIN_CLIENT_SCALE_ROWS) continue
-      const own = inferScale(values)
-      if (own.scale !== whole.scale && own.scale !== 'unbounded' && coversScale(values, own.scale, own.span)) {
-        clientScale.set(`${key}|${c}`, own)
-        mixedScale = true
+    // A supplied scale is the agent-wide one; a reviewer slice cannot overrule it.
+    if (!supplied) {
+      for (const [c, values] of perClient) {
+        if (values.length < MIN_CLIENT_SCALE_ROWS) continue
+        const own = inferScale(values)
+        if (own.scale !== whole.scale && own.scale !== 'unbounded' && coversScale(values, own.scale, own.span)) {
+          clientScale.set(`${key}|${c}`, own)
+          mixedScale = true
+        }
       }
     }
     tags.push({
@@ -229,7 +259,8 @@ export function classify(rows: readonly Row[]): { rows: Classified[]; tags: TagP
   const classified = rows.map((row): Classified => {
     const key = tagKey(row.tag1)
     const kind = kindOf(row.tag1)
-    const { scale, span } = clientScale.get(`${key}|${row.client.toLowerCase()}`) ?? tagScale.get(key) ?? inferScale([row.value])
+    const { scale, span } =
+      clientScale.get(`${key}|${row.client.toLowerCase()}`) ?? tagScale.get(key) ?? inferScale([row.value])
     return { kind, tag: key, scale, span, r: kind === 'rating' ? normalize(row.value, scale, span) : null }
   })
   tags.sort((a, b) => b.rows - a.rows)

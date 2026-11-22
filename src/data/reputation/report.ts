@@ -195,7 +195,7 @@ export function buildReputationReport(
     'Cap each wallet at one full vote',
     'A wallet is min(1, Σ 2^(−age/90d)); extra units of the same wallet add no more weight.',
     pct(capped),
-    ratingRows.length,
+    walletsAfterCap,
   )
   push(
     'prior',

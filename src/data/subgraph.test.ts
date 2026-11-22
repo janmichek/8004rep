@@ -168,16 +168,22 @@ describe('mapFeedback', () => {
 })
 
 describe('mapFeedbackEvent', () => {
-  it('attaches the agent id and name', () => {
+  it('attaches the agent id, owner, wallet and name', () => {
     const event = mapFeedbackEvent({
       clientAddress: '0xabc',
       value: '60',
       isRevoked: false,
-      agent: { agentId: '6832', owner: '0x00000000000000000000000000000000000000a1', registrationFile: { name: 'Attention Agent' } },
+      agent: {
+        agentId: '6832',
+        owner: '0x00000000000000000000000000000000000000a1',
+        agentWallet: '0x00000000000000000000000000000000000000b2',
+        registrationFile: { name: 'Attention Agent' },
+      },
     })
     expect(event).toMatchObject({
       tokenId: 6832n,
       agentOwner: '0x00000000000000000000000000000000000000a1',
+      agentWallet: '0x00000000000000000000000000000000000000b2',
       agentName: 'Attention Agent',
       value: 60,
     })

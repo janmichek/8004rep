@@ -325,19 +325,27 @@ export function createRpcSource(chain: ChainInfo, client: PublicClient = createR
 
     async listFeedback(query: FeedbackQuery) {
       const page = await scanFeedback(logs, chain, query)
-      // The feed carries the rated agent's owner so network scores can drop
-      // self-reviews, matching the agent page. One batched read per token.
+      // The feed carries the rated agent's owner and wallet so network scores
+      // can drop self-reviews, matching the agent page. These are optional
+      // metadata: one failed lookup must not lose the scanned feed page.
       const ids = [...new Set(page.items.map((r) => r.tokenId.toString()))]
-      const owners = await Promise.all(
+      const metas = await Promise.all(
         ids.map(async (id) => {
-          const owner = await orNull(client.readContract({ ...identity, functionName: 'ownerOf', args: [BigInt(id)] }))
-          return [id, owner] as const
+          const [owner, wallet] = await Promise.all([
+            orNull(client.readContract({ ...identity, functionName: 'ownerOf', args: [BigInt(id)] })).catch(() => null),
+            orNull(client.readContract({ ...identity, functionName: 'getAgentWallet', args: [BigInt(id)] })).catch(() => null),
+          ])
+          return [id, { owner, wallet }] as const
         }),
       )
-      const byId = new Map(owners)
+      const byId = new Map(metas)
       const items: FeedbackEvent[] = page.items.map((row) => {
-        const owner = byId.get(row.tokenId.toString())
-        return owner && owner !== zeroAddress ? { ...row, agentOwner: owner } : row
+        const meta = byId.get(row.tokenId.toString())
+        return {
+          ...row,
+          ...(meta?.owner && meta.owner !== zeroAddress ? { agentOwner: meta.owner } : {}),
+          ...(meta?.wallet && meta.wallet !== zeroAddress ? { agentWallet: meta.wallet } : {}),
+        }
       })
       return { ...page, items }
     },
