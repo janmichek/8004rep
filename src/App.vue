@@ -55,7 +55,10 @@ function switchEnv(value: string | undefined): void {
   void router.push({ name: stays ? name : 'agents', params: { slug: target.slug } })
 }
 
-const { data: resolved } = useAsync(async () => (chain.value ? sourceFor(chain.value) : undefined), chain)
+const { data: resolved } = useAsync(
+  async () => (chain.value && !indexedSource.value ? sourceFor(chain.value) : undefined),
+  () => [chain.value, indexedSource.value],
+)
 </script>
 
 <template>
