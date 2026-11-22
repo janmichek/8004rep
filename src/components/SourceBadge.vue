@@ -5,7 +5,7 @@ import { formatDuration } from '../format'
 import Hint from './ui/Hint.vue'
 import Skeleton from './ui/Skeleton.vue'
 
-const props = defineProps<{ resolved?: ResolvedSource }>()
+const props = defineProps<{ resolved?: ResolvedSource; indexed?: boolean }>()
 
 /** Below this the subgraph counts as live. */
 const LAG_SHOWN_SECONDS = 600
@@ -17,7 +17,10 @@ const lag = computed(() => {
 </script>
 
 <template>
-  <Skeleton v-if="!resolved" width="7.5em" height="22px" radius="999px" />
+  <Hint v-if="indexed" text="Agents, feedback and reports are served by the 8004rep indexer">
+    <span class="badge ok" tabindex="0">indexed</span>
+  </Hint>
+  <Skeleton v-else-if="!resolved" width="7.5em" height="22px" radius="999px" />
   <Hint v-else-if="resolved.source.kind === 'subgraph'" text="Agents are read from the chain's subgraph">
     <span class="badge ok" tabindex="0">
       subgraph<template v-if="lag"> · {{ lag }} behind</template>
