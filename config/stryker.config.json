@@ -5,7 +5,7 @@
     "command": "bun run test:unit"
   },
   "mutate": ["src/**/model/**/*.ts", "src/**/lib/**/*.ts", "!src/**/*.test.ts"],
-  "ignorePatterns": [".agents", ".claude", ".cursor", ".github", "docs", "examples", "agent"],
+  "ignorePatterns": [".agents", ".claude", ".cursor", ".github", "docs", "examples", "/agent"],
   "concurrency": 4,
   "timeoutMS": 10000,
   "thresholds": {
