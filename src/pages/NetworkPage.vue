@@ -16,6 +16,7 @@ import { sourceFor } from '../data'
 import { dailyColumns, valueHistogram } from '../data/chartData'
 import { loadFeedWindow, type FeedWindow } from '../data/feed'
 import { computeNetworkStats } from '../data/networkStats'
+import { LABEL_DOCS } from '../data/docsLinks'
 import { LABEL_INFO } from '../data/reviewerProfile'
 import { fetchScanChainFeedback } from '../data/scan'
 import { errorMessage, formatDate, formatNumber, formatPercent, formatScore, formatTimeline, shortAddress } from '../format'
@@ -76,6 +77,7 @@ const totals = computed<Tile[]>(() => {
       tone: 'main',
       loading,
       title: "The latest day of 8004scan's 30-day feedback series minus its first day.",
+      docs: '8004scan',
     },
     {
       label: 'Total feedbacks',
@@ -83,6 +85,7 @@ const totals = computed<Tile[]>(() => {
       hint: s?.totalFeedback != null ? 'indexed by 8004scan' : missing,
       loading,
       title: 'Every feedback row 8004scan has indexed on this chain; the window below is a bounded sample.',
+      docs: '8004scan',
     },
     {
       label: 'Rated agents',
@@ -90,6 +93,7 @@ const totals = computed<Tile[]>(() => {
       hint: s?.ratedAgents != null ? 'with at least one feedback' : missing,
       loading,
       title: "Agents carrying one or more feedback rows in 8004scan's index.",
+      docs: '8004scan',
     },
   ]
 })
@@ -118,6 +122,7 @@ const tiles = computed<Tile[]>(() => {
       hint: 'of scored ratings at 99%+',
       tone: (s.perfectShare ?? 0) > 0.7 ? 'warn' : undefined,
       title: 'A network where most feedback is 100 cannot tell good agents from great ones',
+      docs: 'perfect-share',
       meter: s.perfectShare === null || s.perfectShare === undefined ? undefined : { kind: 'gauge', value: s.perfectShare * 100 },
     },
     {
@@ -278,7 +283,7 @@ function reviewerRoute(address: string) {
                 <td class="num">{{ s.agents }}</td>
                 <td class="num">{{ formatNumber(s.average) }}</td>
                 <td>
-                  <Hint v-for="l in s.labels" :key="l" :text="LABEL_INFO[l].rule">
+                  <Hint v-for="l in s.labels" :key="l" :text="LABEL_INFO[l].rule" :docs="LABEL_DOCS[l]">
                     <ReviewerChip :label="l" />
                   </Hint>
                 </td>

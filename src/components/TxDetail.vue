@@ -4,6 +4,7 @@ import { addressExplorerUrl, txExplorerUrl, type ChainInfo } from '../chains'
 import { sourceFor } from '../data'
 import type { FeedbackStats } from '../data/feedbackStats'
 import { buildReputationReport } from '../data/reputation/report'
+import { CHECK_DOCS } from '../data/docsLinks'
 import { evaluateTxDetail, type CheckStatus } from '../data/txChecks'
 import { loadTxFacts } from '../data/txDetail'
 import type { AgentDetail, Feedback } from '../data/types'
@@ -105,7 +106,7 @@ const segments = computed(() =>
     </div>
 
     <template v-else>
-      <Hint text="Checks that pass, out of all checks with a verdict. The upper end counts the unknown ones as passing: what could not be read from here may still hold.">
+      <Hint text="Checks that pass, out of all checks with a verdict. The upper end counts the unknown ones as passing: what could not be read from here may still hold." docs="rules">
       <div class="tx-band" tabindex="0">
         <span>
           <b>
@@ -127,7 +128,7 @@ const segments = computed(() =>
         <div v-for="group in view.groups" :key="group.id" class="tx-group">
           <h5>{{ group.title }}</h5>
           <ul>
-            <Hint v-for="check in group.checks" :key="check.id" :text="check.rule">
+            <Hint v-for="check in group.checks" :key="check.id" :text="check.rule" :docs="CHECK_DOCS[check.id]">
             <li>
               <span class="tx-status" :class="`status-${check.status}`">{{ STATUS_LABEL[check.status] }}</span>
               <span class="tx-check">

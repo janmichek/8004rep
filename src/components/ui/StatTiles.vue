@@ -32,6 +32,8 @@ export type Tile = {
   hint?: string
   /** Rule or source behind the number, shown on hover. */
   title?: string
+  /** Docs section the tooltip's More link opens. */
+  docs?: string
   tone?: 'main' | 'good' | 'warn' | 'bad' | 'quiet'
   /** Words rather than a number: set in smaller type. */
   word?: boolean
@@ -50,7 +52,7 @@ function clampPct(n: number): number {
 
 <template>
   <div class="tiles">
-    <Hint v-for="tile in tiles" :key="tile.label" :text="tile.title">
+    <Hint v-for="tile in tiles" :key="tile.label" :text="tile.title" :docs="tile.docs">
       <div
         class="tile"
         :class="[tile.tone && `tone-${tile.tone}`, tile.meter && 'has-meter']"

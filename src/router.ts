@@ -1,5 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { ALL_NETWORKS } from './chains'
+import { docsAnchor } from './data/docsLinks'
+import { DOCS_HEADER_OFFSET } from './docsScroll'
 import { requireChain, requireScope } from './routeGuards'
 import type { PageSet } from './variants/registry'
 
@@ -70,10 +72,32 @@ export function makeRouter(pages: PageSet) {
       { path: '/starred', name: 'starred', component: StarredPage },
       { path: '/:rest(.*)*', redirect: '/' },
     ],
-    // Anchors jump straight to the section (no smooth animation); DocsPage then
-    // flashes it. Tab switches (query only) keep the scroll position.
+    // Hash history cannot scroll to `#/docs#id` on its own: the browser looks
+    // for an element whose id is the whole fragment and, finding none, stays
+    // at the top. Wait until the section is actually in the document (the
+    // docs page is lazy), then jump to it. Tab switches (query only) keep
+    // the scroll position. DocsPage repeats the jump, because a late browser
+    // scroll can still yank the reader back to the top.
     scrollBehavior: (to, from) => {
-      if (to.hash) return { el: to.hash, top: 84, behavior: 'auto' }
+      const id = docsAnchor(to.hash)
+      if (id) {
+        return new Promise((resolve) => {
+          const started = Date.now()
+          const tick = () => {
+            const el = document.getElementById(id)
+            if (el) {
+              resolve({ el, top: DOCS_HEADER_OFFSET, behavior: 'auto' })
+              return
+            }
+            if (Date.now() - started > 1200) {
+              resolve({ top: 0 })
+              return
+            }
+            requestAnimationFrame(tick)
+          }
+          tick()
+        })
+      }
       return to.path === from.path ? false : { top: 0 }
     },
   })

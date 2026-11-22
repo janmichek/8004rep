@@ -136,6 +136,7 @@ const tiles = computed<Tile[]>(() => {
       label: 'Owned agents',
       value: String(owned.value),
       title: `Agents this address owns on ${chain.value.name}`,
+      docs: 'entity-owner',
       tone: 'main',
     },
     {
@@ -143,6 +144,7 @@ const tiles = computed<Tile[]>(() => {
       value: s ? String(s.rated) : '—',
       hint: s ? `of ${data.value?.items.length ?? 0} on this page` : '',
       title: 'Agents on this page that have at least one feedback. The header count is the portfolio total; this tile is page-scoped.',
+      docs: 'feedback-row',
       loading: s === null,
     },
     {
@@ -150,6 +152,7 @@ const tiles = computed<Tile[]>(() => {
       value: avg !== null ? formatScore(avg) : '—',
       hint: s ? `${s.total} feedback across ${s.rated} ${s.rated === 1 ? 'agent' : 'agents'} on this page` : '',
       title: 'Simple average of the raw on-chain means for agents on this page. It mixes ratings with telemetry; open an agent for its filtered score.',
+      docs: 'raw-onchain',
       loading: s === null,
       tone: avg !== null && avg >= 75 ? 'good' : undefined,
       meter: avg !== null && avg > 0 ? { kind: 'gauge', value: avg } : undefined,
@@ -207,7 +210,7 @@ const tiles = computed<Tile[]>(() => {
               <th>Agent</th>
               <SortHeader label="ID" numeric :active="sort === 'id' ? order : null" @sort="toggleSort('id')" />
               <th>Services</th>
-              <Hint text="Count and average of all feedback values, any tag"><th class="num">Feedback</th></Hint>
+              <Hint text="Count and average of all feedback values, any tag" docs="raw-onchain"><th class="num">Feedback</th></Hint>
               <SortHeader v-if="canSortCreated" label="Created" numeric :active="createdSort" @sort="toggleSort('created')" />
               <th v-else class="num">Created</th>
             </tr>

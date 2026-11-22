@@ -18,12 +18,12 @@ const lag = computed(() => {
 
 <template>
   <Skeleton v-if="!resolved" width="7.5em" height="22px" radius="999px" />
-  <Hint v-else-if="resolved.source.kind === 'subgraph'" text="Agents are read from the chain's subgraph">
+  <Hint v-else-if="resolved.source.kind === 'subgraph'" text="Agents are read from the chain's subgraph" docs="sources">
     <span class="badge ok" tabindex="0">
       subgraph<template v-if="lag"> · {{ lag }} behind</template>
     </span>
   </Hint>
-  <Hint v-else :text="resolved.note ?? 'Agents are read directly from the registry contracts'">
+  <Hint v-else :text="resolved.note ?? 'Agents are read directly from the registry contracts'" docs="sources">
     <span class="badge" :class="{ warn: resolved.note }" tabindex="0">
       rpc<template v-if="resolved.note"> · no subgraph</template>
     </span>

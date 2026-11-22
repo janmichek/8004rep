@@ -62,6 +62,7 @@ const tiles = computed<Tile[]>(() => {
       title: r.unrated
         ? 'No review here is a rating. Telemetry, outcomes and quantities are listed, never averaged into a score.'
         : `One vote per wallet, ratings only, neutral prior of ${r.params.alpha0} wallets. ${r.confidence} confidence.`,
+      docs: r.unrated ? 'unrated' : 'filtered-score',
       tone: r.unrated ? 'quiet' : 'main',
       word: r.unrated,
       meter: r.unrated ? undefined : { kind: 'gauge', value: r.score, band: r.interval },
@@ -71,6 +72,7 @@ const tiles = computed<Tile[]>(() => {
       value: r.confidence,
       hint: `${r.funnel.wallets} wallet${r.funnel.wallets === 1 ? '' : 's'} · ${r.funnel.units} unit${r.funnel.units === 1 ? '' : 's'}`,
       title: `${formatNumber(r.concentration.neff)} effective voices; the largest wallet holds ${formatPercent(r.concentration.top1)} of the weight.`,
+      docs: 'confidence',
       tone: CONFIDENCE_TONE[r.confidence],
       word: true,
       meter: { kind: 'steps', filled: CONFIDENCE_STEPS[r.confidence], total: 3 },
@@ -80,6 +82,7 @@ const tiles = computed<Tile[]>(() => {
       value: LEVEL[s.level].word,
       hint: s.signals.length ? `${s.signals.length} signal${s.signals.length === 1 ? '' : 's'}` : 'nothing flagged',
       title: 'Worst level among the signals on the Overview tab',
+      docs: 'risk-level',
       tone: LEVEL[s.level].tone,
       word: true,
       meter: { kind: 'severity', level: LEVEL[s.level].severity, max: 3 },
@@ -96,6 +99,7 @@ const tiles = computed<Tile[]>(() => {
         .join(' · '),
       title:
         "Plain mean of non-revoked rows: the registry's getSummary on RPC networks, or the mean of the rows loaded from an indexer. It mixes ratings with telemetry and quantities, so it is a baseline, not a quality score. Untagged or unknown-tag rows are listed but cannot be classified or scored.",
+      docs: 'raw-onchain',
       meter: rawValue === null || rawValue === undefined ? undefined : { kind: 'gauge', value: rawValue },
     },
     {
@@ -109,6 +113,7 @@ const tiles = computed<Tile[]>(() => {
             ? ''
             : 'not scored there',
       title: "8004scan's overall score, read live from its public API — see the vs 8004scan tab",
+      docs: '8004scan',
       tone: 'quiet',
       loading: scan.loading.value,
       meter: scanScore ? { kind: 'gauge', value: scanScore.total } : undefined,

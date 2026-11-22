@@ -10,6 +10,7 @@ import ReviewerChip from '../components/ui/ReviewerChip.vue'
 import SortHeader from '../components/ui/SortHeader.vue'
 import TableSkeleton from '../components/ui/TableSkeleton.vue'
 import { reviewerDirectory } from '../data/directory'
+import { LABEL_DOCS } from '../data/docsLinks'
 import { LABEL_INFO, type ReviewerProfile } from '../data/reviewerProfile'
 import { formatNumber, shortAddress } from '../format'
 import { useScope } from '../scope'
@@ -89,7 +90,7 @@ function reviewerRoute(r: ReviewerProfile) {
             <SortHeader label="Reviews" numeric :active="rows.state('reviews')" @sort="rows.toggle('reviews')" />
             <SortHeader label="Agents" numeric :active="rows.state('agents')" @sort="rows.toggle('agents')" />
             <th v-if="scope.all.value">Networks</th>
-            <SortHeader label="Avg rating" numeric text="Scored ratings only, normalised to 0–100" :active="rows.state('average')" @sort="rows.toggle('average')" />
+            <SortHeader label="Avg rating" numeric text="Scored ratings only, normalised to 0–100" docs="rating-only" :active="rows.state('average')" @sort="rows.toggle('average')" />
             <SortHeader label="Flags" :active="rows.state('flags')" @sort="rows.toggle('flags')" />
           </tr>
         </thead>
@@ -116,7 +117,7 @@ function reviewerRoute(r: ReviewerProfile) {
             <td v-if="scope.all.value" :title="networkNames(r.chainIds)">{{ networkNames(r.chainIds) }}</td>
             <td class="num">{{ r.ratingAverage === null ? '—' : formatNumber(r.ratingAverage) }}</td>
             <td>
-              <Hint v-for="l in r.labels" :key="l" :text="LABEL_INFO[l].rule">
+              <Hint v-for="l in r.labels" :key="l" :text="LABEL_INFO[l].rule" :docs="LABEL_DOCS[l]">
                 <ReviewerChip :label="l" />
               </Hint>
               <span v-if="!r.labels.length" class="muted">—</span>

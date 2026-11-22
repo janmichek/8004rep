@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import FlagChip from '../components/ui/FlagChip.vue'
 import ReviewerChip from '../components/ui/ReviewerChip.vue'
 import { CHAINS, DEFAULT_CHAIN } from '../chains'
@@ -8,28 +8,57 @@ import { FLAG_INFO, type RowFlag } from '../data/feedbackStats'
 import { GLOSSARY_GROUPS } from '../data/glossary'
 import { METRIC_GROUPS } from '../data/metricsGuide'
 import { LABEL_INFO, type ReviewerLabel } from '../data/reviewerProfile'
+import { docsAnchor } from '../data/docsLinks'
 import { DOMINANT_SHARE, STRONG_NEFF, STRONG_WEIGHT, THIN_WEIGHT, THIN_WALLETS } from '../data/reputation/score'
 import { UNIT_WINDOW_DAYS } from '../data/reputation/units'
+import { sectionAligned, sectionScrollTop } from '../docsScroll'
 
 const route = useRoute()
+const router = useRouter()
 
-// Landing on a section does not scroll (see router scrollBehavior); it just
-// flashes the target so the reader's eye finds it.
-function flashSection(hash: string): void {
-  const id = hash.replace(/^#/, '')
+// Hash-mode URLs look like `#/docs#id`. The browser treats that whole string
+// as the fragment, finds no such element, and leaves the reader at the top.
+// Scroll the real section into place, then again a moment later in case the
+// browser's own scroll wins the race. A newer navigation cancels the retries.
+let revealToken = 0
+
+function flash(el: HTMLElement): void {
+  el.classList.remove('docs-flash')
+  void el.offsetWidth
+  el.classList.add('docs-flash')
+  window.setTimeout(() => el.classList.remove('docs-flash'), 2200)
+}
+
+function revealSection(hash: string): void {
+  const id = docsAnchor(hash)
   if (!id) return
-  void nextTick(() => {
+  const mine = ++revealToken
+  let flashed = false
+  const attempt = (): boolean => {
+    if (mine !== revealToken) return true
+    if (docsAnchor(route.hash) !== id) return true
     const el = document.getElementById(id)
-    if (!el) return
-    el.classList.remove('docs-flash')
-    void el.offsetWidth
-    el.classList.add('docs-flash')
-    setTimeout(() => el.classList.remove('docs-flash'), 2200)
+    if (!el) return false
+    if (!flashed) {
+      flashed = true
+      flash(el)
+    }
+    const viewportTop = el.getBoundingClientRect().top
+    if (!sectionAligned(viewportTop)) {
+      window.scrollTo({ top: sectionScrollTop(viewportTop, window.scrollY), behavior: 'auto' })
+    }
+    return true
+  }
+  void nextTick(() => {
+    for (const delay of [0, 80, 240]) window.setTimeout(attempt, delay)
   })
 }
 
-onMounted(() => flashSection(route.hash))
-watch(() => route.hash, flashSection)
+onMounted(() => revealSection(route.hash))
+onUnmounted(() => {
+  revealToken++
+})
+watch(() => route.hash, revealSection)
 
 const defaultSlug = DEFAULT_CHAIN.slug
 
@@ -43,6 +72,18 @@ const labels = (
 
 function href(id: string): string {
   return id ? `#/docs#${id}` : '#/docs'
+}
+
+/** In-page anchors must go through the router. A raw `#/docs#id` click never scrolls. */
+function openSection(id: string, event: MouseEvent): void {
+  if (event.metaKey || event.altKey || event.ctrlKey || event.shiftKey || event.button !== 0) return
+  event.preventDefault()
+  const hash = id ? `#${id}` : ''
+  if (route.name === 'docs' && route.hash === hash) {
+    revealSection(hash)
+    return
+  }
+  void router.push({ name: 'docs', hash }).catch(() => revealSection(hash))
 }
 
 function scrollToTop(): void {
@@ -81,13 +122,13 @@ function scrollToTop(): void {
         </div>
       </dl>
       <nav class="docs-jump" aria-label="Start here">
-        <a :href="href('entities')">Entities</a>
-        <a :href="href('vocabulary')">Vocabulary</a>
-        <a :href="href('how')">How it works</a>
-        <a :href="href('sybil')">Sybil checks</a>
-        <a :href="href('rules')">Rules</a>
-        <a :href="href('metrics')">Metric guide</a>
-        <a :href="href('limits')">Limits</a>
+        <a :href="href('entities')" @click="openSection('entities', $event)">Entities</a>
+        <a :href="href('vocabulary')" @click="openSection('vocabulary', $event)">Vocabulary</a>
+        <a :href="href('how')" @click="openSection('how', $event)">How it works</a>
+        <a :href="href('sybil')" @click="openSection('sybil', $event)">Sybil checks</a>
+        <a :href="href('rules')" @click="openSection('rules', $event)">Rules</a>
+        <a :href="href('metrics')" @click="openSection('metrics', $event)">Metric guide</a>
+        <a :href="href('limits')" @click="openSection('limits', $event)">Limits</a>
         <RouterLink :to="{ name: 'agents', params: { slug: defaultSlug } }">Browse agents</RouterLink>
         <RouterLink :to="{ name: 'network', params: { slug: defaultSlug } }">Network health</RouterLink>
       </nav>
@@ -104,11 +145,11 @@ function scrollToTop(): void {
       <dl class="docs-glossary-list">
         <div v-for="entry in group.entries" :id="entry.id" :key="entry.id" class="docs-glossary-item">
           <dt>
-            <a :href="href(entry.id)" :title="`Link to ${entry.name}`">{{ entry.name }}</a>
+            <a :href="href(entry.id)" :title="`Link to ${entry.name}`" @click="openSection(entry.id, $event)">{{ entry.name }}</a>
           </dt>
           <dd>
             {{ entry.summary }}
-            <a v-if="entry.seeAlso" class="docs-glossary-see" :href="href(entry.seeAlso)">See metric</a>
+            <a v-if="entry.seeAlso" class="docs-glossary-see" :href="href(entry.seeAlso)" @click="openSection(entry.seeAlso, $event)">See metric</a>
           </dd>
         </div>
       </dl>
@@ -225,10 +266,10 @@ function scrollToTop(): void {
           <p class="docs-toc-title">{{ metricCount }} metrics</p>
           <nav>
             <template v-for="group in METRIC_GROUPS" :key="group.id">
-              <a class="docs-toc-group" :href="href(group.id)">{{ group.title }}</a>
+              <a class="docs-toc-group" :href="href(group.id)" @click="openSection(group.id, $event)">{{ group.title }}</a>
               <ol>
                 <li v-for="metric in group.metrics" :key="metric.id">
-                  <a :href="href(metric.id)">{{ metric.name }}</a>
+                  <a :href="href(metric.id)" @click="openSection(metric.id, $event)">{{ metric.name }}</a>
                 </li>
               </ol>
             </template>
@@ -245,7 +286,7 @@ function scrollToTop(): void {
 
             <article v-for="metric in group.metrics" :id="metric.id" :key="metric.id" class="docs-metric">
               <h3>
-                <a :href="href(metric.id)" :title="`Link to ${metric.name}`">{{ metric.name }}</a>
+                <a :href="href(metric.id)" :title="`Link to ${metric.name}`" @click="openSection(metric.id, $event)">{{ metric.name }}</a>
               </h3>
               <p>{{ metric.summary }}</p>
               <p v-if="metric.rule" class="docs-rule">{{ metric.rule }}</p>
@@ -307,7 +348,7 @@ function scrollToTop(): void {
     <footer class="docs-footer">
       <RouterLink :to="{ name: 'agents', params: { slug: defaultSlug } }">Agents</RouterLink>
       <RouterLink :to="{ name: 'network', params: { slug: defaultSlug } }">Network health</RouterLink>
-      <a :href="href('metrics')">Back to the metric guide</a>
+      <a :href="href('metrics')" @click="openSection('metrics', $event)">Back to the metric guide</a>
       <button type="button" class="docs-top" @click="scrollToTop">Back to top ↑</button>
     </footer>
   </div>

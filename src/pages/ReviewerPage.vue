@@ -111,6 +111,7 @@ const tiles = computed<Tile[]>(() => {
       value: w?.nonce === undefined ? '—' : `${w.nonce} tx`,
       hint: w?.kind ?? '',
       title: `Transactions sent. Under ${MIN_NONCE} is a fresh wallet.`,
+      docs: 'sybil',
       tone: w?.nonce !== undefined && w.nonce < MIN_NONCE ? 'warn' : undefined,
       loading: wallet.loading.value,
     },

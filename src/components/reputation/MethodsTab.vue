@@ -46,6 +46,7 @@ const alternatives = computed<Tile[]>(() => [
     value: props.rep.unrated ? 'Unrated' : formatNumber(props.rep.score),
     hint: props.rep.interval ? `80% interval ${formatNumber(props.rep.interval[0])}–${formatNumber(props.rep.interval[1])}` : 'no rating units',
     title: '(α0·μ0 + Σ W_c·r̄_c) / (α0 + Σ W_c) — one independent wallet is one vote',
+    docs: 'filtered-score',
     tone: 'main',
     word: props.rep.unrated,
     meter: props.rep.unrated ? undefined : { kind: 'gauge', value: props.rep.score, band: props.rep.interval },
@@ -55,18 +56,21 @@ const alternatives = computed<Tile[]>(() => [
     value: formatNumber(props.rep.funnel.walletsAfterCap ? props.rep.concentration.neff : 0),
     hint: `${props.rep.funnel.wallets} wallets after cap`,
     title: '1 / HHI over wallet weights: how many equally-weighted voices the result is worth',
+    docs: 'effective-voices',
   },
   {
     label: 'Inflation gap',
     value: formatSigned(props.rep.inflation),
     hint: 'raw rating mean − filtered',
     title: 'Large and positive = the rules removed reviews the raw mean counts in full.',
+    docs: 'inflation',
   },
   {
     label: 'Cost to fake',
     value: props.rep.cost === null ? '—' : String(props.rep.cost),
     hint: 'fresh unlinked wallets',
     title: `Wallets at the target of ${Math.round(props.rep.params.fakeTarget * 100)}/100, assuming they cannot be linked. Each also costs its feedback fee and a funding path.`,
+    docs: 'cost-to-fake',
   },
 ])
 

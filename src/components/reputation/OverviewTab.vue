@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { dailyColumns, valueHistogram } from '../../data/chartData'
 import type { FeedbackStats } from '../../data/feedbackStats'
+import { KIND_DOCS, WATERFALL_DOCS } from '../../data/docsLinks'
 import { KIND_INFO } from '../../data/reputation/kinds'
 import type { ReputationReport } from '../../data/reputation/report'
 import type { LadderId, TrustReport } from '../../data/trustReport'
@@ -15,17 +16,6 @@ import SeverityIcon from '../ui/SeverityIcon.vue'
 import { COUNT_SERIES } from '../ui/palette'
 
 const props = defineProps<{ feedback: Feedback[]; stats: FeedbackStats; report: TrustReport; rep: ReputationReport }>()
-
-/** Waterfall step → Docs page metric anchor. */
-const STEP_DOCS: Record<string, string> = {
-  all: 'raw-onchain',
-  revoked: 'revoked',
-  ratings: 'rating-only',
-  self: 'rating-only',
-  units: 'rating-unit',
-  cap: 'wallet-vote',
-  prior: 'prior',
-}
 
 /** Rating rows are the ones that enter the score; everything else is shown, not scored. */
 const ACTIVITY_SERIES: Series[] = [
@@ -61,6 +51,7 @@ function barWidth(value: number | null): string {
 
 const LADDER_COLOR: Record<LadderId, string> = { bare: '#5b6472', context: '#3987e5', file: '#0ca30c' }
 const ladderTotal = computed(() => props.report.ladder.reduce((a, r) => a + r.rows, 0))
+const ladderShown = computed(() => props.report.ladder.filter((rung) => rung.rows > 0))
 
 const kinds = computed(() => props.rep.byKind.filter((k) => k.rows > 0))
 
@@ -124,7 +115,7 @@ const coverage = computed(() => {
       <dl class="metric-list">
         <template v-for="k in kinds" :key="k.kind">
           <dt>
-            <Hint :text="KIND_INFO[k.kind].rule" :docs="k.kind === 'telemetry' ? 'telemetry' : 'rating-only'">
+            <Hint :text="KIND_INFO[k.kind].rule" :docs="KIND_DOCS[k.kind]">
               <span class="tip">{{ k.label }}</span>
             </Hint>
           </dt>
@@ -150,7 +141,7 @@ const coverage = computed(() => {
       </h3>
       <ol class="bars waterfall">
         <li v-for="step in rep.waterfall" :key="step.id" :class="{ idle: step.id !== 'all' && step.rows === 0 }">
-          <Hint :text="step.rule" :docs="STEP_DOCS[step.id]">
+          <Hint :text="step.rule" :docs="WATERFALL_DOCS[step.id]">
             <span class="bar-label tip">{{ step.label }}</span>
           </Hint>
           <span class="bar-track" aria-hidden="true"><span :style="{ width: barWidth(step.average) }" /></span>
@@ -172,7 +163,7 @@ const coverage = computed(() => {
       </h3>
       <div v-if="ladderTotal" class="stack-bar" role="img" :aria-label="report.ladder.map((r) => `${r.label}: ${r.rows}`).join(', ')">
         <Hint
-          v-for="rung in report.ladder.filter((r) => r.rows > 0)"
+          v-for="rung in ladderShown"
           :key="rung.id"
           :text="`${rung.label}: ${rung.rows} — ${rung.rule}`"
           docs="evidence-ladder"

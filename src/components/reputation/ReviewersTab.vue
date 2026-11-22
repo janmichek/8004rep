@@ -4,6 +4,7 @@ import type { Address } from 'viem'
 import { addressExplorerUrl, txExplorerUrl, type ChainInfo } from '../../chains'
 import ChainName from '../ChainName.vue'
 import { sourceFor } from '../../data'
+import { FLAG_DOCS, LABEL_DOCS } from '../../data/docsLinks'
 import { FLAG_INFO, type FeedbackStats } from '../../data/feedbackStats'
 import { clusterByFunder } from '../../data/funding'
 import type { ReputationReport } from '../../data/reputation/report'
@@ -124,13 +125,13 @@ function isSelf(address: string): boolean {
       <thead>
         <tr>
           <SortHeader label="Reviewer" :active="reviewerRows.state('reviewer')" @sort="reviewerRows.toggle('reviewer')" />
-          <SortHeader label="Reviews" numeric text="Reviews on this agent (revoked in brackets)" :active="reviewerRows.state('reviews')" @sort="reviewerRows.toggle('reviews')" />
-          <SortHeader label="Score share" text="Share of the capped wallet weight behind the Filtered score" :active="reviewerRows.state('weight')" @sort="reviewerRows.toggle('weight')" />
-          <SortHeader label="Avg rating" numeric text="Normalised rating average here, with min–max; telemetry and metrics are excluded" :active="reviewerRows.state('average')" @sort="reviewerRows.toggle('average')" />
-          <SortHeader label="Score without it" numeric text="Filtered score without this reviewer's wallet minus the score with it" :active="reviewerRows.state('without')" @sort="reviewerRows.toggle('without')" />
+          <SortHeader label="Reviews" numeric text="Reviews on this agent (revoked in brackets)" docs="feedback-row" :active="reviewerRows.state('reviews')" @sort="reviewerRows.toggle('reviews')" />
+          <SortHeader label="Score share" text="Share of the capped wallet weight behind the Filtered score" docs="wallet-vote" :active="reviewerRows.state('weight')" @sort="reviewerRows.toggle('weight')" />
+          <SortHeader label="Avg rating" numeric text="Normalised rating average here, with min–max; telemetry and metrics are excluded" docs="rating-only" :active="reviewerRows.state('average')" @sort="reviewerRows.toggle('average')" />
+          <SortHeader label="Score without it" numeric text="Filtered score without this reviewer's wallet minus the score with it" docs="max-influence" :active="reviewerRows.state('without')" @sort="reviewerRows.toggle('without')" />
           <th>Flags here</th>
-          <Hint text="Its feedback on other agents, as far as the source reaches"><th>Elsewhere</th></Hint>
-          <Hint text="Transactions sent, and who first sent it funds"><th>Wallet</th></Hint>
+          <Hint text="Its feedback on other agents, as far as the source reaches" docs="entity-reviewer"><th>Elsewhere</th></Hint>
+          <Hint text="Transactions sent, and who first sent it funds" docs="sybil"><th>Wallet</th></Hint>
         </tr>
       </thead>
       <tbody>
@@ -165,7 +166,7 @@ function isSelf(address: string): boolean {
           </td>
           <td class="num">{{ formatSigned(r.scoreWithout) }}</td>
           <td>
-            <Hint v-for="flag in r.flags" :key="flag" :text="FLAG_INFO[flag].rule">
+            <Hint v-for="flag in r.flags" :key="flag" :text="FLAG_INFO[flag].rule" :docs="FLAG_DOCS[flag]">
               <FlagChip :flag="flag" />
             </Hint>
           </td>
@@ -179,11 +180,12 @@ function isSelf(address: string): boolean {
                 v-for="label in insightOf(r.client)!.profile!.labels"
                 :key="label"
                 :text="LABEL_INFO[label].rule"
+                :docs="LABEL_DOCS[label]"
               >
                 <ReviewerChip :label="label" />
               </Hint>
             </template>
-            <Hint v-else-if="insightOf(r.client)" :text="insightOf(r.client)!.errors.join('\n')">
+            <Hint v-else-if="insightOf(r.client)" :text="insightOf(r.client)!.errors.join('\n')" docs="limits">
               <span class="muted">unavailable</span>
             </Hint>
             <Skeleton v-else-if="reviewers.indexOf(r) < LOOKUP && loading" width="8em" />

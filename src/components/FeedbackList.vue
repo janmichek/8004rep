@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import { addressExplorerUrl, txExplorerUrl, type ChainInfo } from '../chains'
+import { FLAG_DOCS, KIND_DOCS } from '../data/docsLinks'
 import { FLAG_INFO, type RowStats } from '../data/feedbackStats'
 import { KIND_INFO } from '../data/reputation/kinds'
 import { toDisplayUrl } from '../data/metadata'
@@ -59,11 +60,12 @@ function openDetail(index: number, event?: Event): void {
           <SortHeader label="Reviewer" :active="sortState('reviewer')" @sort="toggleSort('reviewer')" />
           <SortHeader label="Value" numeric :active="sortState('value')" @sort="toggleSort('value')" />
           <SortHeader label="Tags" :active="sortState('tags')" @sort="toggleSort('tags')" />
-          <Hint v-if="hasNotes" text="The text (or comment) field of the off-chain feedback file"><th>Text</th></Hint>
+          <Hint v-if="hasNotes" text="The text (or comment) field of the off-chain feedback file" docs="entity-feedback-file"><th>Text</th></Hint>
           <SortHeader
             v-if="hasStats"
             label="Authenticity"
             text="Pattern-based authenticity weight, from 0 to 1. It is not the score's unit weight: only scored ratings enter the Filtered score."
+            docs="row-rules"
             :active="sortState('weight')"
             @sort="toggleSort('weight')"
           />
@@ -72,6 +74,7 @@ function openDetail(index: number, event?: Event): void {
           <SortHeader
             label="Replies"
             text="appendResponse entries: agent replies, refunds, spam flags"
+            docs="entity-response"
             numeric
             :active="sortState('replies')"
             @sort="toggleSort('replies')"
@@ -104,10 +107,10 @@ function openDetail(index: number, event?: Event): void {
             <td class="num">
               <b>{{ formatScore(row.value) }}</b>
               <FlagChip v-if="row.revoked" flag="revoked" />
-              <Hint v-if="stats && stats.kind !== 'rating'" :text="KIND_INFO[stats.kind].rule">
+              <Hint v-if="stats && stats.kind !== 'rating'" :text="KIND_INFO[stats.kind].rule" :docs="KIND_DOCS[stats.kind]">
                 <span class="chip">{{ KIND_INFO[stats.kind].label }}</span>
               </Hint>
-              <Hint v-else-if="stats && stats.rating === null" text="A rating whose value fits no inferred scale; listed, never scored.">
+              <Hint v-else-if="stats && stats.rating === null" text="A rating whose value fits no inferred scale; listed, never scored." docs="off-scale">
                 <span class="chip warn">off-scale</span>
               </Hint>
               <small v-if="stats?.kind === 'rating' && stats.rating !== null" class="muted" title="Normalised rating used by the Filtered score">
@@ -125,13 +128,13 @@ function openDetail(index: number, event?: Event): void {
             <td v-if="hasStats" class="checks-cell">
               <template v-if="stats">
                 <template v-if="stats.kind === 'rating' && stats.rating !== null">
-                  <Hint text="Pattern-based authenticity weight; not the score's unit weight">
+                  <Hint text="Pattern-based authenticity weight; not the score's unit weight" docs="row-rules">
                     <span class="weight" :class="{ low: stats.weight < 0.5 }">{{ formatNumber(stats.weight, 2) }}</span>
                   </Hint>
                 </template>
                 <span v-else class="muted" title="Only scored ratings enter the Filtered score">not scored</span>
                 <template v-for="flag in stats.flags" :key="flag">
-                  <Hint v-if="flag !== 'revoked'" :text="FLAG_INFO[flag].rule">
+                  <Hint v-if="flag !== 'revoked'" :text="FLAG_INFO[flag].rule" :docs="FLAG_DOCS[flag]">
                     <FlagChip :flag="flag" />
                   </Hint>
                 </template>
