@@ -1176,7 +1176,8 @@ pre {
   background: var(--panel);
   font-size: 13px;
   overflow: hidden;
-  table-layout: fixed;
+  /* Auto, not fixed: an absolutely positioned caption (sr-only) makes
+     fixed layout drop column widths and split the table in half. */
 }
 
 .signals tr {
@@ -1208,10 +1209,20 @@ pre {
   border-bottom: 0;
 }
 
-.signals td:first-child {
-  width: 2.6em;
+.signals td:first-child,
+.signals th:first-child {
+  width: 0;
+  padding-right: 8px;
   white-space: nowrap;
-  text-align: center;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.signals td:last-child,
+.signals th:last-child {
+  padding-left: 0;
+  white-space: normal;
+  vertical-align: middle;
 }
 
 .signal-level {
