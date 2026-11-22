@@ -9,6 +9,7 @@ import SelectMenu, { type SelectOption } from '../components/ui/SelectMenu.vue'
 import SortHeader from '../components/ui/SortHeader.vue'
 import Skeleton from '../components/ui/Skeleton.vue'
 import TableSkeleton from '../components/ui/TableSkeleton.vue'
+import { API_ENABLED, INDEXED_CHAINS, fetchApiAgents } from '../data/api'
 import { fetchScanAgents, fetchScanChains } from '../data/scan'
 import { networkEnv } from '../env'
 import { useAsync } from '../useAsync'
@@ -29,11 +30,13 @@ const rated = computed(() => route.query.rated === '1')
 const page = computed(() => (rated.value ? 0 : Math.max(0, Math.trunc(Number(route.query.page) || 1) - 1)))
 const search = computed(() => (typeof route.query.q === 'string' ? route.query.q.trim() : ''))
 
-/** Server-side sort: only Registered has a fast path on 8004scan. */
+/** Server-side sort: registered has a fast path on both sources; score only on ours. */
 type RegisteredOrder = 'asc' | 'desc'
-const sort = computed(() => (route.query.sort === 'registered' ? 'registered' : null))
+const sort = computed(() => (route.query.sort === 'registered' ? 'registered' : route.query.sort === 'score' ? 'score' : null))
 const order = computed<RegisteredOrder>(() => (route.query.order === 'asc' ? 'asc' : 'desc'))
 const registeredSort = computed(() => (sort.value === 'registered' ? order.value : null))
+const scoreSort = computed(() => (sort.value === 'score' ? 'desc' : null))
+const indexing = ref(false)
 
 const chainQuery = computed(() => {
   const raw = route.query.chain
@@ -52,9 +55,37 @@ const networkOptions = computed<SelectOption[]>(() => [
 ])
 const networkValue = computed(() => (selectedChain.value ? String(selectedChain.value.chainId) : 'all'))
 
-const { data, error, loading, reload } = useAsync(
+const canUseIndex = computed(
   () =>
-    fetchScanAgents({
+    API_ENABLED &&
+    networkEnv.value === 'mainnet' &&
+    (selectedChain.value ? INDEXED_CHAINS.has(selectedChain.value.chainId) : true),
+)
+
+const { data, error, loading, reload } = useAsync(
+  async () => {
+    if (canUseIndex.value) {
+      try {
+        const result = await fetchApiAgents({
+          page: page.value,
+          pageSize: rated.value ? RATED_SIZE : PAGE_SIZE,
+          search: search.value || undefined,
+          chainId: selectedChain.value?.chainId,
+          sort: rated.value ? 'feedback' : sort.value === 'registered' ? 'createdAt' : sort.value === 'score' ? 'score' : undefined,
+          order: rated.value ? 'desc' : sort.value === 'registered' ? order.value : 'desc',
+          rated: rated.value,
+        })
+        // An empty index (first boot) keeps the 8004scan list instead of a blank page.
+        if (result.total > 0 || search.value) {
+          indexing.value = true
+          return result
+        }
+      } catch {
+        // The indexer may be asleep or still booting; the public API still answers.
+      }
+    }
+    indexing.value = false
+    return fetchScanAgents({
       page: page.value,
       pageSize: rated.value ? RATED_SIZE : PAGE_SIZE,
       search: search.value || undefined,
@@ -62,8 +93,9 @@ const { data, error, loading, reload } = useAsync(
       chainId: selectedChain.value?.chainId,
       sortBy: rated.value ? 'total_feedbacks' : sort.value === 'registered' ? 'created_at' : undefined,
       sortOrder: rated.value ? 'desc' : sort.value === 'registered' ? order.value : undefined,
-    }),
-  () => [page.value, rated.value, search.value, networkEnv.value, selectedChain.value, sort.value, order.value],
+    })
+  },
+  () => [page.value, rated.value, search.value, networkEnv.value, selectedChain.value, sort.value, order.value, canUseIndex.value],
 )
 
 // Starred agents are pinned above the feed; `stars/pinned.ts` holds the logic.
@@ -83,7 +115,7 @@ function pushQuery(next: {
   q?: string
   chain?: number | null
   page?: number
-  sort?: 'registered' | null
+  sort?: 'registered' | 'score' | null
   order?: RegisteredOrder
   rated?: boolean
 }): void {
@@ -134,6 +166,10 @@ function toggleRegistered(): void {
   const nextOrder = sort.value === 'registered' && order.value === 'desc' ? 'asc' : 'desc'
   pushQuery({ sort: 'registered', order: nextOrder, rated: false })
 }
+
+function toggleScore(): void {
+  pushQuery({ sort: sort.value === 'score' ? null : 'score', rated: false })
+}
 </script>
 
 <template>
@@ -159,6 +195,7 @@ function toggleRegistered(): void {
       <template v-else>All networks</template>
       <template v-if="loading || !data"> · <Skeleton width="8em" height="0.75em" /></template>
       <template v-else-if="data.total !== undefined"> · {{ data.total.toLocaleString() }} registered</template>
+      <span v-if="indexing" class="chip ok" title="Served by the 8004rep indexer">indexed</span>
     </p>
     <div class="agent-tools">
       <button class="filter-toggle" type="button" :aria-pressed="rated" :class="{ on: rated }" @click="toggleRated">
@@ -207,7 +244,8 @@ function toggleRegistered(): void {
             <th class="num">ID</th>
             <th>Chain</th>
             <th>Services</th>
-            <th>Score</th>
+            <SortHeader v-if="indexing" label="Score" numeric :active="scoreSort" @sort="toggleScore" />
+            <th v-else>Score</th>
             <th class="num">Feedback</th>
             <th>Owner</th>
             <SortHeader label="Registered" numeric :active="registeredSort" @sort="toggleRegistered" />

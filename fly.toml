@@ -1,0 +1,28 @@
+app = "8004scan"
+primary_region = "fra"
+
+[build]
+  dockerfile = "server/Dockerfile"
+
+[env]
+  PORT = "8787"
+  DB_PATH = "/data/8004rep.db"
+  ENABLED_CHAINS = "8453,1,5000"
+  NODE_ENV = "production"
+
+[[mounts]]
+  source = "data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[vm]]
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1

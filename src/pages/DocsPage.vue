@@ -59,8 +59,9 @@ function scrollToTop(): void {
       <h1>A read-only explorer for ERC-8004 agents and their <em>reputation</em>.</h1>
       <p class="docs-lead">
         Every agent on a supported network has an identity and a reputation registry. This app reads both, then turns the
-        raw feedback rows into a score you can inspect, argue with and recompute. No wallet, no account, no backend: the
-        numbers are calculated in your browser from on-chain data and public subgraphs.
+        raw feedback rows into a score you can inspect, argue with and recompute. No wallet, no account: Base, Ethereum
+        and Mantle come from a small read-only indexer, and every other network is read in your browser from on-chain
+        data and public subgraphs.
       </p>
       <dl class="docs-stats">
         <div>
@@ -347,7 +348,7 @@ function scrollToTop(): void {
   --docs-text: #e4eaf4;
   --docs-muted: #96a3b8;
   --docs-accent: #22d3ee;
-  --docs-link: #9cc0ff;
+  --docs-link: var(--docs-accent);
   --docs-warn: #f5b84b;
   max-width: 1180px;
   margin: 0 auto;

@@ -105,7 +105,8 @@ const { data: resolved } = useAsync(async () => (chain.value ? sourceFor(chain.v
     </main>
 
     <footer>
-      Read-only: no wallet, no backend. Data comes straight from the ERC-8004 registries and public subgraphs.
+      Read-only: no wallet, no keys. Base, Ethereum and Mantle are served by the 8004rep indexer; every
+      other network reads the ERC-8004 registries and 8004scan directly.
       <RouterLink :to="{ name: 'docs' }">How the numbers work</RouterLink>
     </footer>
   </TooltipProvider>
