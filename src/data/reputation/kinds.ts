@@ -67,13 +67,34 @@ const SIGNED_SPANS = [1, 5, 10, 100]
  */
 export function inferScale(values: number[]): { scale: Scale; span: number } {
   if (values.length === 0) return { scale: 'unbounded', span: 0 }
-  if (values.every((v) => v === 0 || v === 1)) return { scale: 'binary', span: 1 }
+  const distinct = new Set(values)
+  if (distinct.size === 1) {
+    // One repeated value cannot tell 1/5 from 1/100. Use the narrowest scale
+    // above binary, so a repeated 1 is 20/100 rather than a perfect 100/100.
+    const v = values[0]
+    if (v < 0) {
+      const span = SIGNED_SPANS.find((s) => Math.abs(v) <= s)
+      return span ? { scale: 'signed', span } : { scale: 'unbounded', span: 0 }
+    }
+    if (v <= 5) return { scale: 'five', span: 5 }
+    if (v <= 10) return { scale: 'ten', span: 10 }
+    if (v <= 100) return { scale: 'hundred', span: 100 }
+    return { scale: 'unbounded', span: 0 }
+  }
+  // A pass/fail scale is only evident when both outcomes are present; all-1s
+  // is as likely to be a 1/5 or 1/100 rating as a binary pass.
+  if (values.every((v) => v === 0 || v === 1) && distinct.size > 1) return { scale: 'binary', span: 1 }
   // A single wild value must not redefine the tag: read the scale off the bulk
   // of the values and let the rest fall out of range.
   const negatives = values.filter((v) => v < 0).length / values.length
   if (negatives > 0.2) {
     const abs = values.map(Math.abs).sort((a, b) => a - b)
-    const reach = abs[Math.floor(abs.length * 0.8)]
+    // Linearly interpolated 80th percentile; the nearest-rank index
+    // floor(n × 0.8) picks the maximum for n = 4 or 5.
+    const at = (abs.length - 1) * 0.8
+    const lo = Math.floor(at)
+    const hi = Math.ceil(at)
+    const reach = abs[lo] + (abs[hi] - abs[lo]) * (at - lo)
     const span = SIGNED_SPANS.find((s) => reach <= s)
     return span ? { scale: 'signed', span } : { scale: 'unbounded', span: 0 }
   }
@@ -114,7 +135,21 @@ export function normalize(value: number, scale: Scale, span: number): number | n
 }
 
 /** A reviewer needs this many values on a tag before its own scale overrides the tag's. */
-export const MIN_CLIENT_SCALE_ROWS = 3
+export const MIN_CLIENT_SCALE_ROWS = 5
+
+/**
+ * Whether a client's values are strong enough evidence to overrule the tag's
+ * scale. A client that only ever leaves low values (three 1s on a 0–100 tag)
+ * must not be re-read as a 0–1 or 0–5 scale and turned into a perfect score;
+ * the values need to cover a meaningful part of the narrower scale.
+ */
+function coversScale(values: number[], scale: Scale, span: number): boolean {
+  if (scale === 'unbounded' || span <= 0 || values.length < MIN_CLIENT_SCALE_ROWS) return false
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  if (scale === 'binary') return min === 0 && max === 1
+  return max - min >= span * 0.5
+}
 
 export type Classified = {
   kind: Kind
@@ -175,7 +210,7 @@ export function classify(rows: readonly Row[]): { rows: Classified[]; tags: TagP
     for (const [c, values] of perClient) {
       if (values.length < MIN_CLIENT_SCALE_ROWS) continue
       const own = inferScale(values)
-      if (own.scale !== whole.scale && own.scale !== 'unbounded') {
+      if (own.scale !== whole.scale && own.scale !== 'unbounded' && coversScale(values, own.scale, own.span)) {
         clientScale.set(`${key}|${c}`, own)
         mixedScale = true
       }

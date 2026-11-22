@@ -74,11 +74,13 @@ export function buildRatingLayer(feedback: Feedback[], opts: { self?: readonly s
   const { rows: classified, tags } = classify(feedback)
   const counts: KindCounts = { total: feedback.length, revoked: 0, rating: 0, outcome: 0, telemetry: 0, metric: 0, unknown: 0, outOfScale: 0, self: 0 }
 
-  const dated = feedback.flatMap((f) => (f.createdAt === undefined ? [] : [f.createdAt]))
-  const now = opts.now ?? (dated.length ? Math.max(...dated) : Math.floor(Date.now() / 1000))
+  // Decay is measured against the clock, not against the newest review on the
+  // agent: an abandoned agent must not look fresh just because its last review
+  // is the newest row it has.
+  const now = opts.now ?? Math.floor(Date.now() / 1000)
 
   const units: RatingUnit[] = []
-  const byKey = new Map<string, { unit: RatingUnit; ratings: number[] }>()
+  const byKey = new Map<string, { unit: RatingUnit; ratings: number[]; times: number[] }>()
   classified.forEach((c, i) => {
     const f = feedback[i]
     if (f.revoked) {
@@ -86,18 +88,15 @@ export function buildRatingLayer(feedback: Feedback[], opts: { self?: readonly s
       return
     }
     counts[c.kind]++
+    if (c.kind === 'rating' && c.r === null) counts.outOfScale++
     if (selves.has(f.client.toLowerCase())) {
       counts.self++
       return
     }
     if (c.kind !== 'rating') return
-    if (c.r === null) {
-      counts.outOfScale++
-      return
-    }
+    if (c.r === null) return
     const bucket = f.createdAt === undefined ? ('undated' as const) : Math.floor(f.createdAt / (UNIT_WINDOW_DAYS * DAY))
     const key = `${f.client.toLowerCase()}|${c.tag}|${bucket}`
-    const ageDays = f.createdAt === undefined ? 0 : Math.max(0, (now - f.createdAt) / DAY)
     let hit = byKey.get(key)
     if (!hit) {
       hit = {
@@ -107,18 +106,29 @@ export function buildRatingLayer(feedback: Feedback[], opts: { self?: readonly s
           bucket,
           r: c.r,
           rows: [],
-          ageDays,
-          time: 2 ** (-ageDays / HALF_LIFE_DAYS),
+          ageDays: 0,
+          time: 1,
         },
         ratings: [],
+        times: [],
       }
       byKey.set(key, hit)
       units.push(hit.unit)
     }
     hit.ratings.push(c.r)
     hit.unit.rows.push(i)
+    if (f.createdAt !== undefined) hit.times.push(f.createdAt)
   })
-  for (const hit of byKey.values()) hit.unit.r = median(hit.ratings) ?? hit.unit.r
+  for (const hit of byKey.values()) {
+    hit.unit.r = median(hit.ratings) ?? hit.unit.r
+    // A unit covers one 30-day window; its timestamp is the median row time,
+    // so the decay does not depend on the order the rows arrived in.
+    const at = median(hit.times)
+    if (at !== null) {
+      hit.unit.ageDays = Math.max(0, (now - at) / DAY)
+      hit.unit.time = 2 ** (-hit.unit.ageDays / HALF_LIFE_DAYS)
+    }
+  }
 
   const byClient = new Map<string, WalletRating>()
   for (const unit of units) {

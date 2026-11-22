@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { addressExplorerUrl, txExplorerUrl, type ChainInfo } from '../chains'
 import { sourceFor } from '../data'
 import type { FeedbackStats } from '../data/feedbackStats'
+import { buildReputationReport } from '../data/reputation/report'
 import { evaluateTxDetail, type CheckStatus } from '../data/txChecks'
 import { loadTxFacts } from '../data/txDetail'
 import type { AgentDetail, Feedback } from '../data/types'
@@ -41,6 +42,9 @@ const { data: facts, error, loading, reload } = useAsync(
   () => [props.chain, props.agent, props.row],
 )
 
+const self = computed(() => [props.agent.owner, props.agent.agentWallet].filter((a): a is NonNullable<typeof a> => a != null))
+const rep = computed(() => buildReputationReport(props.agent.feedback, { self: self.value }))
+
 // Evaluated apart from the loading: the stats change when the registration file arrives.
 const view = computed(() =>
   facts.value
@@ -55,6 +59,7 @@ const view = computed(() =>
         ...(props.agent.createdAt !== undefined ? { agentCreatedAt: props.agent.createdAt } : {}),
         feedback: props.agent.feedback,
         stats: props.stats,
+        rep: rep.value,
         index: props.index,
       })
     : undefined,

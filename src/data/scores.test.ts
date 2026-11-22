@@ -45,6 +45,38 @@ describe('computeWeights', () => {
     const fb = [{ ...row(A, 100), revoked: true }]
     expect(computeWeights(fb).weights[0]).toBe(0)
   })
+
+  it('keeps the newest repeat, not the first row in a newest-first feed', () => {
+    const fb = [
+      row(A, 90, { tag1: 'starred', createdAt: 1_000 }),
+      row(A, 90, { tag1: 'starred', createdAt: 2_000 }),
+    ]
+    const { weights, flaggedDuplicates } = computeWeights(fb)
+    expect(weights).toEqual([0, 1])
+    expect(flaggedDuplicates).toBe(1)
+  })
+
+  it('keeps a newer undated first row over an older dated repeat', () => {
+    const fb = [
+      row(A, 90, { tag1: 'starred' }),
+      row(A, 90, { tag1: 'starred', createdAt: 1_000 }),
+    ]
+    expect(computeWeights(fb).weights).toEqual([1, 0])
+  })
+
+  it('does not let revoked rows make a live row hyperactive', () => {
+    const fb = [
+      ...Array.from({ length: 6 }, () => ({ ...row(A, 90, { tag1: 'starred' }), revoked: true })),
+      row(A, 90, { tag1: 'starred' }),
+      row(B, 70, { tag1: 'starred' }),
+    ]
+    expect(computeWeights(fb).weights[6]).toBe(1)
+  })
+
+  it('does not call a monotonous 0.4 weight a burst', () => {
+    const fb = [row(A, 100), row(A, 100), row(A, 100)]
+    expect(computeWeights(fb).flaggedBursty).toBe(0)
+  })
 })
 
 describe('computeScores', () => {
@@ -97,6 +129,16 @@ describe('computeScores', () => {
     const s = computeScores(fb, { now })
     expect(s.timeWeighted).not.toBeNull()
     expect(s.timeWeighted as number).toBeGreaterThan(80)
+  })
+
+  it('keeps zero-weight self rows out of the shape statistics', () => {
+    const owner = '0x00000000000000000000000000000000000000f0' as Address
+    const fb = [row(A, 100, { tag1: 'starred' }), row(B, 0, { tag1: 'starred' }), row(owner, 0, { tag1: 'starred' })]
+    const s = computeScores(fb, { self: [owner] })
+    expect(s.median).toBe(50)
+    expect(s.trimmed).toBe(50)
+    expect(s.posRate).toBeCloseTo(0.5)
+    expect(s.lcb).toBe(0)
   })
 
   it('per-tag breakdown groups by tag1', () => {

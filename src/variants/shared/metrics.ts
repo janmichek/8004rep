@@ -245,24 +245,29 @@ export type Candle = { day: number; open: number; high: number; low: number; clo
 
 /** Daily open/high/low/close of non-revoked review values, oldest day first. */
 export function candles(rows: { value: number; revoked: boolean; createdAt?: number }[]): Candle[] {
-  const days = new Map<number, number[]>()
+  const days = new Map<number, { at: number; value: number }[]>()
   for (const row of rows) {
     if (row.revoked || row.createdAt === undefined) continue
     const day = Math.floor(row.createdAt / DAY) * DAY
     const values = days.get(day)
-    if (values) values.push(row.value)
-    else days.set(day, [row.value])
+    if (values) values.push({ at: row.createdAt, value: row.value })
+    else days.set(day, [{ at: row.createdAt, value: row.value }])
   }
   return [...days.entries()]
     .sort((a, b) => a[0] - b[0])
-    .map(([day, values]) => ({
-      day,
-      open: values[0],
-      high: Math.max(...values),
-      low: Math.min(...values),
-      close: values[values.length - 1],
-      count: values.length,
-    }))
+    .map(([day, entries]) => {
+      // Feeds arrive newest-first; open and close mean the day's first and
+      // last review in time, not in feed order.
+      const values = [...entries].sort((a, b) => a.at - b.at).map((e) => e.value)
+      return {
+        day,
+        open: values[0],
+        high: Math.max(...values),
+        low: Math.min(...values),
+        close: values[values.length - 1],
+        count: values.length,
+      }
+    })
 }
 
 /** Deterministic point in a `w`×`h` box (inset by `pad`), from a string seed. */

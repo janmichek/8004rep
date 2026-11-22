@@ -50,6 +50,9 @@ const tiles = computed<Tile[]>(() => {
   const onchain = props.agent.reputation
   const scanScore = scan.data.value
   const rawValue = onchain?.average ?? r.raw
+  // The tile shows `rawValue`; its hint must compare that same number with the
+  // filtered score, not with the ratings-only mean.
+  const rawGap = rawValue !== null && rawValue !== undefined && r.score !== null ? rawValue - r.score : null
   const interval = r.interval ? `80% interval ${formatNumber(r.interval[0])}–${formatNumber(r.interval[1])}` : 'too few rating units for an interval'
   return [
     {
@@ -84,8 +87,15 @@ const tiles = computed<Tile[]>(() => {
     {
       label: 'Raw on-chain',
       value: formatNumber(rawValue),
-      hint: `n = ${onchain?.count ?? s.coverage.total}${r.inflation !== null && r.inflation > 0.5 ? ` · +${formatNumber(r.inflation)} vs filtered` : ''}`,
-      title: "Plain mean of non-revoked rows, as the registry's getSummary reports it. It mixes ratings with telemetry and quantities, so it is a baseline, not a quality score.",
+      hint: [
+        `n = ${onchain?.count ?? s.coverage.total}${onchain?.capped ? ' (capped)' : ''}`,
+        rawGap !== null && rawGap > 0.5 ? `+${formatNumber(rawGap)} vs filtered` : '',
+        r.counts.unknown ? `${r.counts.unknown} unclassified not scored` : '',
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      title:
+        "Plain mean of non-revoked rows: the registry's getSummary on RPC networks, or the mean of the rows loaded from an indexer. It mixes ratings with telemetry and quantities, so it is a baseline, not a quality score. Untagged or unknown-tag rows are listed but cannot be classified or scored.",
       meter: rawValue === null || rawValue === undefined ? undefined : { kind: 'gauge', value: rawValue },
     },
     {
@@ -147,7 +157,7 @@ const tabs = computed<Tab[]>(() => [
 
     <template #reviewers>
       <p v-if="agent.feedback.length === 0" class="muted">No reviewers yet.</p>
-      <ReviewersTab v-else :agent="agent" :chain="chain" :stats="stats" :self="self" />
+      <ReviewersTab v-else :agent="agent" :chain="chain" :stats="stats" :rep="rep" :self="self" />
     </template>
 
     <template #identity>

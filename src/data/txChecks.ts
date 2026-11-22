@@ -1,6 +1,7 @@
 import type { Address, Hex } from 'viem'
 import { formatAmount, formatDate, formatDuration, formatScore, shortAddress } from '../format'
 import { FLAG_INFO, type FeedbackStats } from './feedbackStats'
+import type { ReputationReport } from './reputation/report'
 import type { Feedback } from './types'
 
 /** An EOA that sent fewer transactions than this is a fresh wallet. */
@@ -150,6 +151,8 @@ export type TxDetailContext = {
   /** Every feedback row of the agent, and its stats. */
   feedback: Feedback[]
   stats: FeedbackStats
+  /** Filtered-score report; when present, score checks use its wallet weights. */
+  rep?: ReputationReport
   /** Position of the inspected row in `feedback`. */
   index: number
 }
@@ -693,43 +696,71 @@ function agentChecks(ctx: TxDetailContext): Check[] {
     .map((flag) => FLAG_INFO[flag].label)
     .join(', ')
   const weight = rowStats?.weight ?? 0
-  checks.push({
-    id: 'agent-weight',
-    label: 'Counts as a full vote',
-    rule: 'Authenticity weight of the review: 1 unless a self, duplicate, burst, monotonous or hyperactive rule fired (see the Weight column).',
-    ...verdict(weight === 1
-      ? { status: 'pass', detail: 'Weight 1: no discount rule fired.' }
-      : weight === 0
-        ? { status: 'fail', detail: `Weight 0 (${fired || 'discounted'}): it does not count in the weighted score.` }
-        : { status: 'warn', detail: `Weight ${weight < 0.01 ? 'below 0.01' : weight.toFixed(2)} (${fired || 'discounted'}).` }),
-  })
+  const rep = ctx.rep
+  const contribution = rep?.contributions.find((c) => same(c.client, row.client))
+  const unit = rep?.layer.units.find((u) => u.rows.includes(ctx.index))
+  if (rep) {
+    checks.push({
+      id: 'agent-weight',
+      label: 'Counts toward the score',
+      rule: 'A rating is scored when it is a rating kind on an inferred scale, not from the agent itself, and inside a rating unit. A wallet is capped at one full vote.',
+      ...verdict(
+        !unit || !contribution
+          ? { status: 'fail', detail: 'Not in a scored rating unit (non-rating kind, off-scale, self-review or revoked), so it does not move the Filtered score.' }
+          : {
+              status: 'pass',
+              detail: `Scored in a ${unit.rows.length}-row unit (median ${formatScore(unit.r * 100)}); the wallet carries ${contribution.weight.toFixed(2)} of a capped vote.`,
+            },
+      ),
+    })
+  } else {
+    checks.push({
+      id: 'agent-weight',
+      label: 'Authenticity weight',
+      rule: 'Pattern-based authenticity weight, from 0 to 1; it is not the Filtered score\'s unit weight.',
+      ...verdict(weight === 1
+        ? { status: 'pass', detail: 'Weight 1: no discount rule fired.' }
+        : weight === 0
+          ? { status: 'fail', detail: `Weight 0 (${fired || 'discounted'}).` }
+          : { status: 'warn', detail: `Weight ${weight < 0.01 ? 'below 0.01' : weight.toFixed(2)} (${fired || 'discounted'}).` }),
+    })
+  }
 
   const valid = ctx.feedback.filter((f) => !f.revoked)
-  const shares = ctx.stats.reviewers.map((r) => r.share).filter((share) => share > 0)
+  const shares = rep ? rep.contributions.map((c) => c.share).filter((share) => share > 0) : ctx.stats.reviewers.map((r) => r.share).filter((share) => share > 0)
   const own = ctx.stats.reviewers.find((r) => same(r.client, row.client))
   const voice = {
     id: 'agent-voice',
     label: 'One voice among many',
-    rule: 'The client wrote less than half of the agent’s counted (non-revoked) reviews; judged from 3 reviews up.',
+    rule: rep
+      ? 'The reviewer’s wallet holds less than half of the capped score weight; judged from 3 wallets up.'
+      : 'The client wrote less than half of the agent’s counted (non-revoked) reviews; judged from 3 reviews up.',
   }
   const concentration = {
     id: 'agent-concentration',
     label: 'Reviewers are spread',
-    rule: `Herfindahl index of the reviewers’ shares of counted reviews, Σ share². Above ${HHI_CONCENTRATED} (fewer than ${1 / HHI_CONCENTRATED} equal reviewers) a few addresses decide the score; 1 = a single reviewer. Judged from 3 reviews up.`,
+    rule: rep
+      ? `Herfindahl index of the capped wallet shares, Σ share². Above ${HHI_CONCENTRATED} (fewer than ${1 / HHI_CONCENTRATED} equal wallets) a few wallets decide the score; 1 = a single wallet.`
+      : `Herfindahl index of the reviewers’ shares of counted reviews, Σ share². Above ${HHI_CONCENTRATED} (fewer than ${1 / HHI_CONCENTRATED} equal reviewers) a few addresses decide the score; 1 = a single reviewer. Judged from 3 reviews up.`,
   }
-  if (valid.length < 3) {
-    const few = `${plural(valid.length, 'counted review')} on this agent: too few to judge.`
+  const enough = rep ? shares.length >= 3 : valid.length >= 3
+  if (!enough) {
+    const few = rep ? `${plural(shares.length, 'weighted wallet')} on this agent: too few to judge.` : `${plural(valid.length, 'counted review')} on this agent: too few to judge.`
     checks.push({ ...voice, status: 'unknown', detail: few }, { ...concentration, status: 'unknown', detail: few })
   } else {
-    const share = own?.share ?? 0
-    const written = `Wrote ${Math.round(share * valid.length)} of the ${valid.length} counted reviews (${percent(share)}).`
+    const share = rep ? (contribution?.share ?? 0) : (own?.share ?? 0)
+    const written = rep
+      ? `Its wallet holds ${percent(share)} of the ${plural(shares.length, 'weighted wallet')}.`
+      : `Wrote ${Math.round(share * valid.length)} of the ${valid.length} counted reviews (${percent(share)}).`
     checks.push({ ...voice, status: share >= 0.5 ? 'warn' : 'pass', detail: written })
     const hhi = herfindahl(shares)
     const top3 = [...shares].sort((a, b) => b - a).slice(0, 3).reduce((a, b) => a + b, 0)
     checks.push({
       ...concentration,
       status: hhi > HHI_CONCENTRATED ? 'warn' : 'pass',
-      detail: `HHI ${hhi.toFixed(2)} (as if ${(1 / hhi).toFixed(1)} equal reviewers) over ${plural(shares.length, 'reviewer')}; the top 3 wrote ${percent(top3)}.`,
+      detail: rep
+        ? `HHI ${hhi.toFixed(2)} (as if ${(1 / hhi).toFixed(1)} equal wallets) over ${plural(shares.length, 'weighted wallet')}; the top 3 hold ${percent(top3)}.`
+        : `HHI ${hhi.toFixed(2)} (as if ${(1 / hhi).toFixed(1)} equal reviewers) over ${plural(shares.length, 'reviewer')}; the top 3 wrote ${percent(top3)}.`,
     })
   }
 
@@ -757,29 +788,47 @@ function agentChecks(ctx: TxDetailContext): Check[] {
     })
   }
 
-  // Leave-one-out on the weighted score.
-  const weights = ctx.stats.rows.map((r) => r.weight)
-  const total = weights.reduce((a, b) => a + b, 0)
-  const sum = ctx.feedback.reduce((a, f, i) => a + weights[i] * f.value, 0)
-  const rest = total - weight
-  const influence = {
-    id: 'agent-influence',
-    label: 'Pull on the score',
-    status: 'info' as const,
-    rule: 'Weighted score without this review minus the weighted score with it (weights as in the Weight column).',
-  }
-  if (weight === 0 || total === 0) {
-    checks.push({ ...influence, detail: 'Weighs 0: removing it changes nothing.' })
-  } else if (rest <= 0) {
-    checks.push({ ...influence, detail: `It is the only review with weight: the weighted score is its value, ${formatScore(row.value)}.` })
+  if (rep) {
+    const influence = {
+      id: 'agent-influence',
+      label: 'Pull on the Filtered score',
+      status: 'info' as const,
+      rule: 'Filtered score without this reviewer’s wallet minus the score with it, in 0–100 points.',
+    }
+    if (!unit || !contribution || contribution.without === null || rep.score === null) {
+      checks.push({ ...influence, detail: 'Not scored: removing it leaves the Filtered score unchanged.' })
+    } else {
+      const without = rep.score + contribution.without
+      checks.push({
+        ...influence,
+        detail: `Without this wallet the Filtered score moves ${formatScore(rep.score)} → ${formatScore(without)} (${contribution.without > 0 ? '+' : ''}${contribution.without.toFixed(2)} pts).`,
+      })
+    }
   } else {
-    const withRow = sum / total
-    const without = (sum - weight * row.value) / rest
-    const shift = without - withRow
-    checks.push({
-      ...influence,
-      detail: `Without it the weighted score moves ${withRow.toFixed(2)} → ${without.toFixed(2)} (${shift > 0 ? '+' : ''}${shift.toFixed(2)}).`,
-    })
+    // Leave-one-out on the legacy weighted score, kept for the variant designs.
+    const weights = ctx.stats.rows.map((r) => r.weight)
+    const total = weights.reduce((a, b) => a + b, 0)
+    const sum = ctx.feedback.reduce((a, f, i) => a + weights[i] * f.value, 0)
+    const rest = total - weight
+    const influence = {
+      id: 'agent-influence',
+      label: 'Pull on the score',
+      status: 'info' as const,
+      rule: 'Weighted score without this review minus the weighted score with it (legacy authenticity weights).',
+    }
+    if (weight === 0 || total === 0) {
+      checks.push({ ...influence, detail: 'Weighs 0: removing it changes nothing.' })
+    } else if (rest <= 0) {
+      checks.push({ ...influence, detail: `It is the only review with weight: the weighted score is its value, ${formatScore(row.value)}.` })
+    } else {
+      const withRow = sum / total
+      const without = (sum - weight * row.value) / rest
+      const shift = without - withRow
+      checks.push({
+        ...influence,
+        detail: `Without it the weighted score moves ${withRow.toFixed(2)} → ${without.toFixed(2)} (${shift > 0 ? '+' : ''}${shift.toFixed(2)}).`,
+      })
+    }
   }
 
   checks.push({

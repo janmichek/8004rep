@@ -26,8 +26,21 @@ export type TelemetrySummary = {
 
 export type Finding = {
   level: 'warn' | 'info'
-  code: 'repeat' | 'template' | 'revocations' | 'review-bomb' | 'same-block' | 'burst'
+  code: 'repeat' | 'template' | 'revocations' | 'review-bomb' | 'same-tx' | 'burst'
   text: string
+}
+
+/** One reviewer wallet's actual pull on the filtered score. */
+export type WalletContribution = {
+  client: string
+  /** Capped wallet weight, in full votes. */
+  weight: number
+  /** Share of the total wallet weight. */
+  share: number
+  /** Normalised wallet rating, 0–1. */
+  rating: number
+  /** Filtered score without this wallet minus with it, in 0–100 points. */
+  without: number | null
 }
 
 export type Responsiveness = {
@@ -59,7 +72,7 @@ export type ReputationReport = {
   unrated: boolean
   /** Plain mean of every non-revoked row, 0–100 (the registry's raw number). */
   raw: number | null
-  /** Plain mean of the normalised rating rows only, 0–100. */
+  /** Plain mean of the normalised rating rows only (excluding self-reviews), 0–100. */
   rawRatings: number | null
   /** rawRatings − score. Large positive = the rules removed inflation. */
   inflation: number | null
@@ -82,10 +95,12 @@ export type ReputationReport = {
     rawTop3: number
     rawNeff: number
   }
+  /** Per-wallet shares and leave-one-out pull on the filtered score. */
+  contributions: WalletContribution[]
   /** Ratings per calendar day: the busiest day and how far it stands out. */
   burst: { maxDayRows: number; activeDays: number; ratio: number | null }
   /** Share of rating rows that share a transaction with another rating row. */
-  sameBlockShare: number | null
+  sameTxShare: number | null
   counts: RatingLayer['counts']
   byKind: { kind: Kind; label: string; rows: number }[]
   /** Non-rating rows grouped by tag, the telemetry panel. */
@@ -123,10 +138,16 @@ export function buildReputationReport(
   const layer = buildRatingLayer(feedback, opts)
   const score = filteredScore(layer.wallets)
 
+  const selves = new Set((opts.self ?? []).map((a) => a.toLowerCase()))
   const valid = feedback.filter((f) => !f.revoked)
+  const rawAll = mean(feedback.map((f) => f.value))
   const raw = mean(valid.map((f) => f.value))
-  const ratingRows = layer.classified.flatMap((c, i) => (!feedback[i].revoked && c.kind === 'rating' && c.r !== null ? [c.r] : []))
+  const ratingRowsAll = layer.classified.flatMap((c, i) => (!feedback[i].revoked && c.kind === 'rating' && c.r !== null ? [c.r] : []))
+  const ratingRows = layer.classified.flatMap((c, i) =>
+    !feedback[i].revoked && c.kind === 'rating' && c.r !== null && !selves.has(feedback[i].client.toLowerCase()) ? [c.r] : [],
+  )
   const rawRatings = mean(ratingRows)
+  const rawRatingsAll = mean(ratingRowsAll)
   const inflation = rawRatings !== null && score.value !== null ? (rawRatings - score.value) * 100 : null
 
   const totalEmpty = layer.units.length === 0
@@ -146,41 +167,42 @@ export function buildReputationReport(
       delta: before !== null && average !== null ? average - before : null,
     })
   }
-  push('all', 'Every review', 'Plain mean of all values, revoked included.', pct(raw), feedback.length)
-  push(
-    'revoked',
-    'Drop revoked',
-    'Reviews their author revoked count nowhere.',
-    pct(mean(valid.map((f) => f.value))),
-    layer.counts.revoked,
-  )
+  push('all', 'Every review', 'Plain mean of all values, revoked included.', rawAll, feedback.length)
+  push('revoked', 'Drop revoked', 'Reviews their author revoked count nowhere.', raw, valid.length)
   push(
     'ratings',
     'Ratings only',
     'Latency, uptime, revenue, pass flags and unknown tags are listed, never averaged into the score.',
+    pct(rawRatingsAll),
+    ratingRowsAll.length,
+  )
+  push(
+    'self',
+    'Drop self-reviews',
+    'Feedback from the agent owner or agent wallet is listed, but never enters its score.',
     pct(rawRatings),
-    layer.counts.rating - layer.counts.outOfScale,
+    ratingRows.length,
   )
   push(
     'units',
     'One unit per reviewer per tag per 30 days',
     'A burst of repeats collapses to its median, so volume is not a voice.',
     pct(unitMean),
-    layer.counts.rating,
+    ratingRows.length,
   )
   push(
     'cap',
     'Cap each wallet at one full vote',
     'A wallet is min(1, Σ 2^(−age/90d)); extra units of the same wallet add no more weight.',
     pct(capped),
-    layer.wallets.filter((w) => w.units.length > 1 || w.weight < 1).length,
+    ratingRows.length,
   )
   push(
     'prior',
     'Add a neutral prior',
     'Three unverified wallets at 50/100 pull a thin record toward the middle instead of the extremes.',
     totalEmpty ? null : pct(score.value),
-    layer.wallets.length,
+    ratingRows.length,
   )
 
   const telemetry = new Map<string, { label: string; rows: number; clients: Set<string>; values: { value: number; at?: number }[] }>()
@@ -198,9 +220,7 @@ export function buildReputationReport(
   })
 
   const ratingIdx = layer.classified.flatMap((c, i) =>
-    !feedback[i].revoked && c.kind === 'rating' && c.r !== null && !(opts.self ?? []).some((a) => a.toLowerCase() === feedback[i].client.toLowerCase())
-      ? [i]
-      : [],
+    !feedback[i].revoked && c.kind === 'rating' && c.r !== null && !selves.has(feedback[i].client.toLowerCase()) ? [i] : [],
   )
   const perClientRows = new Map<string, number>()
   for (const i of ratingIdx) {
@@ -231,12 +251,12 @@ export function buildReputationReport(
   }
   const groupedRows = [...perTx.values()].reduce((a, n) => a + n, 0)
   const repeatedRows = [...perTx.values()].filter((n) => n > 1).reduce((a, n) => a + n, 0)
-  const sameBlockShare = groupedRows ? repeatedRows / groupedRows : null
-  if (sameBlockShare !== null && ratingIdx.length >= 5 && sameBlockShare >= 0.3) {
+  const sameTxShare = groupedRows ? repeatedRows / groupedRows : null
+  if (sameTxShare !== null && ratingIdx.length >= 5 && sameTxShare >= 0.3) {
     findings.push({
       level: 'warn',
-      code: 'same-block',
-      text: `${Math.round(sameBlockShare * 100)}% of rating rows share a transaction with another rating; one transaction cannot be an independent opinion.`,
+      code: 'same-tx',
+      text: `${Math.round(sameTxShare * 100)}% of rating rows share a transaction with another rating; one transaction cannot be an independent opinion.`,
     })
   }
 
@@ -250,12 +270,13 @@ export function buildReputationReport(
   }
   const maxDayRows = Math.max(0, ...perDay.values())
   const activeDays = perDay.size
-  const burstRatio = activeDays > 1 && ratingIdx.length >= 10 ? maxDayRows / (ratingIdx.length / activeDays) : null
+  const datedRatingRows = ratingIdx.filter((i) => feedback[i].createdAt !== undefined).length
+  const burstRatio = activeDays > 1 && datedRatingRows >= 10 ? maxDayRows / (datedRatingRows / activeDays) : null
   if (burstRatio !== null && burstRatio >= 5) {
     findings.push({
       level: 'warn',
       code: 'burst',
-      text: `${maxDayRows} of ${ratingIdx.length} ratings landed on one day (${burstRatio.toFixed(1)}× the active-day average); a burst is not steady demand.`,
+      text: `${maxDayRows} of ${datedRatingRows} dated ratings landed on one day (${burstRatio.toFixed(1)}× the active-day average); a burst is not steady demand.`,
     })
   }
   const lows = ratingIdx.filter((i) => (layer.classified[i].r as number) <= 0.2)
@@ -279,7 +300,13 @@ export function buildReputationReport(
   const ownerReplies = responders.filter((r) => (opts.self ?? []).some((a) => a.toLowerCase() === r.responder.toLowerCase())).length
   const lags = lowIdx.flatMap((i) => {
     const f = feedback[i]
-    return (f.responses ?? []).flatMap((r) => (f.createdAt !== undefined && r.createdAt !== undefined ? [(r.createdAt - f.createdAt) / 86400] : []))
+    // Time to the first answer, not to every later reply: a second reply does
+    // not make the owner slower to respond.
+    const first = (f.responses ?? [])
+      .map((r) => r.createdAt)
+      .filter((t): t is number => t !== undefined)
+      .sort((a, b) => a - b)[0]
+    return f.createdAt !== undefined && first !== undefined ? [(first - f.createdAt) / 86400] : []
   })
   const responsiveness: Responsiveness = {
     lowRatings: lowIdx.length,
@@ -296,6 +323,23 @@ export function buildReputationReport(
   }
   const rawNeff = ratingIdx.length ? ratingIdx.length ** 2 / [...perClientRows.values()].reduce((a, n) => a + n * n, 0) : 0
 
+  // Exact leave-one-out posterior mean: removing a wallet subtracts its weight
+  // from both Beta parameters, so no matrix or re-fit is needed.
+  const contributions: WalletContribution[] = layer.wallets
+    .map((w) => {
+      const share = score.totalWeight > 0 ? w.weight / score.totalWeight : 0
+      const denominator = score.alpha + score.beta - w.weight
+      const without = score.value !== null && denominator > 0 ? (score.alpha - w.weight * w.r) / denominator : null
+      return {
+        client: w.client,
+        weight: w.weight,
+        share,
+        rating: w.r,
+        without: without !== null && score.value !== null ? (without - score.value) * 100 : null,
+      }
+    })
+    .sort((a, b) => b.weight - a.weight || b.share - a.share)
+
   return {
     formulaVersion: FORMULA_VERSION,
     params: { unitWindowDays: UNIT_WINDOW_DAYS, halfLifeDays: HALF_LIFE_DAYS, alpha0: 3, mu0: 0.5, fakeTarget: 0.9 },
@@ -303,7 +347,7 @@ export function buildReputationReport(
     interval: score.interval ? [score.interval[0] * 100, score.interval[1] * 100] : null,
     confidence: score.confidence,
     unrated: score.unrated,
-    raw: pct(raw),
+    raw,
     rawRatings: pct(rawRatings),
     inflation,
     cost: score.cost,
@@ -326,8 +370,9 @@ export function buildReputationReport(
       rawTop3: rawShare(3),
       rawNeff,
     },
+    contributions,
     burst: { maxDayRows, activeDays, ratio: burstRatio },
-    sameBlockShare,
+    sameTxShare,
     counts: layer.counts,
     byKind: KIND_ORDER.map((kind) => ({
       kind,

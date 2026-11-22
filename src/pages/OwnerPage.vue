@@ -125,11 +125,12 @@ const scored = computed(() => {
       total += s.count
     }
   })
-  return { rated, sum, total, avg: rated ? sum / rated : 0 }
+  return { rated, sum, total, avg: rated ? sum / rated : null }
 })
 
 const tiles = computed<Tile[]>(() => {
   const s = scored.value
+  const avg = s?.avg ?? null
   return [
     {
       label: 'Owned agents',
@@ -138,20 +139,20 @@ const tiles = computed<Tile[]>(() => {
       tone: 'main',
     },
     {
-      label: 'Rated',
+      label: 'With feedback',
       value: s ? String(s.rated) : '—',
-      hint: s ? `of ${owned.value} owned` : '',
-      title: 'Owned agents that have at least one feedback',
+      hint: s ? `of ${data.value?.items.length ?? 0} on this page` : '',
+      title: 'Agents on this page that have at least one feedback. The header count is the portfolio total; this tile is page-scoped.',
       loading: s === null,
     },
     {
-      label: 'Average rating',
-      value: s ? formatScore(s.avg) : '—',
-      hint: s ? `${s.total} feedback across ${s.rated} ${s.rated === 1 ? 'agent' : 'agents'}` : '',
-      title: 'Simple average of each owned agent\'s raw on-chain mean. It mixes ratings with telemetry; open an agent for its filtered score.',
+      label: 'Page raw average',
+      value: avg !== null ? formatScore(avg) : '—',
+      hint: s ? `${s.total} feedback across ${s.rated} ${s.rated === 1 ? 'agent' : 'agents'} on this page` : '',
+      title: 'Simple average of the raw on-chain means for agents on this page. It mixes ratings with telemetry; open an agent for its filtered score.',
       loading: s === null,
-      tone: s && s.avg >= 75 ? 'good' : s && s.avg > 0 ? undefined : 'quiet',
-      meter: s && s.avg > 0 ? { kind: 'gauge', value: s.avg } : undefined,
+      tone: avg !== null && avg >= 75 ? 'good' : undefined,
+      meter: avg !== null && avg > 0 ? { kind: 'gauge', value: avg } : undefined,
     },
   ]
 })

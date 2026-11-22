@@ -19,6 +19,7 @@ import { sourceFor } from '../data'
 import { dailyColumns, valueHistogram } from '../data/chartData'
 import { loadFeedWindow, type FeedWindow } from '../data/feed'
 import { fetchFunding } from '../data/funding'
+import { buildRatingLayer } from '../data/reputation/units'
 import { buildReviewerProfile, LABEL_INFO } from '../data/reviewerProfile'
 import { MIN_NONCE } from '../data/txChecks'
 import { errorMessage, formatDate, formatNumber, formatPercent, formatScore, formatTimeline, shortAddress } from '../format'
@@ -92,17 +93,17 @@ const tiles = computed<Tile[]>(() => {
     { label: 'Feedback', value: String(p.rows), hint: p.revoked ? `${p.revoked} revoked` : 'none revoked', tone: 'main' },
     { label: 'Agents rated', value: String(p.agents), hint: p.perAgent[0] ? `most on #${p.perAgent[0].tokenId} (${p.perAgent[0].rows})` : '' },
     {
-      label: 'Average given',
-      value: formatNumber(p.average),
-      hint: 'non-revoked feedback',
-      meter: p.average === null || p.average === undefined ? undefined : { kind: 'gauge', value: p.average },
+      label: 'Average rating',
+      value: p.ratingAverage === null ? '—' : formatNumber(p.ratingAverage),
+      hint: `${p.ratingRows} scored rating${p.ratingRows === 1 ? '' : 's'}, normalised`,
+      meter: p.ratingAverage === null ? undefined : { kind: 'gauge', value: p.ratingAverage },
     },
     {
-      label: 'Most common value',
-      value: p.mode ? formatScore(p.mode.value) : '—',
-      hint: p.mode ? `${formatPercent(p.mode.share)} of feedback` : '',
+      label: 'Most common rating',
+      value: p.ratingMode ? formatScore(p.ratingMode.value) : '—',
+      hint: p.ratingMode ? `${formatPercent(p.ratingMode.share)} of scored ratings` : '',
       tone: p.labels.includes('rubber-stamp') ? 'warn' : undefined,
-      meter: p.mode ? { kind: 'gauge', value: p.mode.value } : undefined,
+      meter: p.ratingMode ? { kind: 'gauge', value: p.ratingMode.value } : undefined,
     },
     { label: 'Busiest 24h', value: String(p.peakPerDay), hint: 'feedback in one day', tone: p.labels.includes('bulk') ? 'warn' : undefined },
     {
@@ -122,7 +123,13 @@ const tabs = computed<Tab[]>(() => [
   { id: 'feedback', label: 'Latest feedback', icon: MessageSquare, count: feed.value?.items.length },
 ])
 
-const valueColumns = computed(() => valueHistogram((feed.value?.items ?? []).filter((r) => !r.revoked).map((r) => r.value)))
+const ratingValues = computed(() => {
+  const items = feed.value?.items ?? []
+  // Ratings only, read on each agent's own scale; telemetry and revenue are
+  // not on a 0–100 quality gauge.
+  return buildRatingLayer(items).classified.flatMap((c, i) => (!items[i].revoked && c.kind === 'rating' && c.r !== null ? [c.r * 100] : []))
+})
+const valueColumns = computed(() => valueHistogram(ratingValues.value))
 const timeColumns = computed(() =>
   dailyColumns(feed.value?.items ?? [], (r) => r.createdAt, () => 'count', ['count'], { count: 'feedback' }),
 )
@@ -133,7 +140,7 @@ const agentRows = useSort(
   [
     { key: 'agent', value: (a) => a.agentName ?? `Agent #${a.tokenId}` },
     { key: 'reviews', value: (a) => a.rows, numeric: true },
-    { key: 'average', value: (a) => a.average, numeric: true },
+    { key: 'average', value: (a) => a.ratingAverage, numeric: true },
     { key: 'revoked', value: (a) => a.revoked, numeric: true },
   ],
 )
@@ -227,7 +234,7 @@ function agentRoute(tokenId: bigint) {
         </section>
 
         <div class="chart-grid">
-          <ColumnChart title="Values it gave" :columns="valueColumns" :series="COUNT_SERIES" />
+          <ColumnChart title="Ratings it gave, normalised" :columns="valueColumns" :series="COUNT_SERIES" />
           <ColumnChart title="Feedback over time" :columns="timeColumns" :series="COUNT_SERIES" />
         </div>
       </template>
@@ -241,7 +248,7 @@ function agentRoute(tokenId: bigint) {
                 <tr>
                   <SortHeader label="Agent" :active="agentRows.state('agent')" @sort="agentRows.toggle('agent')" />
                   <SortHeader label="Feedback" numeric :active="agentRows.state('reviews')" @sort="agentRows.toggle('reviews')" />
-                  <SortHeader label="Average" numeric :active="agentRows.state('average')" @sort="agentRows.toggle('average')" />
+                  <SortHeader label="Avg rating" numeric :active="agentRows.state('average')" @sort="agentRows.toggle('average')" />
                   <SortHeader label="Revoked" numeric :active="agentRows.state('revoked')" @sort="agentRows.toggle('revoked')" />
                 </tr>
               </thead>
@@ -262,7 +269,7 @@ function agentRoute(tokenId: bigint) {
                     <small class="muted"> #{{ a.tokenId }}</small>
                   </td>
                   <td class="num">{{ a.rows }}</td>
-                  <td class="num">{{ formatNumber(a.average) }}</td>
+                  <td class="num">{{ a.ratingAverage === null ? '—' : formatNumber(a.ratingAverage) }}</td>
                   <td class="num">{{ a.revoked || '' }}</td>
                 </tr>
               </tbody>
@@ -310,7 +317,7 @@ function agentRoute(tokenId: bigint) {
                     <span v-else class="muted">—</span>
                   </td>
                   <td class="nowrap">
-                    <a v-if="toDisplayUrl(r.feedbackURI)" :href="toDisplayUrl(r.feedbackURI)" target="_blank" rel="noopener noreferrer" title="Feedback file (effchain file)">
+                    <a v-if="toDisplayUrl(r.feedbackURI)" :href="toDisplayUrl(r.feedbackURI)" target="_blank" rel="noopener noreferrer" title="Feedback file (off-chain file)">
                       · file ↗
                     </a>
                     <span v-else class="muted">—</span>

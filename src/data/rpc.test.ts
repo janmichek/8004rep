@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ContractFunctionRevertedError, type Address, type PublicClient } from 'viem'
 import { identityAbi, reputationAbi } from '../abi'
-import { createRpcSource, findCount, getScores, zipFeedback } from './rpc'
+import { createRpcSource, findCount, getScores, newestFirst, zipFeedback } from './rpc'
 import type { ChainInfo } from '../chains'
 
 /** Registry with ids 0..count-1; records how many probes were made. */
@@ -65,6 +65,19 @@ describe('zipFeedback', () => {
       { client: '0x00000000000000000000000000000000000000a1', index: 1, value: 85, tag1: 'starred', revoked: false },
       { client: '0x00000000000000000000000000000000000000b2', index: 1, value: 90.5, tag2: 'swap', revoked: true },
     ])
+  })
+})
+
+describe('newestFirst', () => {
+  it('sorts dated rows newest-first and leaves undated rows last in their original order', () => {
+    const rows = [
+      { client: '0xa' as Address, value: 1, revoked: false },
+      { client: '0xb' as Address, value: 2, revoked: false, createdAt: 100 },
+      { client: '0xc' as Address, value: 3, revoked: false, createdAt: 300 },
+      { client: '0xd' as Address, value: 4, revoked: false },
+      { client: '0xe' as Address, value: 5, revoked: false, createdAt: 200 },
+    ]
+    expect(newestFirst(rows).map((r) => r.value)).toEqual([3, 5, 2, 1, 4])
   })
 })
 

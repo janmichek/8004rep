@@ -197,7 +197,7 @@ function scrollToTop(): void {
       <dl class="metric-list">
         <dt>low</dt>
         <dd>Under {{ THIN_WEIGHT }} full votes or under {{ THIN_WALLETS }} wallets.</dd>
-        <dt>moderate</dt>
+        <dt>medium</dt>
         <dd>Anything between low and high.</dd>
         <dt>high</dt>
         <dd>{{ STRONG_WEIGHT }}+ full votes, {{ STRONG_NEFF }}+ effective voices, and no wallet holding {{ DOMINANT_SHARE * 100 }}% of the weight.</dd>

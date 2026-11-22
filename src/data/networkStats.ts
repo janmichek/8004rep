@@ -27,6 +27,8 @@ export type NetworkStats = {
   agents: number
   reviewers: number
   average: number | null
+  /** Scored rating values, normalised to 0–100, for charts. */
+  ratingValues: number[]
   /** Share of non-revoked rows at 100 or more. */
   perfectShare: number | null
   revoked: number
@@ -66,21 +68,29 @@ export function jaccard(a: Set<string>, b: Set<string>): number {
 export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkStats {
   const live = rows.filter((r) => !r.revoked)
   const dates = rows.map((r) => r.createdAt).filter((t): t is number => t !== undefined)
-  const byAgent = groupBy(rows, (r) => r.tokenId.toString())
+  // Token IDs repeat between chains; an agent is (chain, token).
+  const byAgent = groupBy(rows, (r) => `${r.chainId ?? ''}:${r.tokenId}`)
   const byClient = groupBy(rows, (r) => r.client.toLowerCase())
   // The headline average is over ratings only, read on their own scale: a
   // network mean that mixes 5-star reviews, uptime and revenue is not a score.
-  const ratings = buildRatingLayer(rows)
-    .classified.flatMap((c, i) => (!rows[i].revoked && c.kind === 'rating' && c.r !== null ? [c.r] : []))
+  const isSelf = (row: FeedbackEvent): boolean =>
+    Boolean(row.agentOwner) && row.client.toLowerCase() === row.agentOwner!.toLowerCase()
+  const ratedOf = (group: FeedbackEvent[]): number[] =>
+    buildRatingLayer(group, { ...(group[0]?.agentOwner ? { self: [group[0].agentOwner] } : {}) })
+      .classified.flatMap((c, i) => (!group[i].revoked && !isSelf(group[i]) && c.kind === 'rating' && c.r !== null ? [c.r * 100] : []))
+  const ratings = [...byAgent.values()].flatMap((group) => ratedOf(group))
 
   const topAgents: AgentActivity[] = [...byAgent.values()]
-    .map((group) => ({
-      tokenId: group[0].tokenId,
-      ...(group.find((r) => r.agentName)?.agentName ? { agentName: group.find((r) => r.agentName)!.agentName } : {}),
-      rows: group.length,
-      reviewers: new Set(group.map((r) => r.client.toLowerCase())).size,
-      average: mean(group.filter((r) => !r.revoked).map((r) => r.value)),
-    }))
+    .map((group) => {
+      const agentRatings = ratedOf(group)
+      return {
+        tokenId: group[0].tokenId,
+        ...(group.find((r) => r.agentName)?.agentName ? { agentName: group.find((r) => r.agentName)!.agentName } : {}),
+        rows: group.length,
+        reviewers: new Set(group.filter((r) => !r.revoked && !isSelf(r)).map((r) => r.client.toLowerCase())).size,
+        average: agentRatings.length ? mean(agentRatings) : null,
+      }
+    })
     .sort((a, b) => b.rows - a.rows)
     .slice(0, topN)
 
@@ -91,7 +101,7 @@ export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkSt
         client: group[0].client,
         rows: profile.rows,
         agents: profile.agents,
-        average: profile.average,
+        average: profile.ratingAverage,
         labels: profile.labels,
         suspicion: suspicionOf(profile.labels),
       }
@@ -105,7 +115,7 @@ export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkSt
       key,
       tokenId: group[0].tokenId,
       agentName: group.find((r) => r.agentName)?.agentName,
-      reviewers: new Set(group.map((r) => r.client.toLowerCase())),
+      reviewers: new Set(group.filter((r) => !r.revoked && !isSelf(r)).map((r) => r.client.toLowerCase())),
     }))
     .filter((a) => a.reviewers.size >= LOOKALIKE_MIN_SHARED)
   const parent = new Map(sets.map((s) => [s.key, s.key]))
@@ -138,8 +148,9 @@ export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkSt
     rows: rows.length,
     agents: byAgent.size,
     reviewers: byClient.size,
-    average: ratings.length ? (mean(ratings) ?? 0) * 100 : null,
-    perfectShare: ratings.length ? ratings.filter((r) => r >= 0.99).length / ratings.length : null,
+    average: ratings.length ? mean(ratings) : null,
+    ratingValues: ratings,
+    perfectShare: ratings.length ? ratings.filter((r) => r >= 99).length / ratings.length : null,
     revoked: rows.length - live.length,
     ...(dates.length ? { from: Math.min(...dates), to: Math.max(...dates) } : {}),
     topAgents,

@@ -43,17 +43,40 @@ describe('computeFeedbackStats reviews', () => {
     expect(rows[2].flags).toEqual(['revoked'])
   })
 
-  it('marks a value far from the rest as an outlier with its robust z', () => {
-    const feedback = [80, 82, 84, 86, 88, 90, -400].map((v, i) => row(A, v, { tag1: `t${i}` }))
+  it('marks a rating far from the rest as an outlier with its robust z', () => {
+    const feedback = [80, 82, 84, 86, 88, 90, 10].map((v) => row(A, v, { tag1: 'starred' }))
     const { rows } = computeFeedbackStats(feedback, { now: NOW })
     expect(rows[6].flags).toContain('outlier')
-    expect(rows[6].flags).toContain('out-of-range')
+    expect(rows[6].flags).not.toContain('out-of-range')
     expect(rows[6].deviation as number).toBeLessThan(-3.5)
     expect(rows[2].flags).not.toContain('outlier')
   })
 
+  it('does not call a revenue row off-scale or an outlier', () => {
+    const feedback = [
+      ...Array.from({ length: 5 }, (_, i) => row(A, 80 + i, { tag1: 'starred' })),
+      row(B, 12_000, { tag1: 'revenue' }),
+      row(C, 250, { tag1: 'responseTime' }),
+    ]
+    const { rows } = computeFeedbackStats(feedback, { now: NOW })
+    expect(rows[5].flags).not.toContain('out-of-range')
+    expect(rows[5].flags).not.toContain('outlier')
+    expect(rows[6].flags).not.toContain('out-of-range')
+  })
+
+  it('flags an off-scale rating against its inferred scale', () => {
+    const { rows } = computeFeedbackStats(
+      [...Array.from({ length: 5 }, (_, i) => row(A, 80 + i, { tag1: 'starred' })), row(B, 400, { tag1: 'starred' })],
+      { now: NOW },
+    )
+    expect(rows[5].flags).toContain('out-of-range')
+  })
+
   it('does not judge spread on fewer than five reviews', () => {
-    const { rows } = computeFeedbackStats([row(A, 1), row(B, 2), row(C, 1000)], { now: NOW })
+    const { rows } = computeFeedbackStats(
+      [row(A, 1, { tag1: 'starred' }), row(B, 2, { tag1: 'starred' }), row(C, 100, { tag1: 'starred' })],
+      { now: NOW },
+    )
     expect(rows.every((r) => r.deviation === null)).toBe(true)
   })
 
@@ -117,8 +140,8 @@ describe('computeFeedbackStats signals', () => {
     expect(signal?.text).toContain('4 of 5')
   })
 
-  it('reports an average that hinges on a single reviewer', () => {
-    const feedback = [row(A, 100), row(A, 95), row(B, 0), row(C, 5)]
+  it('reports a rating average that hinges on a single reviewer', () => {
+    const feedback = [row(A, 100, { tag1: 'starred' }), row(A, 95, { tag1: 'starred' }), row(B, 0, { tag1: 'starred' }), row(C, 5, { tag1: 'starred' })]
     expect(codes(feedback)).toContain('fragile')
   })
 
@@ -132,16 +155,16 @@ describe('computeFeedbackStats signals', () => {
     expect(codes(steady)).not.toContain('surge')
   })
 
-  it('reports a falling recent average', () => {
+  it('reports a falling recent rating average', () => {
     const feedback = [
-      row(A, 90, { createdAt: NOW - 100 * DAY }),
-      row(B, 95, { createdAt: NOW - 90 * DAY }),
-      row(C, 20, { createdAt: NOW - 20 * DAY }),
-      row(A, 10, { createdAt: NOW - 12 * DAY }),
+      row(A, 90, { tag1: 'starred', createdAt: NOW - 100 * DAY }),
+      row(B, 95, { tag1: 'starred', createdAt: NOW - 90 * DAY }),
+      row(C, 20, { tag1: 'starred', createdAt: NOW - 20 * DAY }),
+      row(A, 10, { tag1: 'starred', createdAt: NOW - 12 * DAY }),
     ]
     const stats = computeFeedbackStats(feedback, { now: NOW })
     expect(stats.signals.find((s) => s.code === 'decline')?.text).toBe(
-      'Last 30 days average 15 (n=2) vs 92.50 before (n=2)',
+      'Last 30 days rating average 15 (n=2) vs 92.50 before (n=2)',
     )
   })
 
@@ -152,9 +175,9 @@ describe('computeFeedbackStats signals', () => {
 
   it('stays clean for a few independent, dated, agreeing reviews', () => {
     const feedback = [
-      row(A, 90, { createdAt: NOW - 60 * DAY }),
-      row(B, 85, { createdAt: NOW - 40 * DAY }),
-      row(C, 88, { createdAt: NOW - 20 * DAY }),
+      row(A, 90, { tag1: 'starred', createdAt: NOW - 60 * DAY }),
+      row(B, 85, { tag1: 'starred', createdAt: NOW - 40 * DAY }),
+      row(C, 88, { tag1: 'starred', createdAt: NOW - 20 * DAY }),
     ]
     const stats = computeFeedbackStats(feedback, { now: NOW })
     expect(stats.signals).toEqual([])
@@ -163,12 +186,14 @@ describe('computeFeedbackStats signals', () => {
 
   it('orders signals worst first and counts evidence', () => {
     const feedback = [
-      row(OWNER, 500, { txHash: '0x01', feedbackURI: 'ipfs://x', createdAt: NOW - DAY }),
-      row(A, 60, { endpoint: 'https://a.example' }),
+      row(OWNER, 500, { tag1: 'starred', txHash: '0x01', feedbackURI: 'ipfs://x', createdAt: NOW - DAY }),
+      row(A, 60, { tag1: 'starred', endpoint: 'https://a.example' }),
+      row(C, 400, { tag1: 'starred' }),
     ]
     const stats = computeFeedbackStats(feedback, { agentWallet: OWNER, now: NOW })
-    expect(stats.signals.map((s) => s.level)).toEqual(['high', 'warn', 'info', 'info'])
     expect(stats.signals[0].code).toBe('self')
-    expect(stats.coverage).toEqual({ total: 2, dated: 1, withTx: 1, withUri: 1, withEndpoint: 1 })
+    expect(stats.signals[0].level).toBe('high')
+    expect(stats.signals.some((s) => s.code === 'off-scale')).toBe(true)
+    expect(stats.coverage).toEqual({ total: 3, dated: 1, withTx: 1, withUri: 1, withEndpoint: 1 })
   })
 })

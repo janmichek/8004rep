@@ -1,4 +1,5 @@
 import type { Address } from 'viem'
+import { classify } from './reputation/kinds'
 import type { FeedbackEvent } from './types'
 
 const DAY = 86400
@@ -20,13 +21,13 @@ export type ReviewerLabel = 'rubber-stamp' | 'single-agent' | 'bulk' | 'mass' | 
 export const LABEL_INFO: Record<ReviewerLabel, { label: string; rule: string; tone: 'warn' | 'info' }> = {
   'rubber-stamp': {
     label: 'rubber stamp',
-    rule: `${MIN_PATTERN_ROWS}+ reviews and at least ${STAMP_SHARE * 100}% of them carry the same value.`,
+    rule: `${MIN_PATTERN_ROWS}+ scored ratings and at least ${STAMP_SHARE * 100}% of them carry the same normalised value.`,
     tone: 'warn',
   },
   'single-agent': { label: 'one agent only', rule: '3+ reviews, every one on the same agent.', tone: 'warn' },
   bulk: { label: 'bulk writer', rule: `${BULK_PER_DAY}+ reviews within one 24h window.`, tone: 'warn' },
   mass: { label: 'mass reviewer', rule: `Rated ${MASS_AGENTS}+ different agents.`, tone: 'info' },
-  harsh: { label: 'harsh', rule: `${MIN_PATTERN_ROWS}+ reviews averaging ${HARSH_AVERAGE} or less.`, tone: 'info' },
+  harsh: { label: 'harsh', rule: `${MIN_PATTERN_ROWS}+ scored ratings averaging ${HARSH_AVERAGE}/100 or less.`, tone: 'info' },
 }
 
 export type AgentShare = {
@@ -35,6 +36,8 @@ export type AgentShare = {
   agentName?: string
   rows: number
   average: number | null
+  /** Scored ratings on this agent only, normalised to 0–100. */
+  ratingAverage: number | null
   revoked: number
 }
 
@@ -43,10 +46,15 @@ export type ReviewerProfile = {
   rows: number
   revoked: number
   agents: number
-  /** Over non-revoked rows. */
+  /** Over non-revoked rows, raw values of every kind. */
   average: number | null
-  /** Most common value and its share of non-revoked rows. */
+  /** Most common raw value and its share of non-revoked rows. */
   mode: { value: number; share: number } | null
+  /** Scored rating rows only, normalised to 0–100. */
+  ratingRows: number
+  ratingAverage: number | null
+  /** Most common normalised rating and its share of scored ratings, 0–100. */
+  ratingMode: { value: number; share: number } | null
   first?: number
   last?: number
   /** Most rows inside any 24h window. */
@@ -92,9 +100,15 @@ export function buildReviewerProfile(address: Address, rows: FeedbackEvent[]): R
     if (group) group.push(r)
     else byAgent.set(key, [r])
   }
+  const ratingValues: number[] = []
   const perAgent: AgentShare[] = [...byAgent.values()]
     .map((group) => {
       const ok = group.filter((r) => !r.revoked)
+      // Normalise on each agent's own tag scale, then pool the ratings: a
+      // reviewer's 5/5 and 100/100 are the same habit, not 5 and 100.
+      const { rows: rated } = classify(ok)
+      const agentRatings = rated.flatMap((c) => (c.kind === 'rating' && c.r !== null ? [c.r * 100] : []))
+      ratingValues.push(...agentRatings)
       const name = group.find((r) => r.agentName)?.agentName
       const chainId = group[0].chainId
       return {
@@ -103,23 +117,29 @@ export function buildReviewerProfile(address: Address, rows: FeedbackEvent[]): R
         ...(name ? { agentName: name } : {}),
         rows: group.length,
         average: mean(ok.map((r) => r.value)),
+        ratingAverage: mean(agentRatings),
         revoked: group.length - ok.length,
       }
     })
     .sort((a, b) => b.rows - a.rows || (a.tokenId < b.tokenId ? -1 : 1))
 
   const average = mean(values)
+  const ratingCounts = new Map<number, number>()
+  for (const v of ratingValues) ratingCounts.set(v, (ratingCounts.get(v) ?? 0) + 1)
+  const topRating = [...ratingCounts.entries()].sort((a, b) => b[1] - a[1])[0]
+  const ratingMode = topRating && ratingValues.length ? { value: topRating[0], share: topRating[1] / ratingValues.length } : null
+  const ratingAverage = mean(ratingValues)
   const peakPerDay = peakWithin(dates, DAY)
   const perChain = new Map<number, number>()
   for (const r of rows) if (r.chainId !== undefined) perChain.set(r.chainId, (perChain.get(r.chainId) ?? 0) + 1)
   const chainIds = [...perChain.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0]).map(([id]) => id)
 
   const labels: ReviewerLabel[] = []
-  if (mode && live.length >= MIN_PATTERN_ROWS && mode.share >= STAMP_SHARE) labels.push('rubber-stamp')
+  if (ratingMode && ratingValues.length >= MIN_PATTERN_ROWS && ratingMode.share >= STAMP_SHARE) labels.push('rubber-stamp')
   if (rows.length >= 3 && perAgent.length === 1) labels.push('single-agent')
   if (peakPerDay >= BULK_PER_DAY) labels.push('bulk')
   if (perAgent.length >= MASS_AGENTS) labels.push('mass')
-  if (average !== null && live.length >= MIN_PATTERN_ROWS && average <= HARSH_AVERAGE) labels.push('harsh')
+  if (ratingAverage !== null && ratingValues.length >= MIN_PATTERN_ROWS && ratingAverage <= HARSH_AVERAGE) labels.push('harsh')
 
   return {
     address,
@@ -128,6 +148,9 @@ export function buildReviewerProfile(address: Address, rows: FeedbackEvent[]): R
     agents: perAgent.length,
     average,
     mode,
+    ratingRows: ratingValues.length,
+    ratingAverage,
+    ratingMode,
     ...(dates.length ? { first: Math.min(...dates), last: Math.max(...dates) } : {}),
     peakPerDay,
     perAgent,
