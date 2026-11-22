@@ -74,7 +74,7 @@ const shape = computed(() => [
   { label: 'Top wallet', value: formatPercent(props.rep.concentration.top1), rule: 'Largest share of the weight after the per-wallet cap.' },
   { label: 'Top three', value: formatPercent(props.rep.concentration.top3), rule: 'Share of the weight held by the three largest wallets.' },
   { label: 'Effective voices', value: formatNumber(props.rep.concentration.neff), rule: '1 / HHI over wallet weights; 1 = one wallet holds it all.' },
-  { label: 'Largest influence', value: formatPercent(props.rep.concentration.maxInfluence), rule: 'Largest wallet share of (prior + weights); the prior alone is 3/6 = 50% for one wallet.' },
+  { label: 'Largest influence', value: formatPercent(props.rep.concentration.maxInfluence), rule: 'Largest wallet share of (prior + weights); one full wallet against a prior of 3 holds 1/(3+1) = 25%.' },
   { label: 'Rows scored', value: formatPercent(props.rep.funnel.feedback ? props.rep.funnel.ratedRows / props.rep.funnel.feedback : null), rule: 'Rating rows inside their scale, out of every row read.' },
 ])
 
@@ -83,7 +83,6 @@ const funnel = computed(() => [
   { label: 'Rating rows', n: props.rep.funnel.ratedRows },
   { label: 'Rating units', n: props.rep.funnel.units, hint: 'one per wallet, tag and 30-day window' },
   { label: 'Wallets', n: props.rep.funnel.wallets },
-  { label: 'Wallets carrying weight', n: props.rep.funnel.walletsAfterCap },
 ])
 
 

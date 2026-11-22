@@ -9,10 +9,10 @@ import type { LadderId, TrustReport } from '../../data/trustReport'
 import type { Feedback } from '../../data/types'
 import { formatNumber, formatPercent, formatSigned } from '../../format'
 import ActivityGrid from '../ui/ActivityGrid.vue'
-import ColumnChart from '../ui/ColumnChart.vue'
+import ColumnChart, { type Series } from '../ui/ColumnChart.vue'
 import Hint from '../ui/Hint.vue'
 import SeverityIcon from '../ui/SeverityIcon.vue'
-import { COUNT_SERIES, WEIGHT_LABELS, WEIGHT_SERIES, weightClass } from '../ui/palette'
+import { COUNT_SERIES } from '../ui/palette'
 
 const props = defineProps<{ feedback: Feedback[]; stats: FeedbackStats; report: TrustReport; rep: ReputationReport }>()
 
@@ -21,18 +21,25 @@ const STEP_DOCS: Record<string, string> = {
   all: 'raw-onchain',
   revoked: 'revoked',
   ratings: 'rating-only',
+  self: 'rating-only',
   units: 'rating-unit',
   cap: 'wallet-vote',
   prior: 'prior',
 }
 
+/** Rating rows are the ones that enter the score; everything else is shown, not scored. */
+const ACTIVITY_SERIES: Series[] = [
+  { key: 'rating', label: 'scored rating', color: '#0ca30c' },
+  { key: 'other', label: 'not scored', color: '#3987e5' },
+  { key: 'revoked', label: 'revoked', color: '#5b6472' },
+]
 const activity = computed(() =>
   dailyColumns(
-    props.feedback.map((row, i) => ({ row, weight: props.stats.rows[i].weight })),
+    props.feedback.map((row, i) => ({ row, kind: props.stats.rows[i].kind, rating: props.stats.rows[i].rating })),
     (d) => d.row.createdAt,
-    (d) => weightClass(d.row.revoked, d.weight),
-    WEIGHT_SERIES.map((s) => s.key),
-    WEIGHT_LABELS,
+    (d) => (d.row.revoked ? 'revoked' : d.kind === 'rating' && d.rating !== null ? 'rating' : 'other'),
+    ACTIVITY_SERIES.map((s) => s.key),
+    Object.fromEntries(ACTIVITY_SERIES.map((s) => [s.key, s.label])),
   ),
 )
 const undated = computed(() => props.feedback.filter((f) => f.createdAt === undefined).length)
@@ -64,17 +71,6 @@ const dedupedFindings = computed(() => {
   return props.rep.findings.filter((f) => !(hasConcentration && f.code === 'repeat'))
 })
 
-// Drop strength reasons that restate a risk signal already shown (e.g. "a single
-// reviewer carries all the weight" next to a concentration signal).
-const dedupedReasons = computed(() => {
-  const hasConcentration = props.stats.signals.some((s) => s.code === 'concentration')
-  return props.report.strength.reasons.filter((r) => {
-    if (!hasConcentration) return true
-    const lower = r.toLowerCase()
-    return !lower.includes('reviewer') && !lower.includes('weight')
-  })
-})
-
 const coverage = computed(() => {
   const c = props.stats.coverage
   return [
@@ -101,19 +97,15 @@ const coverage = computed(() => {
             <td class="signal-level"><SeverityIcon :level="finding.level" /></td>
             <td>{{ finding.text }}</td>
           </tr>
-          <tr v-for="reason in dedupedReasons" :key="`reason-${reason}`" class="level-info">
-            <td class="signal-level"><SeverityIcon level="info" /></td>
-            <td>{{ reason }}</td>
-          </tr>
         </tbody>
       </table>
-      <p v-if="!stats.signals.length" class="muted">No warning signs in this feedback.</p>
+      <p v-if="!stats.signals.length && !dedupedFindings.length" class="muted">No warning signs in this feedback.</p>
     </section>
 
     <ActivityGrid label="Activity" :times="datedTimes" />
 
     <div class="chart-grid">
-      <ColumnChart title="Feedback over time, by weight" :columns="activity" :series="WEIGHT_SERIES" />
+      <ColumnChart title="Feedback over time" :columns="activity" :series="ACTIVITY_SERIES" />
       <ColumnChart
         title="Rating values, normalised"
         :columns="distribution"
@@ -142,6 +134,9 @@ const coverage = computed(() => {
       <p v-if="rep.counts.outOfScale" class="muted note">
         {{ rep.counts.outOfScale }} rating row{{ rep.counts.outOfScale === 1 ? '' : 's' }} fall outside the scale inferred for the tag and are listed but not scored.
         <RouterLink :to="{ name: 'docs', hash: '#off-scale' }">Docs</RouterLink>
+      </p>
+      <p v-if="rep.counts.unknown" class="muted note">
+        {{ rep.counts.unknown }} row{{ rep.counts.unknown === 1 ? ' has' : 's have' }} no tag or an unknown tag, so {{ rep.counts.unknown === 1 ? 'it is' : 'they are' }} listed but not scored.
       </p>
     </section>
 
@@ -204,6 +199,9 @@ const coverage = computed(() => {
           <span class="bar-note muted">{{ m.n }} of {{ stats.coverage.total }}</span>
         </li>
       </ul>
+      <p class="muted note">
+        The file rung counts a <code>feedbackURI</code>, not whether its payment proof or hash verifies. Those checks run per row in Tx detail.
+      </p>
     </section>
     </div>
 

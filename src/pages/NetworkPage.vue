@@ -17,7 +17,7 @@ import { dailyColumns, valueHistogram } from '../data/chartData'
 import { loadFeedWindow, type FeedWindow } from '../data/feed'
 import { computeNetworkStats } from '../data/networkStats'
 import { LABEL_INFO } from '../data/reviewerProfile'
-import { fetchScanChainFeedback, fetchScanStats } from '../data/scan'
+import { fetchScanChainFeedback } from '../data/scan'
 import { errorMessage, formatDate, formatNumber, formatPercent, formatScore, formatTimeline, shortAddress } from '../format'
 import { toDisplayUrl } from '../data/metadata'
 import AddressIdenticon from '../components/AddressIdenticon.vue'
@@ -56,7 +56,6 @@ watch(
   { immediate: true },
 )
 
-const ecosystem = useAsync(() => fetchScanStats(), () => true)
 const network = useAsync(() => fetchScanChainFeedback(chain.value.chainId), chain)
 const stats = computed(() => (feed.value ? computeNetworkStats(feed.value.items) : undefined))
 
@@ -108,14 +107,9 @@ const tiles = computed<Tile[]>(() => {
     { label: 'Agents rated', value: String(s.agents) },
     { label: 'Reviewers', value: String(s.reviewers), hint: `${formatNumber(s.rows / Math.max(1, s.reviewers))} feedback each` },
     {
-      label: 'Average value',
+      label: 'Average rating',
       value: formatNumber(s.average),
-      hint: [
-        'ratings only, normalised',
-        ecosystem.data.value ? `ecosystem raw mean ${formatNumber(ecosystem.data.value.averageFeedback)}` : '',
-      ]
-        .filter(Boolean)
-        .join(' · '),
+      hint: 'scored ratings only, normalised',
       meter: s.average === null || s.average === undefined ? undefined : { kind: 'gauge', value: s.average },
     },
     {
@@ -149,7 +143,7 @@ const VOLUME_SERIES = [
   { ...WEIGHT_SERIES[0], label: 'live', color: COUNT_SERIES[0].color },
   WEIGHT_SERIES[3],
 ]
-const distribution = computed(() => valueHistogram((feed.value?.items ?? []).filter((r) => !r.revoked).map((r) => r.value)))
+const distribution = computed(() => valueHistogram(stats.value?.ratingValues ?? []))
 
 /** Sorts the full lists; the template slices afterwards so the top N stays correct. */
 const suspectRows = useSort(
@@ -241,10 +235,10 @@ function reviewerRoute(address: string) {
     <div class="chart-grid">
       <ColumnChart title="Feedback volume" :columns="volume" :series="VOLUME_SERIES" />
       <ColumnChart
-        title="Values given (non-revoked)"
+        title="Rating values, normalised"
         :columns="distribution"
         :series="COUNT_SERIES"
-        :marker="ecosystem.data.value ? { at: ecosystem.data.value.averageFeedback, label: `ecosystem avg ${formatNumber(ecosystem.data.value.averageFeedback)}` } : undefined"
+        :marker="stats.average !== null ? { at: stats.average, label: 'network avg' } : undefined"
       />
     </div>
 
@@ -258,7 +252,7 @@ function reviewerRoute(address: string) {
                 <SortHeader label="Reviewer" :active="suspectRows.state('reviewer')" @sort="suspectRows.toggle('reviewer')" />
                 <SortHeader label="Reviews" numeric :active="suspectRows.state('reviews')" @sort="suspectRows.toggle('reviews')" />
                 <SortHeader label="Agents" numeric :active="suspectRows.state('agents')" @sort="suspectRows.toggle('agents')" />
-                <SortHeader label="Average" numeric :active="suspectRows.state('average')" @sort="suspectRows.toggle('average')" />
+                <SortHeader label="Avg rating" numeric :active="suspectRows.state('average')" @sort="suspectRows.toggle('average')" />
                 <th>Why</th>
               </tr>
             </thead>
@@ -325,7 +319,7 @@ function reviewerRoute(address: string) {
                 <SortHeader label="Agent" :active="topAgentRows.state('agent')" @sort="topAgentRows.toggle('agent')" />
                 <SortHeader label="Feedback" numeric :active="topAgentRows.state('reviews')" @sort="topAgentRows.toggle('reviews')" />
                 <SortHeader label="Reviewers" numeric :active="topAgentRows.state('reviewers')" @sort="topAgentRows.toggle('reviewers')" />
-                <SortHeader label="Average" numeric :active="topAgentRows.state('average')" @sort="topAgentRows.toggle('average')" />
+                <SortHeader label="Avg rating" numeric :active="topAgentRows.state('average')" @sort="topAgentRows.toggle('average')" />
               </tr>
             </thead>
             <tbody>
@@ -394,7 +388,7 @@ function reviewerRoute(address: string) {
                   <span v-else class="muted">—</span>
                 </td>
                 <td class="nowrap">
-                  <a v-if="toDisplayUrl(r.feedbackURI)" :href="toDisplayUrl(r.feedbackURI)" target="_blank" rel="noopener noreferrer" title="Feedback file (effchain file)">
+                  <a v-if="toDisplayUrl(r.feedbackURI)" :href="toDisplayUrl(r.feedbackURI)" target="_blank" rel="noopener noreferrer" title="Feedback file (off-chain file)">
                     · file ↗
                   </a>
                   <span v-else class="muted">—</span>

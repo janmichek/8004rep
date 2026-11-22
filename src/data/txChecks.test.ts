@@ -333,7 +333,7 @@ describe('checks within the agent', () => {
     const duplicate = [row(A, 90), row(A, 90), row(C, 70)]
     expect(check('agent-weight', facts(), context(duplicate, { index: 1 }))).toMatchObject({
       status: 'fail',
-      detail: 'Weight 0 (duplicate): it does not count in the weighted score.',
+      detail: 'Weight 0 (duplicate).',
     })
   })
 

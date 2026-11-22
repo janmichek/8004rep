@@ -7,7 +7,7 @@ import { routes, useChain, useNetwork } from '../shared/use'
 const props = defineProps<{ slug: string }>()
 const chain = useChain(() => props.slug)
 const to = routes(() => chain.value)
-const { feed, error, loading, load, stats, ecosystem } = useNetwork(chain)
+const { feed, error, loading, load, stats } = useNetwork(chain)
 
 const health = computed(() => (stats.value?.perfectShare === null || stats.value?.perfectShare === undefined ? 'unknown' : stats.value.perfectShare > 0.7 ? 'critical' : stats.value.perfectShare > 0.4 ? 'watch' : 'nominal'))
 const healthTone = computed(() => (health.value === 'critical' ? 'bad' : health.value === 'watch' ? 'warn' : 'ok'))
@@ -28,7 +28,7 @@ const healthTone = computed(() => (health.value === 'critical' ? 'bad' : health.
       <h3>System condition</h3>
       <p style="margin: 0 0 8px"><span class="bp-stamp" :class="healthTone">{{ health }}</span></p>
       <div class="bp-kv"><span>Perfect values</span><b>{{ formatPercent(stats?.perfectShare) }}</b></div>
-      <div class="bp-kv"><span>Mean value</span><b>{{ formatNumber(stats?.average) }}</b></div>
+      <div class="bp-kv"><span>Mean rating</span><b>{{ formatNumber(stats?.average) }}</b></div>
       <div class="bp-kv"><span>Flagged reviewers</span><b>{{ stats?.suspects.length ?? '—' }}</b></div>
       <div class="bp-kv"><span>Mirror groups</span><b>{{ stats?.lookalikes.length ?? '—' }}</b></div>
     </div>
@@ -55,7 +55,7 @@ const healthTone = computed(() => (health.value === 'critical' ? 'bad' : health.
         <text x="390" y="96" text-anchor="middle" font-size="40">{{ stats.rows }}</text>
         <text x="390" y="118" text-anchor="middle" class="dim" font-size="9">EVENTS READ</text>
         <text x="390" y="136" text-anchor="middle" class="dim" font-size="9">{{ stats.revoked }} STRUCK</text>
-        <text x="390" y="152" text-anchor="middle" class="dim" font-size="9">MEAN {{ formatNumber(stats.average) }}</text>
+        <text x="390" y="152" text-anchor="middle" class="dim" font-size="9">MEAN RATING {{ formatNumber(stats.average) }}</text>
 
         <rect x="580" y="40" width="160" height="110" class="line" />
         <text x="660" y="70" text-anchor="middle" class="cyan" font-size="11">ASSEMBLIES</text>
@@ -70,7 +70,6 @@ const healthTone = computed(() => (health.value === 'critical' ? 'bad' : health.
         <text x="390" y="214" text-anchor="middle" class="dim" font-size="8">REVIEWER → AGENT EDGES ARE COLLAPSED; SEE ASSEMBLY DRAWINGS FOR PER-PART TOPOLOGY</text>
         <text x="390" y="245" text-anchor="middle" class="dim" font-size="8">
           {{ stats.from && stats.to ? `WINDOW ${formatDate(stats.from)} — ${formatDate(stats.to)}` : 'WINDOW UNDATED' }}
-          <template v-if="ecosystem.data.value"> · ECOSYSTEM MEAN {{ formatNumber(ecosystem.data.value.averageFeedback) }}</template>
         </text>
       </svg>
     </div>
@@ -126,7 +125,7 @@ const healthTone = computed(() => (health.value === 'critical' ? 'bad' : health.
           </li>
         </ul>
         <h2 class="bp-h2">Tolerances</h2>
-        <p class="bp-note">Values are read as drawn. A rating above 100 or below 0 is off the conventional scale and is noted on the part drawing.</p>
+        <p class="bp-note">Ratings are shown normalised to 0–100; rows off their tag's scale are listed but never scored.</p>
         <p class="bp-note">Flags are statistical, not findings: {{ stats.rows }} events, {{ stats.reviewers }} reviewers, {{ stats.revoked }} struck.</p>
       </aside>
     </div>

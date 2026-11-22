@@ -15,6 +15,7 @@ import type {
   AgentSummary,
   DataSource,
   Feedback,
+  FeedbackEvent,
   FeedbackQuery,
   ReputationSummary,
 } from './types'
@@ -79,6 +80,18 @@ export function zipFeedback([clients, indexes, values, decimals, tag1s, tag2s, r
     ...(tag2s[i] ? { tag2: tag2s[i] } : {}),
     revoked: revoked[i],
   }))
+}
+
+/**
+ * Contract reads return feedback grouped by client, not chronologically.
+ * Sort dated rows newest-first; keep undated rows in their original order
+ * after the dated ones (only the log scan can date them).
+ */
+export function newestFirst(rows: Feedback[]): Feedback[] {
+  const dated = rows.filter((r): r is Feedback & { createdAt: number } => r.createdAt !== undefined)
+  const undated = rows.filter((r) => r.createdAt === undefined)
+  dated.sort((a, b) => b.createdAt - a.createdAt)
+  return [...dated, ...undated]
 }
 
 function storedCount(key: string): bigint {
@@ -224,15 +237,22 @@ export function createRpcSource(chain: ChainInfo, client: PublicClient = createR
     const clients = await orNull(client.readContract({ ...reputation, functionName: 'getClients', args: [tokenId] }))
     if (!clients) return { reputation: null, feedback: [] }
     if (clients.length === 0) return { reputation: { count: 0, average: 0 }, feedback: [] }
+    const summaryClients = clients.length > MAX_SUMMARY_CLIENTS ? clients.slice(0, MAX_SUMMARY_CLIENTS) : clients
     const [sum, all] = await Promise.all([
-      orNull(client.readContract({ ...reputation, functionName: 'getSummary', args: [tokenId, clients, '', ''] })),
+      orNull(client.readContract({ ...reputation, functionName: 'getSummary', args: [tokenId, [...summaryClients], '', ''] })),
       orNull(
         client.readContract({ ...reputation, functionName: 'readAllFeedback', args: [tokenId, clients, '', '', true] }),
       ),
     ])
     return {
-      reputation: sum ? { count: Number(sum[0]), average: scaled(sum[1], sum[2]) } : null,
-      feedback: all ? zipFeedback(all).reverse() : [],
+      reputation: sum
+        ? {
+            count: Number(sum[0]),
+            average: scaled(sum[1], sum[2]),
+            ...(summaryClients.length < clients.length ? { capped: true } : {}),
+          }
+        : null,
+      feedback: all ? newestFirst(zipFeedback(all)) : [],
     }
   }
 
@@ -291,6 +311,9 @@ export function createRpcSource(chain: ChainInfo, client: PublicClient = createR
         feedbackSince = scanned.value.since
       }
       if (responses.status === 'fulfilled') feedback = attachResponses(feedback, responses.value)
+      // The contract returns rows grouped by client; only the scan above adds
+      // dates, so this is the first point where newest-first is meaningful.
+      feedback = newestFirst(feedback)
       return {
         ...agent,
         agentWallet: wallet && wallet !== zeroAddress ? wallet : null,
@@ -301,7 +324,30 @@ export function createRpcSource(chain: ChainInfo, client: PublicClient = createR
     },
 
     async listFeedback(query: FeedbackQuery) {
-      return scanFeedback(logs, chain, query)
+      const page = await scanFeedback(logs, chain, query)
+      // The feed carries the rated agent's owner and wallet so network scores
+      // can drop self-reviews, matching the agent page. These are optional
+      // metadata: one failed lookup must not lose the scanned feed page.
+      const ids = [...new Set(page.items.map((r) => r.tokenId.toString()))]
+      const metas = await Promise.all(
+        ids.map(async (id) => {
+          const [owner, wallet] = await Promise.all([
+            orNull(client.readContract({ ...identity, functionName: 'ownerOf', args: [BigInt(id)] })).catch(() => null),
+            orNull(client.readContract({ ...identity, functionName: 'getAgentWallet', args: [BigInt(id)] })).catch(() => null),
+          ])
+          return [id, { owner, wallet }] as const
+        }),
+      )
+      const byId = new Map(metas)
+      const items: FeedbackEvent[] = page.items.map((row) => {
+        const meta = byId.get(row.tokenId.toString())
+        return {
+          ...row,
+          ...(meta?.owner && meta.owner !== zeroAddress ? { agentOwner: meta.owner } : {}),
+          ...(meta?.wallet && meta.wallet !== zeroAddress ? { agentWallet: meta.wallet } : {}),
+        }
+      })
+      return { ...page, items }
     },
   }
 }

@@ -129,6 +129,16 @@ describe('distribution', () => {
       { day: day * 2, open: 70, high: 90, low: 60, close: 60, count: 3 },
     ])
   })
+  it('orders open and close by time, not by feed order', () => {
+    const day = 86400
+    const rows = [
+      { value: 60, revoked: false, createdAt: day * 2 + 30 },
+      { value: 90, revoked: false, createdAt: day * 2 + 20 },
+      { value: 70, revoked: false, createdAt: day * 2 + 10 },
+    ]
+    expect(candles(rows)).toEqual([{ day: day * 2, open: 70, high: 90, low: 60, close: 60, count: 3 }])
+  })
+
   it('places a seed deterministically inside the padded box', () => {
     const a = seededPoint('agent-1', 100, 50, 5)
     expect(a).toEqual(seededPoint('agent-1', 100, 50, 5))

@@ -11,7 +11,7 @@ import type { Column } from './sheet'
 const props = defineProps<{ slug: string }>()
 const chain = useChain(() => props.slug)
 const to = routes(() => chain.value)
-const { feed, error, loading, load, stats, ecosystem } = useNetwork(chain)
+const { feed, error, loading, load, stats } = useNetwork(chain)
 
 type Tab = 'summary' | 'feed' | 'agents' | 'reviewers' | 'suspects' | 'rings'
 const tab = ref<Tab>('summary')
@@ -85,8 +85,8 @@ const cells = computed(() => {
     { label: 'Rows', value: s.rows, formula: 'COUNT(feed)' },
     { label: 'Agents', value: s.agents, formula: 'COUNTUNIQUE(agentId)' },
     { label: 'Reviewers', value: s.reviewers, formula: 'COUNTUNIQUE(client)' },
-    { label: 'Average', value: formatNumber(s.average), formula: 'AVERAGE(value) non-revoked' },
-    { label: 'Ecosystem avg', value: formatNumber(ecosystem.data.value?.averageFeedback), formula: '8004scan stats' },
+    { label: 'Mean rating', value: formatNumber(s.average), formula: 'AVERAGE(normalised rating 0–100)' },
+    { label: 'Raw mean', value: formatNumber(s.rawAverage), formula: 'AVERAGE(value) non-revoked, non-self' },
     { label: 'Perfect 100s', value: formatPercent(s.perfectShare), formula: 'COUNTIF(value=100)/COUNT' },
     { label: 'Revoked', value: s.revoked, formula: 'COUNTIF(revoked)' },
     { label: 'Revoke rate', value: formatPercent(s.revoked / Math.max(1, s.rows)), formula: 'revoked / rows' },

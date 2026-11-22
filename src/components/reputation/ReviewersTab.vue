@@ -6,6 +6,7 @@ import ChainName from '../ChainName.vue'
 import { sourceFor } from '../../data'
 import { FLAG_INFO, type FeedbackStats } from '../../data/feedbackStats'
 import { clusterByFunder } from '../../data/funding'
+import type { ReputationReport } from '../../data/reputation/report'
 import { loadReviewerInsights, type ReviewerInsight } from '../../data/reviewerInsights'
 import { LABEL_INFO } from '../../data/reviewerProfile'
 import { MIN_NONCE } from '../../data/txChecks'
@@ -21,7 +22,7 @@ import ReviewerChip from '../ui/ReviewerChip.vue'
 import SeverityIcon from '../ui/SeverityIcon.vue'
 import SortHeader from '../ui/SortHeader.vue'
 
-const props = defineProps<{ agent: AgentDetail; chain: ChainInfo; stats: FeedbackStats; self: string[] }>()
+const props = defineProps<{ agent: AgentDetail; chain: ChainInfo; stats: FeedbackStats; rep: ReputationReport; self: string[] }>()
 
 const { open } = useRowLink()
 
@@ -29,13 +30,22 @@ const { open } = useRowLink()
 const LOOKUP = 12
 const SHOWN = 50
 
-const reviewers = computed(() => [...props.stats.reviewers].sort((a, b) => (b.weightShare ?? 0) - (a.weightShare ?? 0) || b.rows - a.rows))
+/** Score share and leave-one-out pull come from the filtered score, not the legacy row weights. */
+const reviewers = computed(() => {
+  const byClient = new Map(props.rep.contributions.map((c) => [c.client.toLowerCase(), c]))
+  return props.stats.reviewers
+    .map((r) => {
+      const contribution = byClient.get(r.client.toLowerCase())
+      return { ...r, scoreShare: contribution?.share ?? null, scoreWithout: contribution?.without ?? null }
+    })
+    .sort((a, b) => (b.scoreShare ?? 0) - (a.scoreShare ?? 0) || b.rows - a.rows)
+})
 const reviewerRows = useSort(reviewers, [
   { key: 'reviewer', value: (r) => r.client },
   { key: 'reviews', value: (r) => r.rows, numeric: true },
-  { key: 'weight', value: (r) => r.weightShare, numeric: true },
-  { key: 'average', value: (r) => r.average, numeric: true },
-  { key: 'without', value: (r) => r.shiftWithout, numeric: true },
+  { key: 'weight', value: (r) => r.scoreShare, numeric: true },
+  { key: 'average', value: (r) => r.ratingAverage, numeric: true },
+  { key: 'without', value: (r) => r.scoreWithout, numeric: true },
 ])
 
 const insights = reactive(new Map<string, ReviewerInsight>())
@@ -115,9 +125,9 @@ function isSelf(address: string): boolean {
         <tr>
           <SortHeader label="Reviewer" :active="reviewerRows.state('reviewer')" @sort="reviewerRows.toggle('reviewer')" />
           <SortHeader label="Reviews" numeric text="Reviews on this agent (revoked in brackets)" :active="reviewerRows.state('reviews')" @sort="reviewerRows.toggle('reviews')" />
-          <SortHeader label="Weight share" text="Share of the authenticity weight — pull on the trusted score" :active="reviewerRows.state('weight')" @sort="reviewerRows.toggle('weight')" />
-          <SortHeader label="Avg here" numeric text="Average of its non-revoked values here, with min–max" :active="reviewerRows.state('average')" @sort="reviewerRows.toggle('average')" />
-          <SortHeader label="Without it" numeric text="Raw average without this reviewer minus with it" :active="reviewerRows.state('without')" @sort="reviewerRows.toggle('without')" />
+          <SortHeader label="Score share" text="Share of the capped wallet weight behind the Filtered score" :active="reviewerRows.state('weight')" @sort="reviewerRows.toggle('weight')" />
+          <SortHeader label="Avg rating" numeric text="Normalised rating average here, with min–max; telemetry and metrics are excluded" :active="reviewerRows.state('average')" @sort="reviewerRows.toggle('average')" />
+          <SortHeader label="Score without it" numeric text="Filtered score without this reviewer's wallet minus the score with it" :active="reviewerRows.state('without')" @sort="reviewerRows.toggle('without')" />
           <th>Flags here</th>
           <Hint text="Its feedback on other agents, as far as the source reaches"><th>Elsewhere</th></Hint>
           <Hint text="Transactions sent, and who first sent it funds"><th>Wallet</th></Hint>
@@ -144,16 +154,16 @@ function isSelf(address: string): boolean {
           </td>
           <td class="num">{{ r.rows }}<span v-if="r.revoked" class="muted"> ({{ r.revoked }})</span></td>
           <td>
-            <span class="inline-meter" :title="`${formatPercent(r.weightShare)} of the weight, ${formatPercent(r.share)} of counted reviews`">
-              <span class="bar-track" aria-hidden="true"><span :style="{ width: `${(r.weightShare ?? 0) * 100}%` }" /></span>
-              {{ formatPercent(r.weightShare) }}
+            <span class="inline-meter" :title="`${formatPercent(r.scoreShare)} of the capped wallet weight, ${formatPercent(r.share)} of counted reviews`">
+              <span class="bar-track" aria-hidden="true"><span :style="{ width: `${(r.scoreShare ?? 0) * 100}%` }" /></span>
+              {{ r.scoreShare === null ? '—' : formatPercent(r.scoreShare) }}
             </span>
           </td>
           <td class="num">
-            {{ formatNumber(r.average) }}
-            <small v-if="r.min !== null && r.min !== r.max" class="muted">{{ formatNumber(r.min) }}–{{ formatNumber(r.max) }}</small>
+            {{ r.ratingAverage === null ? '—' : formatNumber(r.ratingAverage) }}
+            <small v-if="r.ratingMin !== null && r.ratingMin !== r.ratingMax" class="muted">{{ formatNumber(r.ratingMin) }}–{{ formatNumber(r.ratingMax) }}</small>
           </td>
-          <td class="num">{{ formatSigned(r.shiftWithout) }}</td>
+          <td class="num">{{ formatSigned(r.scoreWithout) }}</td>
           <td>
             <Hint v-for="flag in r.flags" :key="flag" :text="FLAG_INFO[flag].rule">
               <FlagChip :flag="flag" />
@@ -163,7 +173,7 @@ function isSelf(address: string): boolean {
             <template v-if="insightOf(r.client)?.profile">
               <span class="nowrap">
                 {{ insightOf(r.client)!.profile!.agents }} agent{{ insightOf(r.client)!.profile!.agents === 1 ? '' : 's' }} ·
-                avg {{ formatNumber(insightOf(r.client)!.profile!.average) }}<template v-if="insightOf(r.client)!.truncated">+</template>
+                rating avg {{ formatNumber(insightOf(r.client)!.profile!.ratingAverage) }}<template v-if="insightOf(r.client)!.truncated">+</template>
               </span>
               <Hint
                 v-for="label in insightOf(r.client)!.profile!.labels"

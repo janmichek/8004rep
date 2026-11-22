@@ -122,12 +122,14 @@ export function computeWeights(
   const reasons: WeightReason[][] = feedback.map(() => [])
   const factors: WeightFactors[] = feedback.map(() => ({ dup: 1, burst: 1, trust: 1 }))
   const selves = new Set(self.map((a) => a.toLowerCase()))
-  const seen = new Set<string>()
   let flaggedDuplicates = 0
   let flaggedSelf = 0
 
+  // Revoked rows must not make a live row look bursty, monotonous or
+  // hyperactive: they were withdrawn, so they no longer say anything.
   const byClient = new Map<string, number[]>()
   feedback.forEach((f, i) => {
+    if (f.revoked) return
     const c = f.client.toLowerCase()
     if (!byClient.has(c)) byClient.set(c, [])
     byClient.get(c)!.push(i)
@@ -136,6 +138,37 @@ export function computeWeights(
   for (const [c, idxs] of byClient) {
     const vals = new Set(idxs.map((i) => feedback[i].value))
     if (idxs.length >= 3 && vals.size === 1) monotonousClients.add(c)
+  }
+
+  // Feeds arrive newest-first, so the first occurrence is usually the newer
+  // repeat. Keep the newest row and mark the older originals as duplicates;
+  // without dates, keep the first row seen.
+  const dupGroups = new Map<string, number[]>()
+  feedback.forEach((f, i) => {
+    if (f.revoked || selves.has(f.client.toLowerCase())) return
+    const key = dupKey(f)
+    const group = dupGroups.get(key)
+    if (group) group.push(i)
+    else dupGroups.set(key, [i])
+  })
+  const duplicateKeep = new Set<number>()
+  for (const group of dupGroups.values()) {
+    let keep = group[0]
+    for (const i of group) {
+      const t = feedback[i].createdAt
+      const kept = feedback[keep].createdAt
+      const idx = feedback[i].index
+      const keptIdx = feedback[keep].index
+      // Feeds arrive newest-first, so an undated first row stays the keeper
+      // unless a later row has a date that proves it is newer. Dates that tie
+      // (or are both missing) fall back to the per-client feedback index.
+      if (t !== undefined && kept !== undefined) {
+        if (t > kept || (t === kept && idx !== undefined && (keptIdx === undefined || idx > keptIdx))) keep = i
+      } else if (t === undefined && kept === undefined && idx !== undefined && (keptIdx === undefined || idx > keptIdx)) {
+        keep = i
+      }
+    }
+    duplicateKeep.add(keep)
   }
 
   feedback.forEach((f, i) => {
@@ -151,15 +184,12 @@ export function computeWeights(
       return
     }
     let wDup = 1
-    const key = dupKey(f)
-    if (seen.has(key)) {
+    if (!duplicateKeep.has(i)) {
       wDup = 0
       flaggedDuplicates++
       reasons[i].push('duplicate')
-    } else {
-      seen.add(key)
     }
-    // Burst: same-client rows within ±24h of this row.
+    // Burst: same-client live rows within ±24h of this row.
     let wBurst = 1
     if (f.createdAt !== undefined) {
       const c = f.client.toLowerCase()
@@ -178,8 +208,9 @@ export function computeWeights(
     weights[i] = wDup * wBurst * wTrust
   })
 
-  const flaggedBursty = weights.filter((w, i) => !feedback[i].revoked && w > 0 && w < 0.5).length
-  const flaggedMonotonous = feedback.filter((f) => !f.revoked && monotonousClients.has(f.client.toLowerCase())).length
+  // `burst` is a specific flag; a monotonous 0.4 weight is not a burst.
+  const flaggedBursty = reasons.filter((r) => r.includes('burst')).length
+  const flaggedMonotonous = feedback.filter((f) => !f.revoked && !selves.has(f.client.toLowerCase()) && monotonousClients.has(f.client.toLowerCase())).length
   return { weights, reasons, factors, flaggedSelf, flaggedDuplicates, flaggedBursty, flaggedMonotonous }
 }
 
@@ -190,14 +221,18 @@ export function computeScores(feedback: Feedback[], opts: ScoreOptions = {}): Sc
 
   const validIdx = feedback.map((f, i) => ({ f, i })).filter(({ f }) => !f.revoked)
   const nValid = validIdx.length
-  const xs = validIdx.map(({ f }) => f.value)
-  const ws = validIdx.map(({ i }) => weights[i])
+  // Shape statistics use rows that can actually move the score. A self row
+  // weighs 0 and must not widen the range, shift the median or count as a
+  // positive score.
+  const scoredIdx = validIdx.filter(({ i }) => weights[i] > 0)
+  const xs = scoredIdx.map(({ f }) => f.value)
+  const ws = scoredIdx.map(({ i }) => weights[i])
   const W = ws.reduce((a, b) => a + b, 0)
 
   const clients = new Set(validIdx.map(({ f }) => f.client.toLowerCase()))
   const distinctClients = clients.size
 
-  const raw = mean(xs)
+  const raw = mean(validIdx.map(({ f }) => f.value))
   const weighted = W > 0 ? ws.reduce((a, w, k) => a + w * xs[k], 0) / W : null
   const median = medianOf(xs)
   const trimmed = trimmedMean(xs)
@@ -280,7 +315,7 @@ export function computeScores(feedback: Feedback[], opts: ScoreOptions = {}): Sc
     consensus = 1
     polarization = 0
   }
-  const posRate = nValid ? validIdx.filter(({ f }) => f.value > 0).length / nValid : null
+  const posRate = scoredIdx.length ? scoredIdx.filter(({ f }) => f.value > 0).length / scoredIdx.length : null
   const trustMass = n ? W / n : null
 
   // Client diversity.
@@ -303,7 +338,7 @@ export function computeScores(feedback: Feedback[], opts: ScoreOptions = {}): Sc
   const withEndpoint = validIdx.filter(({ f }) => f.endpoint).length
 
   const tagGroups = new Map<string, { xs: number[]; ws: number[] }>()
-  validIdx.forEach(({ f, i }) => {
+  scoredIdx.forEach(({ f, i }) => {
     const tag = f.tag1 || '(no tag)'
     if (!tagGroups.has(tag)) tagGroups.set(tag, { xs: [], ws: [] })
     tagGroups.get(tag)!.xs.push(f.value)

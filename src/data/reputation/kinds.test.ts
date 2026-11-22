@@ -22,8 +22,17 @@ describe('kindOf', () => {
 })
 
 describe('inferScale', () => {
-  it('reads 0/1 values as a pass flag', () => {
+  it('reads 0/1 values as a pass flag only when both outcomes are present', () => {
     expect(inferScale([0, 1, 1])).toMatchObject({ scale: 'binary', span: 1 })
+    // All-1s is ambiguous between a pass, 1/5 and 1/100; never call it 100%.
+    expect(inferScale([1, 1, 1])).toMatchObject({ scale: 'five', span: 5 })
+  })
+
+  it('does not turn a repeated low value into a perfect score', () => {
+    expect(inferScale([1])).toMatchObject({ scale: 'five', span: 5 })
+    expect(inferScale([5, 5, 5])).toMatchObject({ scale: 'five', span: 5 })
+    expect(inferScale([0, 0])).toMatchObject({ scale: 'five', span: 5 })
+    expect(inferScale([90, 90])).toMatchObject({ scale: 'hundred', span: 100 })
   })
 
   it('picks the narrowest scale that holds the values', () => {
@@ -84,6 +93,28 @@ describe('classify', () => {
     expect(out[5]).toMatchObject({ scale: 'hundred', span: 100 })
   })
 
+  it('does not let a low-only client override a wider tag scale', () => {
+    const rows = [
+      ...Array.from({ length: 8 }, (_, i) => ({ client: `0x${i}`, tag1: 'starred', value: 80, revoked: false })),
+      ...Array.from({ length: 5 }, () => ({ client: '0xa', tag1: 'starred', value: 1, revoked: false })),
+    ]
+    const { rows: out, tags } = classify(rows)
+    expect(tags[0].mixedScale).toBe(false)
+    expect(out[8]).toMatchObject({ scale: 'hundred', span: 100 })
+    expect(out[8].r).toBeCloseTo(0.01)
+  })
+
+  it('requires a client to cover half of a narrower scale before overriding', () => {
+    const rows = [
+      ...Array.from({ length: 8 }, (_, i) => ({ client: `0x${i}`, tag1: 'quality', value: 80, revoked: false })),
+      ...[2, 3, 4, 2, 3].map((value) => ({ client: '0xa', tag1: 'quality', value, revoked: false })),
+    ]
+    const { rows: out, tags } = classify(rows)
+    expect(tags[0].mixedScale).toBe(false)
+    expect(out[8].scale).toBe('hundred')
+    expect(out[8].r).toBeCloseTo(0.02)
+  })
+
   it('keeps an out-of-scale rating in the list but out of the score', () => {
     const rows = [
       ...Array.from({ length: 8 }, (_, i) => ({ client: `0x${i}`, tag1: 'starred', value: 100, revoked: false })),
@@ -97,9 +128,10 @@ describe('classify', () => {
   it('ignores revoked rows when inferring a scale', () => {
     const rows = [
       { client: '0xa', tag1: 'trust', value: 5, revoked: false },
-      { client: '0xb', tag1: 'trust', value: 500, revoked: true },
+      { client: '0xb', tag1: 'trust', value: 4, revoked: false },
+      { client: '0xc', tag1: 'trust', value: 500, revoked: true },
     ]
-    expect(classify(rows).tags[0]).toMatchObject({ scale: 'five', rows: 1 })
+    expect(classify(rows).tags[0]).toMatchObject({ scale: 'five', rows: 2 })
   })
 })
 

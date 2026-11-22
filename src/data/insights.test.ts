@@ -57,7 +57,7 @@ describe('responses', () => {
 
 describe('buildReviewerProfile', () => {
   it('labels a reviewer that gives one value to many reviews a rubber stamp', () => {
-    const rows = [1, 2, 3, 4, 5].map((t) => ev(addr(1), t, 100))
+    const rows = [1, 2, 3, 4, 5].map((t) => ev(addr(1), t, 100, { tag1: 'starred' }))
     const p = buildReviewerProfile(addr(1), rows)
     expect(p.mode).toEqual({ value: 100, share: 1 })
     expect(p.agents).toBe(5)
@@ -66,7 +66,7 @@ describe('buildReviewerProfile', () => {
   })
 
   it('labels single-agent, bulk and harsh reviewers', () => {
-    const rows = Array.from({ length: 10 }, (_, i) => ev(addr(1), 7, i * 3, { createdAt: 1000 + i * 60 }))
+    const rows = Array.from({ length: 10 }, (_, i) => ev(addr(1), 7, i * 3, { tag1: 'starred', createdAt: 1000 + i * 60 }))
     const p = buildReviewerProfile(addr(1), rows)
     expect(p.labels).toEqual(expect.arrayContaining(['single-agent', 'bulk', 'harsh']))
     expect(p.peakPerDay).toBe(10)
@@ -151,8 +151,62 @@ describe('computeNetworkStats', () => {
     expect(s.lookalikes[0].similarity).toBe(1)
   })
 
+  it('averages an agent’s normalised ratings and ignores revoked-only reviewers', () => {
+    const rows = [
+      ev(addr(1), 1, 5, { tag1: 'starred' }),
+      ev(addr(2), 1, 100, { tag1: 'starred' }),
+      ev(addr(3), 1, 99, { tag1: 'uptime' }),
+      ev(addr(4), 1, 80, { tag1: 'starred', revoked: true }),
+    ]
+    const s = computeNetworkStats(rows)
+    expect(s.topAgents[0]).toMatchObject({ rows: 4, reviewers: 3 })
+    expect(s.topAgents[0].average).toBeCloseTo(52.5)
+    expect(s.average).toBeCloseTo(52.5)
+  })
+
+  it('drops the agent owner’s self-review from network and agent averages', () => {
+    const owner = addr(9)
+    const rows = [
+      ev(owner, 1, 100, { tag1: 'starred', agentOwner: owner }),
+      ev(addr(2), 1, 20, { tag1: 'starred', agentOwner: owner }),
+    ]
+    const s = computeNetworkStats(rows)
+    expect(s.average).toBeCloseTo(20)
+    expect(s.topAgents[0].average).toBeCloseTo(20)
+    expect(s.topAgents[0].reviewers).toBe(1)
+  })
+
+  it('drops the registered agent wallet’s self-review too', () => {
+    const owner = addr(9)
+    const wallet = addr(8)
+    const rows = [
+      ev(wallet, 1, 100, { tag1: 'starred', agentOwner: owner, agentWallet: wallet }),
+      ev(addr(2), 1, 20, { tag1: 'starred', agentOwner: owner, agentWallet: wallet }),
+    ]
+    const s = computeNetworkStats(rows)
+    expect(s.average).toBeCloseTo(20)
+    expect(s.topAgents[0].average).toBeCloseTo(20)
+    expect(s.topAgents[0].reviewers).toBe(1)
+    expect(s.reviewers).toBe(1)
+  })
+
+  it('reads a reviewer’s rating on the agent-wide tag scale', () => {
+    const reviewer = addr(1)
+    const rows = [1, 2, 3, 4, 5].flatMap((t) => [
+      ev(reviewer, t, 4, { tag1: 'starred' }),
+      ev(addr(10 + t), t, 60, { tag1: 'starred' }),
+      ev(addr(20 + t), t, 80, { tag1: 'starred' }),
+      ev(addr(30 + t), t, 100, { tag1: 'starred' }),
+    ])
+    const s = computeNetworkStats(rows)
+    // Each agent's whole feedback says 0–100, so the reviewer's 4 is 4/100,
+    // not a perfect 4/5. The network mean pools 4, 60, 80 and 100.
+    expect(s.suspects.find((x) => x.client === reviewer)?.average).toBeCloseTo(4)
+    expect(s.average).toBeCloseTo(61)
+  })
+
   it('ranks labelled reviewers only', () => {
-    const rows = [...[1, 2, 3, 4, 5].map((t) => ev(addr(1), t, 100)), ev(addr(2), 1, 50)]
+    const rows = [...[1, 2, 3, 4, 5].map((t) => ev(addr(1), t, 100, { tag1: 'starred' })), ev(addr(2), 1, 50)]
     expect(computeNetworkStats(rows).suspects.map((s) => s.client)).toEqual([addr(1)])
   })
 

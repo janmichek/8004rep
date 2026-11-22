@@ -8,7 +8,7 @@ import { coordsOf, markRadius, pointOf, terrainOf } from './atlas'
 const props = defineProps<{ slug: string }>()
 const chain = useChain(() => props.slug)
 const to = routes(() => chain.value)
-const { feed, error, loading, load, stats, ecosystem } = useNetwork(chain)
+const { feed, error, loading, load, stats } = useNetwork(chain)
 const places = computed(() =>
   (stats.value?.topAgents ?? []).map((a) => ({
     a,
@@ -39,7 +39,7 @@ const places = computed(() =>
     </div>
     <p class="a-note">
       <template v-if="stats.from && stats.to">Survey window {{ formatDate(stats.from) }} – {{ formatDate(stats.to) }}. </template>
-      The wider atlas mean is {{ formatNumber(ecosystem.data.value?.averageFeedback) }}.
+      The survey's own mean rating is {{ formatNumber(stats.average) }}.
     </p>
 
     <div class="a-map-wrap">

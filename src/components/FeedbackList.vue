@@ -62,8 +62,8 @@ function openDetail(index: number, event?: Event): void {
           <Hint v-if="hasNotes" text="The text (or comment) field of the off-chain feedback file"><th>Text</th></Hint>
           <SortHeader
             v-if="hasStats"
-            label="Weight"
-            text="Authenticity weight (1 = full vote) and the rules that fired; hover a chip for its rule"
+            label="Authenticity"
+            text="Pattern-based authenticity weight, from 0 to 1. It is not the score's unit weight: only scored ratings enter the Filtered score."
             :active="sortState('weight')"
             @sort="toggleSort('weight')"
           />
@@ -110,6 +110,9 @@ function openDetail(index: number, event?: Event): void {
               <Hint v-else-if="stats && stats.rating === null" text="A rating whose value fits no inferred scale; listed, never scored.">
                 <span class="chip warn">off-scale</span>
               </Hint>
+              <small v-if="stats?.kind === 'rating' && stats.rating !== null" class="muted" title="Normalised rating used by the Filtered score">
+                → {{ formatScore(stats.rating * 100) }}
+              </small>
             </td>
             <td class="tags">
               <span v-if="row.tag1" class="chip clip-chip" :title="row.tag1">{{ row.tag1 }}</span>
@@ -121,9 +124,12 @@ function openDetail(index: number, event?: Event): void {
             </td>
             <td v-if="hasStats" class="checks-cell">
               <template v-if="stats">
-                <Hint text="Authenticity weight">
-                  <span class="weight" :class="{ low: stats.weight < 0.5 }">{{ formatNumber(stats.weight, 2) }}</span>
-                </Hint>
+                <template v-if="stats.kind === 'rating' && stats.rating !== null">
+                  <Hint text="Pattern-based authenticity weight; not the score's unit weight">
+                    <span class="weight" :class="{ low: stats.weight < 0.5 }">{{ formatNumber(stats.weight, 2) }}</span>
+                  </Hint>
+                </template>
+                <span v-else class="muted" title="Only scored ratings enter the Filtered score">not scored</span>
                 <template v-for="flag in stats.flags" :key="flag">
                   <Hint v-if="flag !== 'revoked'" :text="FLAG_INFO[flag].rule">
                     <FlagChip :flag="flag" />

@@ -9,7 +9,7 @@ const props = defineProps<{ slug: string }>()
 const chain = useChain(() => props.slug)
 const to = routes(() => chain.value)
 const { feed, error, loading, load, stats, ecosystem } = useNetwork(chain)
-const profile = computed(() => histogram((feed.value?.items ?? []).filter((r) => !r.revoked).map((r) => r.value), 10))
+const profile = computed(() => histogram(stats.value?.ratingValues ?? [], 10))
 const peak = computed(() => Math.max(1, ...profile.value.map((b) => b.count)))
 const highest = computed(() => [...(stats.value?.topAgents ?? [])].filter((a) => a.average !== null).sort((a, b) => (b.average ?? 0) - (a.average ?? 0)).slice(0, 8))
 </script>

@@ -72,7 +72,7 @@ type FeedbackRow = {
 }
 
 export type FeedRow = FeedbackRow & {
-  agent?: { agentId: string; registrationFile?: { name?: string | null } | null } | null
+  agent?: { agentId: string; owner?: string | null; agentWallet?: string | null; registrationFile?: { name?: string | null } | null } | null
 }
 
 const AGENT_FIELDS = `
@@ -162,6 +162,8 @@ export function mapFeedbackEvent(row: FeedRow): FeedbackEvent {
   return {
     ...mapFeedback(row),
     tokenId: BigInt(row.agent?.agentId ?? 0),
+    ...(row.agent?.owner ? { agentOwner: row.agent.owner as Address } : {}),
+    ...(row.agent?.agentWallet ? { agentWallet: row.agent.agentWallet as Address } : {}),
     ...(row.agent?.registrationFile?.name ? { agentName: row.agent.registrationFile.name } : {}),
   }
 }
@@ -277,6 +279,8 @@ export function createSubgraphSource(chain: ChainInfo & { subgraphUrl: string })
           feedbacks(where: $where, first: $first, skip: $skip, orderBy: createdAt, orderDirection: desc) {${FEEDBACK_FIELDS}
             agent {
               agentId
+              owner
+              agentWallet
               registrationFile {
                 name
               }

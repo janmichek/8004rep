@@ -20,7 +20,7 @@ function row(value: number, over: Partial<FeedbackEvent> = {}): FeedbackEvent {
 
 /** `count` rows of `value`, each on its own agent, so no per-agent rule fires. */
 function spread(count: number, value = 80, from = 0): FeedbackEvent[] {
-  return Array.from({ length: count }, (_, i) => row(value, { tokenId: BigInt(from + i + 1) }))
+  return Array.from({ length: count }, (_, i) => row(value, { tokenId: BigInt(from + i + 1), tag1: 'starred' }))
 }
 
 describe('peakWithin', () => {
@@ -55,6 +55,20 @@ describe('buildReviewerProfile', () => {
     const profile = buildReviewerProfile(A, [row(100), row(100), row(0, { revoked: true })])
     expect(profile).toMatchObject({ rows: 3, revoked: 1, average: 100 })
     expect(profile.mode).toEqual({ value: 100, share: 1 })
+  })
+
+  it('reads rating habits on the normalised 0–100 scale, not mixed raw values', () => {
+    const profile = buildReviewerProfile(A, [
+      row(5, { tag1: 'quality', tokenId: 1n }),
+      row(4, { tag1: 'quality', tokenId: 2n }),
+      row(100, { tag1: 'starred', tokenId: 3n }),
+      row(100, { tag1: 'starred', tokenId: 4n }),
+      row(99, { tag1: 'uptime', tokenId: 5n }),
+    ])
+    // 5/5 and 4/5 are 100 and 80; 100/100 twice; the uptime row is not a rating.
+    expect(profile.ratingRows).toBe(4)
+    expect(profile.ratingAverage).toBeCloseTo(95)
+    expect(profile.ratingMode).toEqual({ value: 100, share: 0.75 })
   })
 
   it('reports the window the rows span, from the rows that carry a date', () => {
@@ -116,6 +130,16 @@ describe('the flags a profile raises', () => {
     const eight = [...spread(8, 80), ...spread(2, 10, 8)]
     expect(buildReviewerProfile(A, nine).labels).toContain('rubber-stamp')
     expect(buildReviewerProfile(A, eight).labels).not.toContain('rubber-stamp')
+  })
+
+  it('does not label a telemetry or outcome bot as a harsh rubber stamp', () => {
+    const rows = Array.from({ length: 10 }, (_, i) =>
+      row(1, { tokenId: BigInt(i + 1), ...(i % 2 ? { tag1: 'reachable' } : { tag1: 'uptime' }) }),
+    )
+    const profile = buildReviewerProfile(A, rows)
+    expect(profile.ratingRows).toBe(0)
+    expect(profile.labels).not.toContain('rubber-stamp')
+    expect(profile.labels).not.toContain('harsh')
   })
 
   it('ignores revoked rows when deciding a rubber stamp', () => {

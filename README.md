@@ -133,7 +133,7 @@ account, then prints one line per check with a status. Hover a line for the rule
 | Feedback file | readable · cannot be rewritten (`data:` / IPFS / `feedbackHash` = `keccak256` of the bytes or of their canonical JSON) · restates the on-chain review · names an endpoint, tool, task or skill |
 | Proof of payment | cited · exists and did not revert · moves value from the reviewer to the agent's owner or wallet · older than the feedback · not cited by another row · amount |
 | Reviewer | not the agent itself · established wallet (nonce) · rates other agents · ratings vary (entropy) · stands by its feedback (revocations) |
-| Within this agent | authenticity weight · the reviewer's share of rows · reviewer concentration (Herfindahl index) · not left right after registration · leave-one-out pull on the weighted score |
+| Within this agent | authenticity weight · the reviewer's share of scored wallets · reviewer concentration (Herfindahl index) · not left right after registration · leave-one-out pull on the Filtered score |
 
 Statuses: `pass`, `warn`, `fail`, `absent` (the evidence was not offered), `unknown` (it could not be read from
 the browser — CORS, a chain that is not configured, a row older than the log scan) and `info` (a measurement, no

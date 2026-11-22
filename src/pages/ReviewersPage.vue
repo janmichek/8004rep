@@ -40,7 +40,7 @@ const rows = useSort(reviewers, [
   { key: 'reviewer', value: (r) => r.address.toLowerCase() },
   { key: 'reviews', value: (r) => r.rows, numeric: true },
   { key: 'agents', value: (r) => r.agents, numeric: true },
-  { key: 'average', value: (r) => r.average, numeric: true },
+  { key: 'average', value: (r) => r.ratingAverage, numeric: true },
   { key: 'flags', value: (r) => r.labels.length, numeric: true },
 ])
 
@@ -74,7 +74,7 @@ function reviewerRoute(r: ReviewerProfile) {
   <TableSkeleton
     v-else-if="!loaded"
     label="Loading reviewers"
-    :headers="scope.all.value ? ['Reviewer', 'Reviews', 'Agents', 'Networks', 'Average', 'Flags'] : ['Reviewer', 'Reviews', 'Agents', 'Average', 'Flags']"
+    :headers="scope.all.value ? ['Reviewer', 'Reviews', 'Agents', 'Networks', 'Avg rating', 'Flags'] : ['Reviewer', 'Reviews', 'Agents', 'Avg rating', 'Flags']"
     :numeric="['Reviews', 'Agents', 'Average']"
   />
 
@@ -89,7 +89,7 @@ function reviewerRoute(r: ReviewerProfile) {
             <SortHeader label="Reviews" numeric :active="rows.state('reviews')" @sort="rows.toggle('reviews')" />
             <SortHeader label="Agents" numeric :active="rows.state('agents')" @sort="rows.toggle('agents')" />
             <th v-if="scope.all.value">Networks</th>
-            <SortHeader label="Average" numeric :active="rows.state('average')" @sort="rows.toggle('average')" />
+            <SortHeader label="Avg rating" numeric text="Scored ratings only, normalised to 0–100" :active="rows.state('average')" @sort="rows.toggle('average')" />
             <SortHeader label="Flags" :active="rows.state('flags')" @sort="rows.toggle('flags')" />
           </tr>
         </thead>
@@ -114,7 +114,7 @@ function reviewerRoute(r: ReviewerProfile) {
             <td class="num">{{ r.rows }}</td>
             <td class="num">{{ r.agents }}</td>
             <td v-if="scope.all.value" :title="networkNames(r.chainIds)">{{ networkNames(r.chainIds) }}</td>
-            <td class="num">{{ formatNumber(r.average) }}</td>
+            <td class="num">{{ r.ratingAverage === null ? '—' : formatNumber(r.ratingAverage) }}</td>
             <td>
               <Hint v-for="l in r.labels" :key="l" :text="LABEL_INFO[l].rule">
                 <ReviewerChip :label="l" />

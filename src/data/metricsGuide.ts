@@ -52,7 +52,7 @@ export const METRIC_GROUPS: GuideGroup[] = [
         id: 'scale',
         name: 'Inferred rating scale',
         summary: 'A rating is read on the scale its tag actually uses, then normalised to 0–100. Five stars is not five out of one hundred.',
-        rule: 'The scale is inferred from the observed values: 0/1 (binary), 0–1, 0–5, 0–10 or 0–100, or a signed ±1/±5/±10/±100 span. A reviewer with three or more values on a tag can set its own scale. Values outside the inferred scale are listed but not scored.',
+        rule: 'The scale is inferred from the observed values: 0/1 (binary only when both outcomes appear), 0–1, 0–5, 0–10 or 0–100, or a signed ±1/±5/±10/±100 span. A reviewer needs five or more values on a tag and must cover at least half of the narrower span before its own scale overrides the tag’s. A repeated low value is read on the narrowest non-binary scale (1 → 20/100, never 100/100). Values outside the inferred scale are listed but not scored.',
         where: 'Rating values chart on the Overview tab; “off-scale” counts in the Methods tab.',
       },
       {
@@ -66,7 +66,7 @@ export const METRIC_GROUPS: GuideGroup[] = [
         id: 'half-life',
         name: 'Time decay',
         summary: 'Older units count less. A unit’s weight halves every 90 days.',
-        rule: 'time = 2^(−ageDays / 90), where age is measured from the newest dated row in the agent’s set.',
+        rule: 'time = 2^(−ageDays / 90), where age is measured from the wall clock to the median timestamp of the unit’s rows. An abandoned agent therefore decays even if its last review is the newest row it has.',
         where: 'Methods tab parameters; wallet weights in the inputs JSON.',
       },
       {
@@ -74,7 +74,7 @@ export const METRIC_GROUPS: GuideGroup[] = [
         name: 'One wallet, one vote',
         summary: 'A wallet’s weight is the sum of its unit weights, capped at 1. No wallet can ever hold more than one full vote.',
         rule: 'wallet weight = min(1, Σ unit.time). Wallet value = median of its unit values. Self-reviews and revoked rows are excluded before this step.',
-        where: 'Reviewers tab; “wallets carrying weight” in the funnel.',
+        where: 'Reviewers tab; “wallets” in the funnel.',
       },
     ],
   },
@@ -170,7 +170,7 @@ export const METRIC_GROUPS: GuideGroup[] = [
     id: 'row-rules',
     title: 'Rules applied to a review',
     intro:
-      'Each rule lowers a row’s weight or removes it. A row’s weight is its share of a full vote; the Feedback tab shows the flags that produced it.',
+      'Each rule lowers a row’s authenticity weight or removes it from the scored set. Authenticity weight is a pattern signal, not the Filtered score’s unit weight; the Feedback tab shows both the flag and whether the row was scored.',
     metrics: [
       { id: 'revoked', name: 'Revoked', summary: 'The author withdrew the review. It counts nowhere.', where: 'Everywhere; a revoked row stays visible in the feedback log.' },
       {
@@ -182,8 +182,8 @@ export const METRIC_GROUPS: GuideGroup[] = [
       {
         id: 'duplicate',
         name: 'Duplicate',
-        summary: 'The same client repeats an earlier (value, tag1, tag2, endpoint) combination. Weight 0.',
-        where: 'Feedback tab weight column.',
+        summary: 'The same client repeats a (value, tag1, tag2, endpoint) combination. The newest repeat is kept; the older one weighs 0.',
+        where: 'Feedback tab authenticity column.',
       },
       {
         id: 'burst',
@@ -253,7 +253,7 @@ export const METRIC_GROUPS: GuideGroup[] = [
         id: 'risk-level',
         name: 'Risk level',
         summary: 'The worst level among the signals on the Overview tab: high, warn, info or clean.',
-        rule: 'Signals include self-reviews, one wallet holding half or more of the reviews, a single reviewer swinging the mean, heavy discounts, surges, revocations, a recent decline, off-scale values, outliers, unlisted endpoints and undated rows.',
+        rule: 'Signals include self-reviews, one wallet holding half or more of the reviews, a single reviewer swinging the rating average, a mostly-unscored record, surges, revocations, a recent rating decline, off-scale values, rating outliers, unlisted endpoints and undated rows.',
         where: 'Risk tile; Overview “What stands out”.',
       },
       {

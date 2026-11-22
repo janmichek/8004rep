@@ -23,7 +23,7 @@ const carriers = computed(() =>
     }
   }),
 )
-const occupancy = computed(() => histogram((feed.value?.items ?? []).filter((r) => !r.revoked).map((r) => r.value), 10))
+const occupancy = computed(() => histogram(stats.value?.ratingValues ?? [], 10))
 const peak = computed(() => Math.max(1, ...occupancy.value.map((b) => b.count)))
 </script>
 
