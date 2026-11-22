@@ -28,13 +28,17 @@ const tokenId = computed(() => (/^\d+$/.test(props.id) ? BigInt(props.id) : unde
 type Precomputed = { report: ReputationReport; stats: FeedbackStats; trust: TrustReport }
 const precomputed = ref<Precomputed>()
 const indexedFile = ref<RegistrationFile | null>()
+/** Guards side effects from a stale route's in-flight detail request. */
+let detailRequest = 0
 
 const { data: agent, error, loading, reload } = useAsync(
   async () => {
     if (tokenId.value === undefined) return null
+    const request = ++detailRequest
     if (API_ENABLED && INDEXED_CHAINS.has(chain.value.chainId)) {
       try {
         const result = await fetchApiAgentAsDetail(chain.value.chainId, tokenId.value)
+        if (request !== detailRequest) return result?.agent ?? null
         if (result) {
           precomputed.value = result.precomputed
           indexedFile.value = result.agent.file
@@ -47,6 +51,7 @@ const { data: agent, error, loading, reload } = useAsync(
         // The indexer is unreachable or does not cover this chain; read the source directly.
       }
     }
+    if (request !== detailRequest) return null
     precomputed.value = undefined
     indexedFile.value = undefined
     const { source } = await sourceFor(chain.value)

@@ -224,26 +224,60 @@ export function transaction<T>(fn: () => T): T {
   }
 }
 
-export function touchSync(chainId: number, stream: string, lastBlock?: bigint, headBlock?: bigint, error?: string | null): void {
+export function touchSync(
+  chainId: number,
+  stream: string,
+  lastBlock?: bigint,
+  headBlock?: bigint,
+  error?: string | null,
+  lastHash?: string | null,
+): void {
   const now = Math.floor(Date.now() / 1000)
   const existing = getSync(chainId, stream)
   run(
-    `INSERT INTO sync_state (chain_id, stream, last_block, head_block, updated_at, last_error)
-     VALUES (?, ?, ?, ?, ?, ?)
+    `INSERT INTO sync_state (chain_id, stream, last_block, head_block, updated_at, last_error, last_hash)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(chain_id, stream) DO UPDATE SET
        last_block = COALESCE(excluded.last_block, sync_state.last_block),
        head_block = COALESCE(excluded.head_block, sync_state.head_block),
        updated_at = excluded.updated_at,
-       last_error = excluded.last_error`,
+       last_error = excluded.last_error,
+       last_hash = COALESCE(excluded.last_hash, sync_state.last_hash)`,
     chainId,
     stream,
     lastBlock?.toString() ?? existing?.last_block ?? '0',
     headBlock?.toString() ?? existing?.head_block ?? null,
     now,
     error ?? null,
+    lastHash ?? null,
   )
 }
 
-export function getSync(chainId: number, stream: string): { last_block: string; head_block: string | null; updated_at: number | null; last_error: string | null } | undefined {
-  return get('SELECT last_block, head_block, updated_at, last_error FROM sync_state WHERE chain_id = ? AND stream = ?', chainId, stream)
+export function getSync(
+  chainId: number,
+  stream: string,
+): { last_block: string; head_block: string | null; updated_at: number | null; last_error: string | null; last_hash: string | null } | undefined {
+  return get(
+    'SELECT last_block, head_block, updated_at, last_error, last_hash FROM sync_state WHERE chain_id = ? AND stream = ?',
+    chainId,
+    stream,
+  )
 }
+
+/** Adds a column to an existing database; SQLite has no IF NOT EXISTS for ALTER. */
+function addColumn(table: string, column: string, ddl: string): void {
+  const columns = all<{ name: string }>(`PRAGMA table_info(${table})`)
+  if (!columns.some((entry) => entry.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`)
+}
+
+addColumn('sync_state', 'last_hash', 'TEXT')
+addColumn('agents', 'owner_block', 'TEXT')
+addColumn('agents', 'detail_synced_at', 'INTEGER')
+addColumn('agents', 'file_next_try_at', 'INTEGER')
+addColumn('agents', 'file_attempts', 'INTEGER NOT NULL DEFAULT 0')
+addColumn('agents', 'rpc_error', 'TEXT')
+addColumn('agents', 'score_attempts', 'INTEGER NOT NULL DEFAULT 0')
+addColumn('agents', 'score_next_try_at', 'INTEGER')
+addColumn('agents', 'rpc_checked_at', 'INTEGER')
+addColumn('feedback_files', 'next_try_at', 'INTEGER')
+addColumn('feedback_files', 'attempts', 'INTEGER NOT NULL DEFAULT 0')

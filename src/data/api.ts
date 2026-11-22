@@ -67,6 +67,8 @@ export type ApiAgentPage = {
   hasMore: boolean
   page: number
   limit: number
+  /** Snapshot boundary shared by every page of one listing. */
+  asOf?: number
   source: 'index'
 }
 
@@ -113,6 +115,7 @@ export async function fetchApiAgents(options: {
   sort?: 'createdAt' | 'score' | 'feedback' | 'tokenId'
   order?: 'asc' | 'desc'
   rated?: boolean
+  asOf?: number
 }): Promise<ScanAgentPage> {
   const data = await apiGet<ApiAgentPage>('/api/agents', {
     page: options.page,
@@ -122,8 +125,9 @@ export async function fetchApiAgents(options: {
     sort: options.sort,
     order: options.order,
     rated: options.rated ? '1' : undefined,
+    asOf: options.asOf,
   })
-  return { items: data.items.map(toScanAgent), total: data.total, hasMore: data.hasMore }
+  return { items: data.items.map(toScanAgent), total: data.total, hasMore: data.hasMore, asOf: data.asOf }
 }
 
 export async function fetchApiAgent(chainId: number, tokenId: bigint): Promise<ApiAgentDetail | null> {
@@ -170,6 +174,7 @@ export type ApiFeedbackPage = {
   items: ApiFeedback[]
   total: number
   hasMore: boolean
+  asOf?: number
 }
 
 export async function fetchApiFeedbacks(options: {
@@ -178,13 +183,15 @@ export async function fetchApiFeedbacks(options: {
   chainId?: number
   client?: string
   agent?: string
+  asOf?: number
 }): Promise<ApiFeedbackPage> {
-  const data = await apiGet<{ items: ApiFeedback[]; total: number; hasMore: boolean }>('/api/feedbacks', {
+  const data = await apiGet<{ items: ApiFeedback[]; total: number; hasMore: boolean; asOf?: number }>('/api/feedbacks', {
     page: options.page ?? 0,
     limit: options.limit ?? 25,
     chainId: options.chainId,
     client: options.client,
     agent: options.agent,
+    asOf: options.asOf,
   })
   return {
     ...data,

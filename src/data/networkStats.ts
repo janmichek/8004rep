@@ -65,7 +65,11 @@ export function jaccard(a: Set<string>, b: Set<string>): number {
 }
 
 /** Statistics over a window of a network's feedback feed. */
-export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkStats {
+export function computeNetworkStats(
+  rows: FeedbackEvent[],
+  topN = 10,
+  opts: { lookalikeAgentLimit?: number } = {},
+): NetworkStats {
   const live = rows.filter((r) => !r.revoked)
   const dates = rows.map((r) => r.createdAt).filter((t): t is number => t !== undefined)
   // Token IDs repeat between chains; an agent is (chain, token).
@@ -110,7 +114,7 @@ export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkSt
     .sort((a, b) => b.suspicion - a.suspicion || b.rows - a.rows)
 
   // Lookalikes: union-find over agent pairs with near-identical reviewer sets.
-  const sets = [...byAgent.entries()]
+  let sets = [...byAgent.entries()]
     .map(([key, group]) => ({
       key,
       tokenId: group[0].tokenId,
@@ -118,6 +122,11 @@ export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkSt
       reviewers: new Set(group.filter((r) => !r.revoked && !isSelf(r)).map((r) => r.client.toLowerCase())),
     }))
     .filter((a) => a.reviewers.size >= LOOKALIKE_MIN_SHARED)
+  // Lookalikes are the only quadratic part; cap them without changing the
+  // headline aggregates computed over the full window.
+  if (opts.lookalikeAgentLimit && sets.length > opts.lookalikeAgentLimit) {
+    sets = sets.sort((a, b) => b.reviewers.size - a.reviewers.size).slice(0, opts.lookalikeAgentLimit)
+  }
   const parent = new Map(sets.map((s) => [s.key, s.key]))
   const find = (k: string): string => (parent.get(k) === k ? k : find(parent.get(k)!))
   for (let i = 0; i < sets.length; i++) {

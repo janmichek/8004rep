@@ -13,10 +13,6 @@ export const ENRICH_BATCH = Number(process.env.ENRICH_BATCH ?? 12)
 export const FETCH_CONCURRENCY = Number(process.env.FETCH_CONCURRENCY ?? 6)
 /** Agents re-scored per pass. */
 export const SCORE_BATCH = Number(process.env.SCORE_BATCH ?? 400)
-/** Newest agents whose registration files are fetched first. */
-export const ENRICH_AGENT_LIMIT = Number(process.env.ENRICH_AGENT_LIMIT ?? 2_000)
-/** Feedback files fetched for comments; the feed only needs the newest. */
-export const ENRICH_FEEDBACK_LIMIT = Number(process.env.ENRICH_FEEDBACK_LIMIT ?? 1_000)
 
 mkdirSync(dirname(DB_PATH), { recursive: true })
 

@@ -5,6 +5,7 @@ export type AgentRow = {
   chain_id: number
   token_id: string
   owner: string | null
+  owner_block: string | null
   agent_wallet: string | null
   agent_uri: string | null
   created_at: number | null
@@ -19,6 +20,13 @@ export type AgentRow = {
   raw_file_json: string | null
   file_fetched_at: number | null
   file_error: string | null
+  file_next_try_at: number | null
+  file_attempts: number
+  detail_synced_at: number | null
+  rpc_error: string | null
+  rpc_checked_at: number | null
+  score_attempts: number
+  score_next_try_at: number | null
   needs_recompute: number
   updated_at: number | null
 }
@@ -127,7 +135,7 @@ export function feedbackOfRows(rows: FeedbackRow[], responses: ResponseRow[]): F
       responder: response.responder as Address,
       ...(response.response_uri ? { uri: response.response_uri } : {}),
       ...(response.created_at ? { createdAt: response.created_at } : {}),
-      ...(response.tx_hash ? { txHash: response.tx_hash as Hex } : {}),
+      ...(response.tx_hash && /^0x[0-9a-f]{64}$/i.test(response.tx_hash) ? { txHash: response.tx_hash as Hex } : {}),
     })
     byKey.set(key, list)
   }

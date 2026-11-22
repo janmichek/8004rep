@@ -77,7 +77,7 @@ export type ScanAgent = {
   testnet: boolean
 }
 
-export type ScanAgentPage = { items: ScanAgent[]; total: number; hasMore: boolean }
+export type ScanAgentPage = { items: ScanAgent[]; total: number; hasMore: boolean; asOf?: number }
 
 /** One service advertised in 8004scan's copy of the registration file. */
 export type ScanService = { name: string; endpoint: string; version?: string }

@@ -37,11 +37,19 @@ const order = computed<RegisteredOrder>(() => (route.query.order === 'asc' ? 'as
 const registeredSort = computed(() => (sort.value === 'registered' ? order.value : null))
 const scoreSort = computed(() => (sort.value === 'score' ? 'desc' : null))
 const indexing = ref(false)
+/** Guards the `indexing` side effect when a slow index request resolves after a newer one. */
+let loadToken = 0
 
 const chainQuery = computed(() => {
   const raw = route.query.chain
   const value = typeof raw === 'string' ? Number(raw) : Number.NaN
   return Number.isInteger(value) ? value : undefined
+})
+
+/** Snapshot boundary carried by page links so inserts cannot shift an offset. */
+const asOfQuery = computed(() => {
+  const value = Number(route.query.asOf)
+  return Number.isFinite(value) && value > 0 ? value : undefined
 })
 
 const { data: chains } = useAsync(fetchScanChains, () => true)
@@ -59,11 +67,15 @@ const canUseIndex = computed(
   () =>
     API_ENABLED &&
     networkEnv.value === 'mainnet' &&
-    (selectedChain.value ? INDEXED_CHAINS.has(selectedChain.value.chainId) : true),
+    // An "All networks" list cannot be answered by a chain-limited index:
+    // it would silently omit agents on every network we do not index.
+    Boolean(selectedChain.value) &&
+    INDEXED_CHAINS.has(selectedChain.value!.chainId),
 )
 
 const { data, error, loading, reload } = useAsync(
   async () => {
+    const request = ++loadToken
     if (canUseIndex.value) {
       try {
         const result = await fetchApiAgents({
@@ -74,17 +86,18 @@ const { data, error, loading, reload } = useAsync(
           sort: rated.value ? 'feedback' : sort.value === 'registered' ? 'createdAt' : sort.value === 'score' ? 'score' : undefined,
           order: rated.value ? 'desc' : sort.value === 'registered' ? order.value : 'desc',
           rated: rated.value,
+          asOf: asOfQuery.value,
         })
         // An empty index (first boot) keeps the 8004scan list instead of a blank page.
-        if (result.total > 0 || search.value) {
-          indexing.value = true
+        if (result.total > 0) {
+          if (request === loadToken) indexing.value = true
           return result
         }
       } catch {
         // The indexer may be asleep or still booting; the public API still answers.
       }
     }
-    indexing.value = false
+    if (request === loadToken) indexing.value = false
     return fetchScanAgents({
       page: page.value,
       pageSize: rated.value ? RATED_SIZE : PAGE_SIZE,
@@ -95,7 +108,7 @@ const { data, error, loading, reload } = useAsync(
       sortOrder: rated.value ? 'desc' : sort.value === 'registered' ? order.value : undefined,
     })
   },
-  () => [page.value, rated.value, search.value, networkEnv.value, selectedChain.value, sort.value, order.value, canUseIndex.value],
+  () => [page.value, rated.value, search.value, networkEnv.value, selectedChain.value, sort.value, order.value, canUseIndex.value, asOfQuery.value],
 )
 
 // Starred agents are pinned above the feed; `stars/pinned.ts` holds the logic.
@@ -153,6 +166,7 @@ function pageLink(target: number) {
       ...(chainQuery.value !== undefined ? { chain: String(chainQuery.value) } : {}),
       ...(sort.value ? { sort: sort.value } : {}),
       ...(sort.value && order.value === 'asc' ? { order: 'asc' } : {}),
+      ...(data.value?.asOf ? { asOf: String(data.value.asOf) } : {}),
       ...(target > 0 ? { page: target + 1 } : {}),
     },
   }
