@@ -9,76 +9,82 @@
  :order [:shared :entities :features :widgets :pages :app],
  :omit [],
  :edges
- [{:from :features.filter-network,
+ [{:from :shared.ui, :to :shared.ui.ClearableSelect, :kind :dependency}
+  {:from :entities.network.api.networkQueries, :to :at.tanstack, :kind :dependency}
+  {:from :pages.overview.ui.OverviewPage, :to :shared.ui, :kind :dependency}
+  {:from :shared.ui, :to :shared.ui.LoadingState, :kind :dependency}
+  {:from :entities.network.api.useNetworks,
+   :to :entities.network.api.networkQueries,
+   :kind :dependency}
+  {:from :pages.agents.ui.AgentsPage, :to :widgets.roster, :kind :dependency}
+  {:from :entities.agent.ui.AgentFacts, :to :shared.lib, :kind :dependency}
+  {:from :widgets.summary, :to :widgets.summary.ui.Summary, :kind :dependency}
+  {:from :shared.ui, :to :shared.ui.PageHeading, :kind :dependency}
+  {:from :shared.lib, :to :shared.lib.formatScore, :kind :dependency}
+  {:from :features.filter-network.ui.NetworkSelect,
+   :to :entities.network,
+   :kind :dependency}
+  {:from :features.filter-network,
    :to :features.filter-network.ui.NetworkSelect,
    :kind :dependency}
+  {:from :app.routes, :to :pages.overview, :kind :dependency}
+  {:from :app.Layout, :to :at.tanstack, :kind :dependency}
+  {:from :app.routes, :to :at.tanstack, :kind :dependency}
+  {:from :app.routes, :to :pages.agents, :kind :dependency}
+  {:from :entities.agent, :to :entities.agent.api.agentQueries, :kind :dependency}
+  {:from :pages.agents.ui.AgentsPage, :to :react, :kind :dependency}
+  {:from :entities.agent.api.useAgents, :to :at.tanstack, :kind :dependency}
+  {:from :shared.api, :to :shared.api.client, :kind :dependency}
+  {:from :app.routes, :to :app.Layout, :kind :dependency}
+  {:from :entities.agent.api.useAgents,
+   :to :entities.agent.api.agentQueries,
+   :kind :dependency}
+  {:from :pages.agents.ui.AgentsPage, :to :shared.ui, :kind :dependency}
+  {:from :pages.overview.ui.OverviewPage, :to :widgets.roster, :kind :dependency}
+  {:from :entities.network.api.networkQueries, :to :shared.api, :kind :dependency}
+  {:from :entities.agent, :to :entities.agent.ui.AgentFacts, :kind :dependency}
+  {:from :entities.agent, :to :entities.agent.ui.AgentStatusBadge, :kind :dependency}
+  {:from :app.main, :to :react, :kind :dependency}
+  {:from :shared.ui, :to :shared.ui.Stat, :kind :dependency}
+  {:from :entities.network, :to :entities.network.ui.NetworkMark, :kind :dependency}
+  {:from :shared.ui.PageHeading, :to :react, :kind :dependency}
+  {:from :pages.overview.ui.OverviewPage, :to :at.tanstack, :kind :dependency}
+  {:from :app.App, :to :app.routes, :kind :dependency}
+  {:from :pages.agents.ui.AgentsPage, :to :widgets.summary, :kind :dependency}
+  {:from :pages.overview.ui.OverviewPage, :to :widgets.summary, :kind :dependency}
+  {:from :entities.agent.api.agentQueries, :to :at.tanstack, :kind :dependency}
   {:from :entities.agent, :to :entities.agent.api.useAgents, :kind :dependency}
-  {:from :shared.ui, :to :shared.ui.ClearableSelect, :kind :dependency}
-  {:from :entities.network, :to :entities.network.api.networkQueries, :kind :dependency}
+  {:from :pages.agents, :to :pages.agents.ui.AgentsPage, :kind :dependency}
+  {:from :entities.agent.api.agentQueries, :to :shared.api, :kind :dependency}
+  {:from :entities.agent, :to :entities.agent.model.roster, :kind :dependency}
+  {:from :pages.agents.ui.AgentsPage, :to :at.tanstack, :kind :dependency}
+  {:from :pages.overview, :to :pages.overview.ui.OverviewPage, :kind :dependency}
+  {:from :app.App, :to :at.tanstack, :kind :dependency}
+  {:from :widgets.summary.ui.Summary, :to :entities.agent, :kind :dependency}
+  {:from :widgets.roster, :to :widgets.roster.ui.Roster, :kind :dependency}
+  {:from :features.filter-network.ui.NetworkSelect, :to :shared.ui, :kind :dependency}
+  {:from :app.main, :to :app.App, :kind :dependency}
+  {:from :widgets.summary.ui.Summary, :to :shared.ui, :kind :dependency}
+  {:from :entities.network, :to :entities.network.api.useNetworks, :kind :dependency}
+  {:from :pages.agents.ui.AgentsPage, :to :features.filter-network, :kind :dependency}
+  {:from :shared.api.client, :to :zod, :kind :dependency}
   {:from :widgets.roster.ui.Roster, :to :entities.network, :kind :dependency}
   {:from :entities.agent.ui.AgentFacts,
    :to :entities.agent.ui.AgentStatusBadge,
    :kind :dependency}
-  {:from :entities.agent, :to :entities.agent.api.agentQueries, :kind :dependency}
-  {:from :entities.network.api.useNetworks, :to :at.tanstack, :kind :dependency}
-  {:from :shared.ui, :to :shared.ui.LoadingState, :kind :dependency}
-  {:from :features.filter-network.ui.NetworkSelect, :to :shared.ui, :kind :dependency}
-  {:from :pages.overview.ui.OverviewPage, :to :widgets.roster, :kind :dependency}
-  {:from :pages.agents.ui.AgentsPage, :to :shared.ui, :kind :dependency}
-  {:from :entities.agent, :to :entities.agent.ui.AgentStatusBadge, :kind :dependency}
-  {:from :widgets.summary, :to :widgets.summary.ui.Summary, :kind :dependency}
-  {:from :shared.ui, :to :shared.ui.PageHeading, :kind :dependency}
-  {:from :entities.agent.api.agentQueries, :to :shared.api, :kind :dependency}
-  {:from :pages.overview.ui.OverviewPage, :to :react, :kind :dependency}
-  {:from :app.Layout, :to :at.tanstack, :kind :dependency}
-  {:from :app.routes, :to :at.tanstack, :kind :dependency}
-  {:from :widgets.summary.ui.Summary, :to :entities.agent, :kind :dependency}
-  {:from :pages.agents.ui.AgentsPage, :to :widgets.summary, :kind :dependency}
-  {:from :shared.api, :to :shared.api.client, :kind :dependency}
-  {:from :app.routes, :to :app.Layout, :kind :dependency}
-  {:from :pages.agents.ui.AgentsPage, :to :features.filter-network, :kind :dependency}
-  {:from :shared.lib, :to :shared.lib.formatScore, :kind :dependency}
-  {:from :widgets.roster.ui.Roster, :to :shared.ui, :kind :dependency}
-  {:from :pages.agents.ui.AgentsPage, :to :react, :kind :dependency}
-  {:from :entities.agent, :to :entities.agent.ui.AgentFacts, :kind :dependency}
-  {:from :widgets.roster.ui.Roster, :to :shared.lib, :kind :dependency}
-  {:from :app.main, :to :react, :kind :dependency}
-  {:from :shared.ui, :to :shared.ui.Stat, :kind :dependency}
-  {:from :entities.network.api.networkQueries, :to :shared.api, :kind :dependency}
-  {:from :pages.overview, :to :pages.overview.ui.OverviewPage, :kind :dependency}
-  {:from :widgets.roster, :to :widgets.roster.ui.Roster, :kind :dependency}
-  {:from :shared.ui.PageHeading, :to :react, :kind :dependency}
-  {:from :entities.network.api.networkQueries, :to :at.tanstack, :kind :dependency}
-  {:from :app.App, :to :app.routes, :kind :dependency}
-  {:from :entities.network, :to :entities.network.api.useNetworks, :kind :dependency}
-  {:from :app.routes, :to :pages.overview, :kind :dependency}
-  {:from :entities.network.api.useNetworks,
-   :to :entities.network.api.networkQueries,
-   :kind :dependency}
-  {:from :pages.agents, :to :pages.agents.ui.AgentsPage, :kind :dependency}
-  {:from :pages.overview.ui.OverviewPage, :to :at.tanstack, :kind :dependency}
-  {:from :app.App, :to :at.tanstack, :kind :dependency}
-  {:from :pages.agents.ui.AgentsPage, :to :at.tanstack, :kind :dependency}
-  {:from :pages.overview.ui.OverviewPage, :to :features.filter-network, :kind :dependency}
-  {:from :entities.network, :to :entities.network.ui.NetworkMark, :kind :dependency}
-  {:from :app.main, :to :app.App, :kind :dependency}
-  {:from :widgets.summary.ui.Summary, :to :shared.ui, :kind :dependency}
-  {:from :shared.api.client, :to :zod, :kind :dependency}
-  {:from :entities.agent.api.useAgents, :to :at.tanstack, :kind :dependency}
-  {:from :widgets.roster.ui.Roster, :to :react, :kind :dependency}
-  {:from :entities.agent, :to :entities.agent.model.roster, :kind :dependency}
   {:from :widgets.roster.ui.Roster, :to :entities.agent, :kind :dependency}
-  {:from :pages.overview.ui.OverviewPage, :to :shared.ui, :kind :dependency}
-  {:from :pages.overview.ui.OverviewPage, :to :widgets.summary, :kind :dependency}
-  {:from :entities.agent.ui.AgentFacts, :to :shared.lib, :kind :dependency}
-  {:from :pages.agents.ui.AgentsPage, :to :widgets.roster, :kind :dependency}
   {:from :shared.ui.ClearableSelect, :to :react, :kind :dependency}
-  {:from :features.filter-network.ui.NetworkSelect, :to :entities.network, :kind :dependency}
-  {:from :entities.agent.api.agentQueries, :to :at.tanstack, :kind :dependency}
-  {:from :app.routes, :to :pages.agents, :kind :dependency}
+  {:from :pages.overview.ui.OverviewPage, :to :react, :kind :dependency}
+  {:from :widgets.roster.ui.Roster, :to :react, :kind :dependency}
+  {:from :entities.network.api.useNetworks, :to :at.tanstack, :kind :dependency}
+  {:from :widgets.roster.ui.Roster, :to :shared.ui, :kind :dependency}
+  {:from :widgets.roster.ui.Roster, :to :shared.lib, :kind :dependency}
   {:from :app.main, :to :react-dom, :kind :dependency}
-  {:from :entities.agent.api.useAgents, :to :entities.agent.api.agentQueries, :kind :dependency}
-  {:from :widgets.summary.ui.Summary, :to :shared.lib, :kind :dependency}],
+  {:from :entities.network, :to :entities.network.api.networkQueries, :kind :dependency}
+  {:from :widgets.summary.ui.Summary, :to :shared.lib, :kind :dependency}
+  {:from :pages.overview.ui.OverviewPage,
+   :to :features.filter-network,
+   :kind :dependency}],
  :classes
  [{:ns "8004rep.app.App",
    :name "App",
@@ -127,9 +133,9 @@
    :ops
    [{:name "agentQueries", :text "agentQueries"}
     {:name "useAgents", :text "useAgents"}
+    {:name "averageScore", :text "averageScore"}
     {:name "byNetwork", :text "byNetwork"}
     {:name "countByStatus", :text "countByStatus"}
-    {:name "averageScore", :text "averageScore"}
     {:name "AgentFacts", :text "AgentFacts"}
     {:name "AgentStatusBadge", :text "AgentStatusBadge"}],
    :level 1,
