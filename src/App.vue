@@ -6,6 +6,7 @@ import { ALL_NETWORKS, CHAINS, DEFAULT_CHAIN, findChainBySlug } from './chains'
 import ChainName from './components/ChainName.vue'
 import SourceBadge from './components/SourceBadge.vue'
 import SelectMenu, { type SelectOption } from './components/ui/SelectMenu.vue'
+import { API_ENABLED, INDEXED_CHAINS } from './data/api'
 import { sourceFor } from './data'
 import { networkEnv, setNetworkEnv, type NetworkEnv } from './env'
 import { starCount } from './stars'
@@ -22,6 +23,10 @@ const slug = computed(() => (typeof route.params.slug === 'string' ? route.param
 const chain = computed(() => (slug.value && slug.value !== ALL_NETWORKS ? findChainBySlug(slug.value) : undefined))
 // The agent list now spans every network, so a per-chain source badge would mislead there.
 const showSource = computed(() => route.name !== 'agents')
+// The agent detail page calls the indexer first on these chains; other pages still read the source.
+const indexedSource = computed(
+  () => route.name === 'agent' && API_ENABLED && networkEnv.value === 'mainnet' && !!chain.value && INDEXED_CHAINS.has(chain.value.chainId),
+)
 
 // On a chain-specific page the chain decides the environment; the agent list follows the switch.
 const env = computed<NetworkEnv>(() =>
@@ -50,7 +55,10 @@ function switchEnv(value: string | undefined): void {
   void router.push({ name: stays ? name : 'agents', params: { slug: target.slug } })
 }
 
-const { data: resolved } = useAsync(async () => (chain.value ? sourceFor(chain.value) : undefined), chain)
+const { data: resolved } = useAsync(
+  async () => (chain.value && !indexedSource.value ? sourceFor(chain.value) : undefined),
+  () => [chain.value, indexedSource.value],
+)
 </script>
 
 <template>
@@ -76,7 +84,7 @@ const { data: resolved } = useAsync(async () => (chain.value ? sourceFor(chain.v
           label="Network environment"
           @update:model-value="switchEnv"
         />
-        <SourceBadge v-if="chain && showSource" :resolved="resolved" />
+        <SourceBadge v-if="chain && showSource" :resolved="resolved" :indexed="indexedSource" />
         <RouterLink
           class="star-link"
           :to="{ name: 'starred' }"
@@ -105,7 +113,8 @@ const { data: resolved } = useAsync(async () => (chain.value ? sourceFor(chain.v
     </main>
 
     <footer>
-      Read-only: no wallet, no backend. Data comes straight from the ERC-8004 registries and public subgraphs.
+      Read-only: no wallet, no keys. Base, Ethereum and Mantle are served by the 8004rep indexer; every
+      other network reads the ERC-8004 registries and 8004scan directly.
       <RouterLink :to="{ name: 'docs' }">How the numbers work</RouterLink>
     </footer>
   </TooltipProvider>

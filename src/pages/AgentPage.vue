@@ -10,7 +10,11 @@ import ReputationPanel from '../components/reputation/ReputationPanel.vue'
 import Disclosure from '../components/ui/Disclosure.vue'
 import Skeleton from '../components/ui/Skeleton.vue'
 import { sourceFor } from '../data'
+import { API_ENABLED, INDEXED_CHAINS, fetchApiAgentAsDetail } from '../data/api'
 import { resolveAgentURI, toDisplayUrl } from '../data/metadata'
+import type { FeedbackStats } from '../data/feedbackStats'
+import type { ReputationReport } from '../data/reputation/report'
+import type { TrustReport } from '../data/trustReport'
 import type { RegistrationFile } from '../data/types'
 import { formatDate, shortAddress } from '../format'
 import { useAsync } from '../useAsync'
@@ -21,9 +25,35 @@ const props = defineProps<{ slug: string; id: string }>()
 const chain = computed(() => findChainBySlug(props.slug)!)
 const tokenId = computed(() => (/^\d+$/.test(props.id) ? BigInt(props.id) : undefined))
 
+type Precomputed = { report: ReputationReport; stats: FeedbackStats; trust: TrustReport }
+const precomputed = ref<Precomputed>()
+const indexedFile = ref<RegistrationFile | null>()
+/** Guards side effects from a stale route's in-flight detail request. */
+let detailRequest = 0
+
 const { data: agent, error, loading, reload } = useAsync(
   async () => {
     if (tokenId.value === undefined) return null
+    const request = ++detailRequest
+    if (API_ENABLED && INDEXED_CHAINS.has(chain.value.chainId)) {
+      try {
+        const result = await fetchApiAgentAsDetail(chain.value.chainId, tokenId.value)
+        if (request !== detailRequest) return result?.agent ?? null
+        if (result) {
+          precomputed.value = result.precomputed
+          indexedFile.value = result.agent.file
+          return result.agent
+        }
+        precomputed.value = undefined
+        indexedFile.value = null
+        return null
+      } catch {
+        // The indexer is unreachable or does not cover this chain; read the source directly.
+      }
+    }
+    if (request !== detailRequest) return null
+    precomputed.value = undefined
+    indexedFile.value = undefined
     const { source } = await sourceFor(chain.value)
     return source.getAgent(tokenId.value)
   },
@@ -36,6 +66,10 @@ const file = ref<RegistrationFile | null>()
 watch(agent, async (current) => {
   file.value = undefined
   if (!current) return
+  if (indexedFile.value !== undefined) {
+    file.value = indexedFile.value ?? current.file ?? null
+    return
+  }
   // Prefer the real file over the indexer's partial copy of it.
   const resolved = (await resolveAgentURI(current.agentURI)) ?? current.file ?? null
   if (agent.value === current) file.value = resolved
@@ -99,7 +133,7 @@ const rawJson = computed(() => (file.value ? JSON.stringify(file.value.raw, null
       </div>
     </div>
 
-    <ReputationPanel :agent="agent" :chain="chain" :file="file">
+    <ReputationPanel :agent="agent" :chain="chain" :file="file" :precomputed="precomputed">
       <template #overview-top>
         <div v-if="file === undefined" class="skeleton-stack description" aria-busy="true">
           <span class="sr-only">Loading registration file</span>

@@ -4,7 +4,19 @@
   --line: #232b38;
   --text: #dfe6f0;
   --muted: #7d8898;
-  --accent: #22d3ee;
+  /* Brand cyan: #22d3ee (cyan-400) and its shades, used for charts and accents. */
+  --cyan-50: #ecfeff;
+  --cyan-100: #cffafe;
+  --cyan-200: #a5f3fc;
+  --cyan-300: #67e8f9;
+  --cyan-400: #22d3ee;
+  --cyan-500: #06b6d4;
+  --cyan-600: #0891b2;
+  --cyan-700: #0e7490;
+  --cyan-800: #155e75;
+  --cyan-900: #164e63;
+  --cyan-950: #083344;
+  --accent: var(--cyan-400);
   --link: #8ab4ff;
   --warn: #f5b84b;
   --ok: #4ade80;
@@ -1176,7 +1188,8 @@ pre {
   background: var(--panel);
   font-size: 13px;
   overflow: hidden;
-  table-layout: fixed;
+  /* Auto, not fixed: an absolutely positioned caption (sr-only) makes
+     fixed layout drop column widths and split the table in half. */
 }
 
 .signals tr {
@@ -1208,10 +1221,20 @@ pre {
   border-bottom: 0;
 }
 
-.signals td:first-child {
-  width: 2.6em;
+.signals td:first-child,
+.signals th:first-child {
+  width: 0;
+  padding-right: 8px;
   white-space: nowrap;
-  text-align: center;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.signals td:last-child,
+.signals th:last-child {
+  padding-left: 0;
+  white-space: normal;
+  vertical-align: middle;
 }
 
 .signal-level {

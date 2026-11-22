@@ -263,10 +263,10 @@ function cellTitle(c: Cell): string {
   background: transparent;
 }
 
-.cell.l1 { background: color-mix(in srgb, #22d3ee 28%, var(--panel)); }
-.cell.l2 { background: color-mix(in srgb, #22d3ee 50%, var(--panel)); }
-.cell.l3 { background: color-mix(in srgb, #22d3ee 75%, var(--panel)); }
-.cell.l4 { background: #22d3ee; }
+.cell.l1 { background: color-mix(in srgb, var(--cyan-400) 28%, var(--panel)); }
+.cell.l2 { background: color-mix(in srgb, var(--cyan-400) 50%, var(--panel)); }
+.cell.l3 { background: color-mix(in srgb, var(--cyan-400) 75%, var(--panel)); }
+.cell.l4 { background: var(--cyan-400); }
 
 .cell:not(.pad):hover {
   outline: 1px solid var(--text);

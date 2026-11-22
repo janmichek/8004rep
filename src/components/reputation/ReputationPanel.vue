@@ -2,10 +2,10 @@
 import { BookOpen, Gauge, GitCompareArrows, IdCard, MessageSquare, Users } from '@lucide/vue'
 import { computed } from 'vue'
 import type { ChainInfo } from '../../chains'
-import { computeFeedbackStats } from '../../data/feedbackStats'
+import { computeFeedbackStats, type FeedbackStats } from '../../data/feedbackStats'
 import { buildReputationReport, type ReputationReport } from '../../data/reputation/report'
 import { fetchScanScore } from '../../data/scan'
-import { buildTrustReport } from '../../data/trustReport'
+import { buildTrustReport, type TrustReport } from '../../data/trustReport'
 import type { AgentDetail, RegistrationFile } from '../../data/types'
 import { formatDate, formatNumber, formatPercent } from '../../format'
 import { useAsync } from '../../useAsync'
@@ -17,20 +17,28 @@ import MethodsTab from './MethodsTab.vue'
 import OverviewTab from './OverviewTab.vue'
 import ReviewersTab from './ReviewersTab.vue'
 
-const props = defineProps<{ agent: AgentDetail; chain: ChainInfo; file?: RegistrationFile | null }>()
+const props = defineProps<{
+  agent: AgentDetail
+  chain: ChainInfo
+  file?: RegistrationFile | null
+  /** Reports computed by the indexer, so the browser does not repeat the work. */
+  precomputed?: { report: ReputationReport; stats: FeedbackStats; trust: TrustReport }
+}>()
 
 /** The agent's own addresses; feedback from them is flagged and weighs nothing. */
 const self = computed(() => [props.agent.owner, props.agent.agentWallet].filter((a): a is NonNullable<typeof a> => a != null))
 // Endpoint checks wait for the registration file; everything else shows at once.
-const stats = computed(() =>
-  computeFeedbackStats(props.agent.feedback, {
-    owner: props.agent.owner,
-    agentWallet: props.agent.agentWallet,
-    ...(props.file ? { services: props.file.services.map((s) => s.endpoint) } : {}),
-  }),
+const stats = computed(
+  () =>
+    props.precomputed?.stats ??
+    computeFeedbackStats(props.agent.feedback, {
+      owner: props.agent.owner,
+      agentWallet: props.agent.agentWallet,
+      ...(props.file ? { services: props.file.services.map((s) => s.endpoint) } : {}),
+    }),
 )
-const report = computed(() => buildTrustReport(props.agent.feedback, stats.value, self.value))
-const rep = computed(() => buildReputationReport(props.agent.feedback, { self: self.value }))
+const report = computed(() => props.precomputed?.trust ?? buildTrustReport(props.agent.feedback, stats.value, self.value))
+const rep = computed(() => props.precomputed?.report ?? buildReputationReport(props.agent.feedback, { self: self.value }))
 
 // 8004scan is a comparison, not a dependency: a failure only empties its tile.
 const scan = useAsync(() => fetchScanScore(props.chain.chainId, props.agent.tokenId), () => [props.chain.chainId, props.agent.tokenId])

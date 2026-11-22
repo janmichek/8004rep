@@ -1,7 +1,7 @@
 # 8004rep
 
 Simple read-only explorer for [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) agents, inspired by
-[8004scan](https://8004scan.io). A static single-page app: no backend, no wallet, no keys.
+[8004scan](https://8004scan.io). A Vue single-page app over a small indexer: no wallet, no keys, no write path.
 
 - Browse the agents registered on a network, newest first
 - Open an agent: owner, agent wallet, registration file, services, reputation and feedback
@@ -11,24 +11,78 @@ Simple read-only explorer for [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004
 ## Run
 
 ```bash
-nvm use          # Node 22
+nvm use          # Node 22 for the frontend
 npm install
 npm run dev      # http://localhost:5174
 ```
+
+The indexer is a second process (Node 24 in production, Node 22+ locally):
+
+```bash
+npm run server   # http://localhost:8787, SQLite in data/8004rep.db
+```
+
+`VITE_API_URL` points the app at it; the default is `https://8004scan.fly.dev`. Set it to `off` to
+run the old browser-only path.
 
 | Script | Does |
 |---|---|
 | `npm run dev` | Vite dev server |
 | `npm run build` | Typecheck, then build the static bundle into `dist/` |
+| `npm run server` | Run the indexer and API on `:8787` |
 | `npm run preview` | Serve `dist/` locally |
 | `npm run typecheck` | `vue-tsc` |
+| `npm run typecheck:server` | `tsc` over the server and shared scoring modules |
 | `npm test` | Unit tests (Vitest) |
 
 `dist/` can be hosted anywhere static; routing uses the URL hash, so no rewrite rules are needed.
 
+## Indexer
+
+`server/` is a single Node service: Hono for HTTP, SQLite in WAL mode for storage, and three in-process
+loops (chain tail, enrichment, scoring). It reuses the browser's pure TypeScript — the same ABIs, the
+same reputation report, feedback stats and trust report — so a score on the server and a score in the
+browser can never drift apart.
+
+| Loop | Does |
+|---|---|
+| Chain sync | Newest agents/feedback from the agent0 subgraph (Base, Ethereum) or the registries (Mantle), then a bounded `getLogs` tail for feedback, revocations, responses and ERC-721 transfers |
+| Enrichment | Registration files, feedback files, comment text and deterministic hashes; IPFS gateways and HTTPS pass an SSRF guard |
+| Scoring | Materialises the filtered score, confidence, inflation gap, cost to fake, wallet counts and the full report/stats/trust JSON into `agent_scores` |
+
+The API is read-only and CORS-open:
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/health` | Sync state and row counts per chain |
+| `GET /api/chains` | Indexed networks and coverage limits |
+| `GET /api/agents` | Paginated, sortable agents (`chainId`, `q`, `sort=score\|feedback\|createdAt\|tokenId`) |
+| `GET /api/agents/:chainId/:tokenId` | Identity, registration file, feedback, reputation, precomputed reports |
+| `GET /api/feedbacks` | Cross-network feedback feed with agent names and comments |
+| `GET /api/network/:chainId` | Network stats, suspects and lookalike groups |
+| `GET /api/owners`, `/api/owners/:address` | Owner directory and portfolio |
+| `GET /api/reviewers`, `/api/reviewers/:address` | Reviewer directory and profile |
+
+Coverage is deliberately bounded: Base keeps the newest 12,000 agents and 30,000 feedback rows,
+Ethereum 60,000/40,000, Mantle all 1,000/5,000. `GET /api/health` reports the caps and the last indexed
+block. A direct agent URL outside the window is fetched from the chain on demand.
+
+Unindexed networks, the testnet environment, and an unreachable indexer fall back to 8004scan and the
+browser RPC path, so the app never goes blank when the backend is asleep.
+
 ## Deployment
 
-Deploys run on Vercel through GitHub Actions:
+The frontend deploys to Vercel; the indexer deploys to Fly.io:
+
+```bash
+flyctl deploy --app 8004scan
+flyctl logs --app 8004scan
+```
+
+`fly.toml` mounts the `data` volume at `/data`; `server/Dockerfile` runs the service on Node 24. The
+full plan and the decisions taken while building it are in `PLAN-backend.md`.
+
+Frontend deploys run on Vercel through GitHub Actions:
 
 - `Deploy production` — on every push to `main` or `master`: typechecks, tests, builds, then deploys to production.
 - `Deploy preview` — on every pull request: typechecks, tests, builds, deploys a preview, and comments its URL on the PR.
@@ -92,7 +146,10 @@ letter grade, co-rated agents) are in `src/variants/shared/metrics.ts`.
 
 ## Networks and data sources
 
-| Network | Chain ID | Source |
+Base (8453), Ethereum (1) and Mantle (5000) are served by the indexer API. Every other network — and every
+indexed network when the indexer is unreachable — uses the browser path described below.
+
+| Network | Chain ID | Browser source |
 |---|---|---|
 | Arbitrum Sepolia | 421614 | RPC (its subgraph currently answers "indexing unavailable") |
 | Ethereum Sepolia | 11155111 | RPC (its subgraph stopped indexing months ago) |
