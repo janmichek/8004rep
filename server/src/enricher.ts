@@ -80,7 +80,7 @@ async function enrichAgent(row: {
       `UPDATE agents SET name = ?, description = ?, image = ?, active = ?, x402 = ?,
          services_json = ?, supported_trust_json = ?, raw_file_json = ?,
          file_fetched_at = ?, file_error = NULL, file_next_try_at = NULL, file_attempts = 0,
-         needs_recompute = 1, updated_at = ?
+         needs_recompute = 1, score_attempts = 0, score_next_try_at = NULL, updated_at = ?
        WHERE chain_id = ? AND token_id = ? AND agent_uri = ?`,
       file.name ?? null,
       file.description ?? null,

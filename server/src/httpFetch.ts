@@ -8,6 +8,7 @@ import { brotliDecompressSync, gunzipSync, inflateSync } from 'node:zlib'
 const TIMEOUT_MS = 8_000
 const MAX_BYTES = 512 * 1024
 const MAX_HOPS = 4
+const MAX_ADDRESSES = 4
 
 /** Same policy as `api/fetch-json.ts`: only plainly public addresses pass. */
 export function isPrivateIp(ip: string): boolean {
@@ -52,7 +53,7 @@ async function resolvePublic(url: URL): Promise<Resolved[]> {
 type RawResponse = { status: number; location: string | null; body: string }
 
 /** One GET to an already-validated IP, preserving the original Host and TLS name. */
-function requestPinned(url: URL, pinned: Resolved): Promise<RawResponse> {
+function requestPinned(url: URL, pinned: Resolved, timeoutMs: number): Promise<RawResponse> {
   const hostname = url.hostname.replace(/^\[|\]$/g, '')
   const hostHeader = url.hostname
   const secure = url.protocol === 'https:'
@@ -124,7 +125,7 @@ function requestPinned(url: URL, pinned: Resolved): Promise<RawResponse> {
         res.on('error', reject)
       },
     )
-    const timer = setTimeout(() => req.destroy(new Error('Request timed out')), TIMEOUT_MS)
+    const timer = setTimeout(() => req.destroy(new Error('Request timed out')), Math.max(1, timeoutMs))
     req.on('close', () => clearTimeout(timer))
     req.on('error', reject)
     req.end()
@@ -133,12 +134,15 @@ function requestPinned(url: URL, pinned: Resolved): Promise<RawResponse> {
 
 async function fetchPublic(url: URL): Promise<string> {
   let current = url
+  const deadline = Date.now() + TIMEOUT_MS
   for (let hop = 0; hop <= MAX_HOPS; hop++) {
+    const remaining = deadline - Date.now()
+    if (remaining <= 0) throw new Error('Request timed out')
     let res: RawResponse | undefined
     let lastError: unknown
-    for (const pinned of await resolvePublic(current)) {
+    for (const pinned of (await resolvePublic(current)).slice(0, MAX_ADDRESSES)) {
       try {
-        res = await requestPinned(current, pinned)
+        res = await requestPinned(current, pinned, Math.max(1, deadline - Date.now()))
         break
       } catch (error) {
         lastError = error

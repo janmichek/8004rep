@@ -7,7 +7,7 @@ import { createRpcSource, createRpcClient } from '../../src/data/rpc'
 import { createSubgraphSource } from '../../src/data/subgraph'
 import type { ChainInfo } from '../../src/chains'
 import { normalizeRegistrationFile } from '../../src/data/metadata'
-import type { FeedbackEvent } from '../../src/data/types'
+import type { FeedbackEvent, RegistrationFile } from '../../src/data/types'
 import { CORS_ORIGIN, STARTED_AT } from './config'
 import { all, get, run, transaction } from './db'
 import { chainById } from './chains'
@@ -91,6 +91,35 @@ async function resolveFile(agentURI: string | null): Promise<{ file: ReturnType<
   }
 }
 
+/**
+ * Apply a fetched registration file only if the agent still points at the URI
+ * that was fetched. Returns false when a newer URI won the race.
+ */
+function saveFetchedFile(chainId: number, tokenId: string, uri: string, file: RegistrationFile): boolean {
+  const now = Math.floor(Date.now() / 1000)
+  const result = run(
+    `UPDATE agents SET name = ?, description = ?, image = ?, active = ?, x402 = ?,
+       services_json = ?, supported_trust_json = ?, raw_file_json = ?,
+       file_fetched_at = ?, file_error = NULL, file_next_try_at = NULL, file_attempts = 0,
+       needs_recompute = 1, score_attempts = 0, score_next_try_at = NULL, updated_at = ?
+     WHERE chain_id = ? AND token_id = ? AND agent_uri = ?`,
+    file.name ?? null,
+    file.description ?? null,
+    file.image ?? null,
+    file.active === undefined ? null : file.active ? 1 : 0,
+    file.x402Support === undefined ? null : file.x402Support ? 1 : 0,
+    JSON.stringify(file.services),
+    JSON.stringify(file.supportedTrust),
+    JSON.stringify(file.raw),
+    now,
+    now,
+    chainId,
+    tokenId,
+    uri,
+  )
+  return Number(result.changes) > 0
+}
+
 async function indexDetail(chainId: number, tokenId: string): Promise<boolean> {
   const chain = chainById(chainId)
   if (!chain) return false
@@ -102,6 +131,10 @@ async function indexDetail(chainId: number, tokenId: string): Promise<boolean> {
     if (!detail) return false
     const resolved = await resolveFile(detail.agentURI)
     const file = resolved.file ?? detail.file ?? null
+    const current = get<AgentRow>('SELECT * FROM agents WHERE chain_id = ? AND token_id = ?', chainId, tokenId)
+    // A detail read can race a newer URI written from a log; never write the
+    // older URI or its registration file back over it.
+    const staleUri = Boolean(current?.agent_uri && detail.agentURI && current.agent_uri !== detail.agentURI)
     // Agent + every feedback row land together: a crash cannot leave a
     // half-indexed detail that later requests then trust.
     transaction(() => {
@@ -109,9 +142,8 @@ async function indexDetail(chainId: number, tokenId: string): Promise<boolean> {
         tokenId,
         owner: detail.owner,
         agentWallet: detail.agentWallet,
-        agentURI: detail.agentURI,
+        ...(staleUri ? {} : { agentURI: detail.agentURI, file }),
         createdAt: detail.createdAt ?? null,
-        file,
         needsRecompute: true,
       })
       for (const row of detail.feedback) {
@@ -135,15 +167,7 @@ async function indexDetail(chainId: number, tokenId: string): Promise<boolean> {
         chainId,
         tokenId,
       )
-      if (resolved.file && detail.agentURI) {
-        run(
-          'UPDATE agents SET file_fetched_at = ?, file_error = NULL, file_next_try_at = NULL, file_attempts = 0 WHERE chain_id = ? AND token_id = ? AND agent_uri = ?',
-          Math.floor(Date.now() / 1000),
-          chainId,
-          tokenId,
-          detail.agentURI,
-        )
-      }
+      if (!staleUri && resolved.file && detail.agentURI) saveFetchedFile(chainId, tokenId, detail.agentURI, resolved.file)
     })
     return true
   } catch (error) {
@@ -174,6 +198,10 @@ function takeDetailToken(c: Context): boolean {
   const now = Date.now() / 1000
   if (detailBuckets.size > 5_000) {
     for (const [key, bucket] of detailBuckets) if (now - bucket.at > 3_600) detailBuckets.delete(key)
+  }
+  if (detailBuckets.size >= 5_000) {
+    const entries = [...detailBuckets.entries()].sort((a, b) => a[1].at - b[1].at)
+    for (let i = 0; i < entries.length - 4_000; i++) detailBuckets.delete(entries[i]![0])
   }
   const key = clientKey(c)
   const bucket = detailBuckets.get(key) ?? { tokens: DETAIL_CAPACITY, at: now }
@@ -221,15 +249,7 @@ async function ensureAgentFile(c: Context, chainId: number, tokenId: string): Pr
   const pending = (async () => {
     const resolved = await resolveFile(agent.agent_uri!)
     if (resolved.file) {
-      upsertAgent(chainId, { tokenId, agentURI: agent.agent_uri, file: resolved.file, needsRecompute: false })
-      run(
-        `UPDATE agents SET file_fetched_at = ?, file_error = NULL, file_next_try_at = NULL, file_attempts = 0
-         WHERE chain_id = ? AND token_id = ? AND agent_uri = ?`,
-        Math.floor(Date.now() / 1000),
-        chainId,
-        tokenId,
-        agent.agent_uri,
-      )
+      saveFetchedFile(chainId, tokenId, agent.agent_uri!, resolved.file)
     } else {
       run(
         `UPDATE agents SET file_error = ?, file_attempts = file_attempts + 1, file_next_try_at = ?
@@ -311,7 +331,7 @@ app.get('/api/agents', (c) => {
   const rated = c.req.query('rated') === '1'
   // Pages share one snapshot boundary so new rows cannot shift an offset.
   const asOf = c.req.query('asOf') ? int(c.req.query('asOf'), 0, 0, 4_000_000_000) : Math.floor(Date.now() / 1000)
-  const where: string[] = ['(a.created_at IS NULL OR a.created_at < ?)']
+  const where: string[] = ['COALESCE(a.created_at, a.updated_at, 0) < ?']
   const params: Array<string | number> = [asOf]
   if (chainId !== undefined) {
     where.push('a.chain_id = ?')
@@ -335,7 +355,7 @@ app.get('/api/agents', (c) => {
         ? 'COALESCE(sc.total_feedback, 0)'
         : sort === 'tokenId'
           ? 'CAST(a.token_id AS INTEGER)'
-          : 'a.created_at'
+          : 'COALESCE(a.created_at, a.updated_at, 0)'
   const direction = order === 'asc' ? 'ASC' : 'DESC'
   const rows = all<AgentRow & { feedback_count: number }>(
     `SELECT a.*, COALESCE(sc.total_feedback, (SELECT COUNT(*) FROM feedback f WHERE f.chain_id = a.chain_id AND f.token_id = a.token_id)) AS feedback_count
@@ -371,7 +391,8 @@ app.get('/api/agents/:chainId/:tokenId', async (c) => {
   }
   if (agent.file_fetched_at === null && agent.agent_uri) {
     await ensureAgentFile(c, chainId, tokenId)
-    agent = get<AgentRow>('SELECT * FROM agents WHERE chain_id = ? AND token_id = ?', chainId, tokenId)!
+    agent = get<AgentRow>('SELECT * FROM agents WHERE chain_id = ? AND token_id = ?', chainId, tokenId)
+    if (!agent) return c.json({ error: 'Agent not found' }, 404)
   }
   let score = getScore(chainId, tokenId)
   if (!score || agent.needs_recompute === 1) {
