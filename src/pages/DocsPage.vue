@@ -346,7 +346,7 @@ function scrollToTop(): void {
   --docs-line: #26303f;
   --docs-text: #e4eaf4;
   --docs-muted: #96a3b8;
-  --docs-accent: #5eead4;
+  --docs-accent: #22d3ee;
   --docs-link: #9cc0ff;
   --docs-warn: #f5b84b;
   max-width: 1180px;
