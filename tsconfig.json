@@ -1,20 +1,13 @@
 {
+  // Editor entry. Compiler options live in config/tsconfig.base.json.
+  // Not named tsconfig.json inside config/: Vite would load that file from the config
+  // directory and miss these path mappings. TypeScript 7 resolves paths from this file.
+  "extends": "./config/tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"],
-    "jsx": "preserve",
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "isolatedModules": true,
-    "verbatimModuleSyntax": true,
-    "skipLibCheck": true,
-    "noEmit": true
-  },
-  "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts"],
-  "exclude": ["api"]
+    "paths": {
+      "@server/*": ["./server/*"],
+      "@shared/*": ["./shared/*"],
+      "@test/*": ["./test/*"]
+    }
+  }
 }

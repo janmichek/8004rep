@@ -1,0 +1,19 @@
+{
+  "$schema": "../node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "command",
+  "commandRunner": {
+    "command": "bun run test:unit"
+  },
+  "mutate": ["src/**/model/**/*.ts", "src/**/lib/**/*.ts", "!src/**/*.test.ts"],
+  "ignorePatterns": [".agents", ".claude", ".cursor", ".github", "docs", "examples", "agent"],
+  "concurrency": 4,
+  "timeoutMS": 10000,
+  "thresholds": {
+    "high": 80,
+    "low": 70,
+    "break": 80
+  },
+  "reporters": ["clear-text"],
+  "coverageAnalysis": "off",
+  "tempDirName": ".stryker-tmp"
+}

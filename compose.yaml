@@ -1,0 +1,12 @@
+services:
+  dev-template-2026:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dev-template-2026
+    container_name: dev-template-2026
+    init: true
+    ports:
+      - '3001:3001'
+    stdin_open: true
+    tty: true

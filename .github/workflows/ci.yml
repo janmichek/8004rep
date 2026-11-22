@@ -1,0 +1,26 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run validate
+      - name: Coverage floors did not decrease
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          # Update the remote-tracking ref the checker reads, not just FETCH_HEAD.
+          git fetch --depth=1 origin "refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+          bun scripts/ratchet-coverage.ts "origin/$BASE_REF"
+      - run: bun run audit
+      - run: bun run test:mutate
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run test:e2e
