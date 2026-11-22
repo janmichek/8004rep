@@ -101,6 +101,7 @@ function scoreOne(agent: AgentRow): Scored | null {
 export function scoreAgent(chainId: number, tokenId: string): Scored | null {
   const agent = get<AgentRow>('SELECT * FROM agents WHERE chain_id = ? AND token_id = ?', chainId, tokenId)
   if (!agent) return null
+  if (agent.score_next_try_at !== null && agent.score_next_try_at > Math.floor(Date.now() / 1000)) return null
   return scoreOne(agent)
 }
 
@@ -143,7 +144,7 @@ export function scoreJson(chainId: number, tokenId: string): ScoreRow | undefine
 const SNAPSHOT_TTL_SECONDS = 600
 /** Bound the quadratic reviewer-overlap pass so one recompute cannot freeze the process. */
 const SNAPSHOT_AGENTS = 300
-const SNAPSHOT_ROWS = 20_000
+const SNAPSHOT_ROWS = 50_000
 const snapshotInFlight = new Set<number>()
 
 type SnapshotRow = {
