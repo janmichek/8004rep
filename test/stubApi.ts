@@ -1,9 +1,29 @@
 import { vi } from 'vitest';
-import { agents, networks } from '../server/data';
-import type { Agent, Network } from '../shared/schemas';
+import { networks } from '../server/data';
+import type { AgentPage, Network } from '../shared/schemas';
 
-const routes = new Map<string, Agent[] | Network[]>([
-  ['GET /api/agents', agents],
+const agentPage: AgentPage = {
+  items: [
+    {
+      chainId: 8453,
+      tokenId: '1',
+      name: 'Atlas Broker',
+      owner: '0x1111111111111111111111111111111111111111',
+      protocols: ['MCP'],
+      x402: false,
+      totalScore: 72,
+      averageScore: 80,
+      feedbackCount: 18,
+      createdAt: 1_736_154_840,
+      testnet: false,
+    },
+  ],
+  total: 1,
+  hasMore: false,
+};
+
+const routes = new Map<string, AgentPage | Network[]>([
+  ['GET /api/agents', agentPage],
   ['GET /api/networks', networks],
 ]);
 

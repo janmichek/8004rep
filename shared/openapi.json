@@ -8,63 +8,180 @@
     "/api/agents": {
       "get": {
         "operationId": "listAgents",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "chain",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "env",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "mainnet",
+                "testnet"
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "registered",
+                "score",
+                "feedback"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Agents",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "number"
-                      },
-                      "network": {
-                        "type": "string"
-                      },
-                      "name": {
-                        "type": "string"
-                      },
-                      "owner": {
-                        "type": "string"
-                      },
-                      "feedbackCount": {
-                        "type": "number"
-                      },
-                      "score": {
-                        "type": [
-                          "number",
-                          "null"
-                        ]
-                      },
-                      "status": {
-                        "type": "string",
-                        "enum": [
-                          "active",
-                          "quiet",
-                          "unreviewed"
-                        ]
-                      },
-                      "registeredAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "chainId": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "tokenId": {
+                            "type": "string",
+                            "pattern": "^\\d+$"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "imageUrl": {
+                            "type": "string"
+                          },
+                          "owner": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "protocols": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "x402": {
+                            "type": "boolean"
+                          },
+                          "totalScore": {
+                            "type": "number"
+                          },
+                          "averageScore": {
+                            "type": "number"
+                          },
+                          "feedbackCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "createdAt": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "testnet": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "chainId",
+                          "tokenId",
+                          "owner",
+                          "protocols",
+                          "x402",
+                          "totalScore",
+                          "averageScore",
+                          "feedbackCount",
+                          "testnet"
+                        ],
+                        "additionalProperties": false
                       }
                     },
-                    "required": [
-                      "id",
-                      "network",
-                      "name",
-                      "owner",
-                      "feedbackCount",
-                      "score",
-                      "status",
-                      "registeredAt"
-                    ],
-                    "additionalProperties": false
-                  }
+                    "total": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "hasMore": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total",
+                    "hasMore"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }

@@ -1,13 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Preview } from '@storybook/react-vite';
-import { networks } from '../../server/data';
-import { networkQueries } from '../../src/entities/network';
-import '../../src/index.css';
+import '../../src/shared/lib/explorer/classic.css';
 
-// no API in a static Storybook build (Chromatic), so the cache is seeded and never refetched
-const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
-
-queryClient.setQueryData(networkQueries.list().queryKey, networks);
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { staleTime: Infinity } },
+});
 
 const preview: Preview = {
   decorators: [

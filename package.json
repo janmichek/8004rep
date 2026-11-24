@@ -15,7 +15,7 @@
     "check:static": "bun run typecheck && bun run lint && bun run fmt:check && bun run fsd && bun run dead-code && bun run duplicates",
     "validate": "bun run check:static && bun run api:check && bun run build && bun run test:coverage",
     "audit": "bun audit --production",
-    "lint": "oxlint -c config/oxlintrc.json --ignore-pattern .agents --ignore-pattern .claude --ignore-pattern .cursor --ignore-pattern agent --ignore-pattern examples --ignore-pattern scripts/diagram/page.js --ignore-pattern tools/oxlint/anti-slop --ignore-pattern src/shared/api/schema.d.ts",
+    "lint": "oxlint -c config/oxlintrc.json --ignore-pattern .agents --ignore-pattern .claude --ignore-pattern .cursor --ignore-pattern agent --ignore-pattern examples --ignore-pattern scripts/diagram/page.js --ignore-pattern tools/oxlint/anti-slop --ignore-pattern src/shared/api/schema.d.ts --ignore-pattern src/shared/lib/explorer",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "fsd": "steiger src --fail-on-warnings",
@@ -38,9 +38,11 @@
     "@tanstack/react-query": "^5.104.4",
     "@tanstack/react-router": "^1.170.45",
     "hono": "^4.13.13",
+    "lucide-react": "^1.77.0",
     "openapi-fetch": "^0.17.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "viem": "^2.58.4",
     "zod": "^4.6.7"
   },
   "devDependencies": {

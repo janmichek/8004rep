@@ -50,6 +50,8 @@ A slice is imported through its `index.ts`. Cross-slice imports are relative on 
 
 `shared/schemas.ts` is the API contract. Change the Zod schema, run `bun run api:generate`, and call the API through `fetchAgents` or `fetchNetworks`. Do not hand-edit `shared/openapi.json` or `src/shared/api/schema.d.ts`.
 
+`/api/agents` accepts `q`, `chain`, `env`, `sort=registered|score|feedback`, `order`, `page`, and `pageSize`. The server proxies 8004scan, so the browser never spends the upstream rate limit. The table's Score, Feedback, and Registered headers write those params to the URL; the page and API contract pass them through to the proxy.
+
 `server/data.ts` holds the sample roster. The API parses them with the Zod schemas before they leave the server. The UI never imports that file.
 
 Stories live in `stories/` so they stay out of the architecture diagram. Tests live next to the code. Legacy research notes live in `docs/legacy/`.

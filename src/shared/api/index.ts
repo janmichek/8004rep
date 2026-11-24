@@ -1,1 +1,1 @@
-export { fetchAgents, fetchNetworks } from './client';
+export { fetchAgents, fetchNetworks, type AgentListQuery } from './client';

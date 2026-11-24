@@ -50,7 +50,15 @@ export type $defs = Record<string, never>;
 export interface operations {
     listAgents: {
         parameters: {
-            query?: never;
+            query?: {
+                q?: string;
+                chain?: number;
+                env?: "mainnet" | "testnet";
+                sort?: "registered" | "score" | "feedback";
+                order?: "asc" | "desc";
+                page?: number;
+                pageSize?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -64,17 +72,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        id: number;
-                        network: string;
-                        name: string;
-                        owner: string;
-                        feedbackCount: number;
-                        score: number | null;
-                        /** @enum {string} */
-                        status: "active" | "quiet" | "unreviewed";
-                        /** Format: date-time */
-                        registeredAt: string;
-                    }[];
+                        items: {
+                            chainId: number;
+                            tokenId: string;
+                            name?: string;
+                            description?: string;
+                            imageUrl?: string;
+                            owner: string | null;
+                            protocols: string[];
+                            x402: boolean;
+                            totalScore: number;
+                            averageScore: number;
+                            feedbackCount: number;
+                            createdAt?: number;
+                            testnet: boolean;
+                        }[];
+                        total: number;
+                        hasMore: boolean;
+                    };
                 };
             };
         };

@@ -1,0 +1,289 @@
+// @ts-nocheck
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  fetchScanChainFeedback,
+  parseFeedbackGrowth,
+  parseScanAgentDetail,
+  parseScanChains,
+  parseScanPageTotal,
+  parseScanScore,
+  parseScanStats,
+} from './scan';
+
+function jsonResponse(body: unknown): Response {
+  return { ok: true, status: 200, json: async () => body } as Response;
+}
+
+afterEach(() => vi.unstubAllGlobals());
+
+// Trimmed from GET /agents/1/22771 (2026-10-18).
+const AGENT = {
+  total_score: 93.73,
+  scores: {
+    last_scored_at: '2026-10-18T00:50:33.532850+00:00',
+    breakdown: {
+      version: '5.2',
+      algorithm: 'v5_leaderboard_policy',
+      dimensions: {
+        service: { score: 95, weight: 0.25 },
+        momentum: { score: 5, weight: 0.1 },
+        publisher: { score: 48.58, weight: 0.2 },
+        compliance: { score: 98, weight: 0.15 },
+        engagement: {
+          score: 71.37,
+          weight: 0.3,
+          details: { average_score: 97.75, feedback_count: 49, feedback_weight: 1 },
+        },
+      },
+      leaderboard_policy: {
+        score_band: { floor: 78, ceiling: 95 },
+        weights: { proof: 0.7, support: 0.3 },
+        proof_score: 100,
+        support_score: 54.22,
+        merit_score: 86.27,
+        evidence_tier: 'battle-tested',
+        integrity_tier: 'healthy',
+      },
+    },
+  },
+};
+
+describe('parseScanScore', () => {
+  it('reads the total, the dimensions heaviest first, and the feedback inputs', () => {
+    const score = parseScanScore(AGENT)!;
+    expect(score.total).toBe(93.73);
+    expect(score.dimensions.map((d) => d.id)).toEqual([
+      'engagement',
+      'service',
+      'publisher',
+      'compliance',
+      'momentum',
+    ]);
+    expect(score.dimensions[0]).toEqual({
+      id: 'engagement',
+      label: 'Engagement',
+      score: 71.37,
+      weight: 0.3,
+    });
+    expect(score.feedback).toEqual({ average: 97.75, count: 49, weight: 1 });
+    expect(score.band).toEqual({ floor: 78, ceiling: 95 });
+    expect(score.policy).toMatchObject({
+      proofWeight: 0.7,
+      supportWeight: 0.3,
+      proofScore: 100,
+      supportScore: 54.22,
+      merit: 86.27,
+    });
+    expect(score.algorithm).toBe('v5_leaderboard_policy v5.2');
+    expect(score.scoredAt).toMatch(/^2026-10-18/);
+  });
+
+  it('keeps what it can from a partial or hostile body', () => {
+    expect(parseScanScore(null)).toBeNull();
+    expect(parseScanScore({ total_score: 'high' })).toBeNull();
+    const score = parseScanScore({
+      total_score: 12,
+      scores: { breakdown: { dimensions: { x: { score: '1', weight: 1 }, y: 7 } } },
+    });
+    expect(score).toEqual({ total: 12, dimensions: [] });
+  });
+});
+
+describe('parseScanStats', () => {
+  it('reads the ecosystem baseline', () => {
+    expect(
+      parseScanStats({
+        average_feedback_score: 92.86,
+        total_feedbacks: 4022119,
+        total_agents: 1003923,
+      })
+    ).toEqual({
+      averageFeedback: 92.86,
+      totalFeedback: 4022119,
+      totalAgents: 1003923,
+    });
+    expect(parseScanStats({ average_feedback_score: 92.86 })).toBeNull();
+  });
+});
+
+describe('parseScanPageTotal', () => {
+  it('reads the pager total from a list envelope', () => {
+    expect(parseScanPageTotal({ success: true, meta: { pagination: { total: 648682 } } })).toBe(
+      648682
+    );
+    expect(parseScanPageTotal({ success: true, meta: { pagination: {} } })).toBeNull();
+    expect(parseScanPageTotal({ success: true, data: [] })).toBeNull();
+    expect(parseScanPageTotal(null)).toBeNull();
+  });
+});
+
+describe('parseFeedbackGrowth', () => {
+  const body = {
+    period: '30d',
+    chains: [
+      { chain_id: 1, data: [{ feedbacks: 17683 }, { feedbacks: 35236 }] },
+      { chain_id: 8453, data: [{ feedbacks: 512236 }, { date: 'gap' }, { feedbacks: 648046 }] },
+    ],
+  };
+
+  it('subtracts the first cumulative point from the last', () => {
+    expect(parseFeedbackGrowth(body, 1)).toBe(17553);
+    expect(parseFeedbackGrowth(body, 8453)).toBe(135810);
+  });
+
+  it('returns null for a missing chain, too few points, or a shrunk series', () => {
+    expect(parseFeedbackGrowth(body, 999)).toBeNull();
+    expect(
+      parseFeedbackGrowth({ chains: [{ chain_id: 1, data: [{ feedbacks: 5 }] }] }, 1)
+    ).toBeNull();
+    expect(
+      parseFeedbackGrowth(
+        { chains: [{ chain_id: 1, data: [{ feedbacks: 9 }, { feedbacks: 4 }] }] },
+        1
+      )
+    ).toBeNull();
+    expect(parseFeedbackGrowth(null, 1)).toBeNull();
+  });
+});
+
+describe('fetchScanChainFeedback', () => {
+  it('reads total feedbacks, rated agents and 30-day growth', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/feedbacks?'))
+        return jsonResponse({ success: true, data: [], meta: { pagination: { total: 648682 } } });
+      if (url.includes('/agents?'))
+        return jsonResponse({ success: true, data: [], meta: { pagination: { total: 127804 } } });
+      if (url.includes('/stats/growth/chains')) {
+        return jsonResponse({
+          chains: [{ chain_id: 8453, data: [{ feedbacks: 512236 }, { feedbacks: 648046 }] }],
+        });
+      }
+      throw new Error(`unexpected ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(fetchScanChainFeedback(8453)).resolves.toEqual({
+      totalFeedback: 648682,
+      ratedAgents: 127804,
+      feedback30d: 135810,
+    });
+  });
+
+  it('keeps the totals that answered when one call fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/stats/growth/chains')) throw new Error('growth is down');
+        return jsonResponse({ success: true, data: [], meta: { pagination: { total: 7 } } });
+      })
+    );
+    await expect(fetchScanChainFeedback(8454)).resolves.toEqual({
+      totalFeedback: 7,
+      ratedAgents: 7,
+      feedback30d: null,
+    });
+  });
+});
+
+describe('parseScanScore unscored', () => {
+  it('reads a bare 0 without a breakdown as not scored', () => {
+    expect(parseScanScore({ total_score: 0, scores: null })).toBeNull();
+  });
+
+  it('reads a bare 0 with feedback behind it as scored, on the feedback average', () => {
+    const score = parseScanScore({
+      total_score: 0,
+      scores: null,
+      average_score: 88.75,
+      total_feedbacks: 11,
+    });
+    expect(score?.total).toBe(88.75);
+    expect(score?.feedback).toEqual({ average: 88.75, count: 11 });
+  });
+
+  it('keeps a bare 0 with feedback rows but no average as not scored', () => {
+    expect(
+      parseScanScore({ total_score: 0, scores: null, average_score: 0, total_feedbacks: 11 })
+    ).toBeNull();
+  });
+});
+
+describe('parseScanChains', () => {
+  it('names the networks rows can come from', () => {
+    expect(
+      parseScanChains({
+        supported_chains: [
+          { chain_id: 4663, name: 'Robinhood Chain', key: 'robinhood_mainnet', is_testnet: false },
+          { chain_id: 421614, name: 'Arbitrum Sepolia', key: 'arbitrum_sepolia', is_testnet: true },
+          { chain_id: 'x', name: 'broken', key: 'broken' },
+        ],
+      })
+    ).toEqual([
+      { chainId: 4663, name: 'Robinhood Chain', key: 'robinhood_mainnet', testnet: false },
+      { chainId: 421614, name: 'Arbitrum Sepolia', key: 'arbitrum_sepolia', testnet: true },
+    ]);
+  });
+});
+
+describe('parseScanAgentDetail', () => {
+  const detail = {
+    chain_id: 4217,
+    token_id: '426',
+    name: 'xylem-drainer',
+    description: 'Helps LPs withdraw.',
+    image_url: 'https://api.8004scan.io/api/v1/media/agents/4217/426/image',
+    owner_address: '0x57bd992bf4c0452617c47ba3423de8b7a472d35d',
+    agent_wallet: '0x57bd992bf4c0452617c47ba3423de8b7a472d35d',
+    supported_protocols: ['A2A', 'Web'],
+    x402_supported: false,
+    services: {
+      a2a: { endpoint: 'https://xylem-drainer.xyz/.well-known/agent-card.json', version: '0.3.0' },
+      web: { endpoint: 'https://xylem-drainer.xyz/' },
+    },
+    supported_trust_models: ['reputation'],
+    total_score: 42.5,
+    average_score: 90,
+    total_feedbacks: 3,
+    is_active: true,
+    created_at: '2026-10-24T08:00:04Z',
+  };
+
+  it('maps the identity and the services', () => {
+    expect(parseScanAgentDetail(detail)).toEqual({
+      chainId: 4217,
+      tokenId: 426n,
+      name: 'xylem-drainer',
+      description: 'Helps LPs withdraw.',
+      imageUrl: 'https://api.8004scan.io/api/v1/media/agents/4217/426/image',
+      owner: '0x57bd992bf4c0452617c47ba3423de8b7a472d35d',
+      agentWallet: '0x57bd992bf4c0452617c47ba3423de8b7a472d35d',
+      protocols: ['A2A', 'Web'],
+      x402: false,
+      services: [
+        {
+          name: 'a2a',
+          endpoint: 'https://xylem-drainer.xyz/.well-known/agent-card.json',
+          version: '0.3.0',
+        },
+        { name: 'web', endpoint: 'https://xylem-drainer.xyz/' },
+      ],
+      supportedTrust: ['reputation'],
+      totalScore: 42.5,
+      averageScore: 90,
+      feedbackCount: 3,
+      active: true,
+      createdAt: 1792828804,
+    });
+  });
+
+  it('drops services without an endpoint and rejects a body without ids', () => {
+    const parsed = parseScanAgentDetail({
+      ...detail,
+      services: { a2a: { version: '1' }, web: detail.services.web },
+    })!;
+    expect(parsed.services).toEqual([{ name: 'web', endpoint: 'https://xylem-drainer.xyz/' }]);
+    expect(parseScanAgentDetail({ ...detail, chain_id: null })).toBeNull();
+    expect(parseScanAgentDetail({ ...detail, token_id: 'x' })).toBeNull();
+  });
+});

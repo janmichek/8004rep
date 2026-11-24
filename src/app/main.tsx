@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/react';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import type { RootOptions } from 'react-dom/client';
-import '../index.css';
+import '../shared/lib/explorer/classic.css';
 import { App } from './App';
 
 // Without a DSN (local dev, tests) Sentry stays off

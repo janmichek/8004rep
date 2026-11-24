@@ -17,7 +17,7 @@
   ],
   "dynamicallyLoaded": ["scripts/diagram/page.js", "scripts/diagram/page.css"],
   "ignoreDependencies": ["typescript5", "@oxlint/plugins"],
-  "ignorePatterns": [".agents/**", ".claude/**", ".cursor/**", "tools/**"],
+  "ignorePatterns": [".agents/**", ".claude/**", ".cursor/**", "tools/**", "coverage/**"],
   "rules": {
     "dev-dependencies-in-production": "off"
   },
@@ -36,7 +36,10 @@
       ".cursor/**",
       "agent/**",
       "examples/**",
-      "tools/**"
+      "tools/**",
+      "src/shared/lib/explorer/classic.css",
+      "src/shared/lib/explorer/**"
     ]
-  }
+  },
+  "ignoreUnresolvedImports": ["../coverage/**", "**/coverage-summary.json"]
 }

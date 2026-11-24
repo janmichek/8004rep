@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
-import { agentSchema, networkSchema } from '../shared/schemas';
+import { agentPageSchema, agentQueryFields, networkSchema } from '../shared/schemas';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 
@@ -20,6 +20,16 @@ function ok(description: string, schema: z.ZodType) {
   };
 }
 
+/** Turns the list query's Zod fields into OpenAPI parameters; the contract stays one file. */
+function queryParameters() {
+  return Object.entries(agentQueryFields).map(([name, schema]) => ({
+    name,
+    in: 'query',
+    required: false,
+    schema: responseSchema(schema),
+  }));
+}
+
 const document = {
   openapi: '3.1.0',
   info: { title: '8004rep', version: '0.1.0' },
@@ -27,7 +37,8 @@ const document = {
     '/api/agents': {
       get: {
         operationId: 'listAgents',
-        responses: { 200: ok('Agents', z.array(agentSchema)) },
+        parameters: queryParameters(),
+        responses: { 200: ok('Agents', agentPageSchema) },
       },
     },
     '/api/networks': {
