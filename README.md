@@ -1,182 +1,77 @@
 # 8004rep
 
-Simple read-only explorer for [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) agents, inspired by
-[8004scan](https://8004scan.io). A static single-page app: no backend, no wallet, no keys.
+Read-only ERC-8004 agent reputation explorer, built on the strict Feature-Sliced React template from `dev-template-2026`.
 
-- Browse the agents registered on a network, newest first
-- Open an agent: owner, agent wallet, registration file, services, reputation and feedback
-- Open the **Tx detail** of a feedback row: how much backs that one rating, check by check
-- Search by token ID everywhere, by name on indexed networks
+## Start
 
-## Run
+You need [Bun](https://bun.sh) and Docker.
 
-```bash
-nvm use          # Node 22
-npm install
-npm run dev      # http://localhost:5174
+```sh
+bun install
+bun run dev
 ```
 
-| Script | Does |
-|---|---|
-| `npm run dev` | Vite dev server |
-| `npm run build` | Typecheck, then build the static bundle into `dist/` |
-| `npm run preview` | Serve `dist/` locally |
-| `npm run typecheck` | `vue-tsc` |
-| `npm test` | Unit tests (Vitest) |
+Open http://localhost:3001. One container serves the API and the UI.
 
-`dist/` can be hosted anywhere static; routing uses the URL hash, so no rewrite rules are needed.
+Without Docker, run the API and the Vite dev server yourself:
 
-## Deployment
-
-Deploys run on Vercel through GitHub Actions:
-
-- `Deploy production` — on every push to `main` or `master`: typechecks, tests, builds, then deploys to production.
-- `Deploy preview` — on every pull request: typechecks, tests, builds, deploys a preview, and comments its URL on the PR.
-
-The `api/fetch-json.ts` CORS relay is deployed as a Vercel function.
-
-Set these repository secrets before the first run:
-
-| Secret | Where to find it |
-|---|---|
-| `VERCEL_TOKEN` | Vercel account settings → Tokens |
-| `VERCEL_ORG_ID` | `.vercel/project.json` after `vercel link`, or the Vercel project settings |
-| `VERCEL_PROJECT_ID` | `.vercel/project.json` after `vercel link`, or the Vercel project settings |
-
-Production deployments also require a `production` environment in the repository settings (the workflow uses it for the deployment URL).
-
-## Views
-
-| View | Path | Shows |
-|---|---|---|
-| Agents | `#/agents/:slug` | Agents registered on a network, newest first; search by token ID everywhere, by name on indexed networks |
-| Agent | `#/agents/:slug/:id` | One agent: owner, agent wallet, registration file, services, reputation and feedback; each feedback review opens the **Tx detail** |
-| Network | `#/network/:slug` | Network feedback health: stats, suspect reviewers, review rings, latest reviews |
-| Owner | `#/owners/:slug/:address` | All agents owned by an address |
-| Reviewer | `#/reviewers/:slug/:address` | One reviewer's profile: rules that fired, agents they rate, latest reviews |
-
-Tx detail opens as a container on an agent page and answers one question per feedback row: what would it have cost to fake this rating? — transaction, feedback file, cited proof of payment, and the reviewer, one check per line.
-
-## Designs
-
-The same five views ship in twenty-one designs. Pick one with the switcher in the bottom-right corner, or with `?v=N`
-in the URL (remembered per browser). Each design is its own chunk and stylesheet; only the chosen one loads.
-
-| `v` | Design | Idea |
-|---|---|---|
-| 0 | Classic | The original explorer |
-| 1 | Terminal | A TUI: `ls -l` listings, ascii bars, `g a` / `g n` / `j` `k` keyboard navigation |
-| 2 | Ledger | A broadsheet: the network as a front page, agents as profiles, headlines picked from the numbers |
-| 3 | Bento | A mosaic of cards: score rings, grade, weekday × hour heatmap, reviewer donut |
-| 4 | League | Standings: agents ranked by a shrunk score, form guide (W/D/L), referees with bias |
-| 5 | Bureau | A credit file: letter grade, gauge, key factors, reporting sources, disputes |
-| 6 | Stream | A social feed: reviews as posts by day, trending agents, accounts to watch |
-| 7 | Orbit | Graphs: reviewer ↔ agent constellation, ego orbits per agent / reviewer / owner |
-| 8 | Swiss | Giant numerals, one red; keeps only trusted, raw, gap and reviewers |
-| 9 | Grid | A spreadsheet: sortable sheets, column picker, formula bar per cell, CSV export |
-| 10 | Inspector | Master–detail panes; selecting never navigates away, tx detail opens in a drawer |
-| 11 | Docket | A court record: exhibits, a verdict stamp, numbered testimony and a ruling |
-| 12 | Blueprint | An engineering drawing: title block, assembled parts, dimension lines, calibration gauge |
-| 13 | Herbarium | Naturalist specimens: taxonomy, pressed cards, abundance and a determination key |
-| 14 | Forecast | A weather bulletin: conditions, temperatures, outlook, storm warnings and fronts |
-| 15 | Recipe | A cookbook: ingredient lists, a numbered method, servings and tasting notes |
-| 16 | Atlas | Cartography: a gazetteer, charted places, terrain and a surveyor's route |
-| 17 | Ticker | A market terminal: quote board, daily candles, volatility and a participant order book |
-| 18 | Museum | A gallery: framed works, wall labels, curatorial notes, provenance and visitor book |
-| 19 | Archive | A registry: manila index cards, call numbers, series stamps and item lists |
-| 20 | Signal | A radio receiver: carrier frequencies, S-meters, SNR, bandwidth and interference |
-
-Shared loaders live in `src/variants/shared/use.ts`; the values the classic design does not compute (Gini,
-evenness, inverse HHI, velocity, active days and streaks, weekday × hour grid, running average, rank score,
-letter grade, co-rated agents) are in `src/variants/shared/metrics.ts`.
-
-## Networks and data sources
-
-| Network | Chain ID | Source |
-|---|---|---|
-| Arbitrum Sepolia | 421614 | RPC (its subgraph currently answers "indexing unavailable") |
-| Ethereum Sepolia | 11155111 | RPC (its subgraph stopped indexing months ago) |
-| Base Sepolia | 84532 | Subgraph |
-| Mantle | 5000 | RPC (no subgraph) |
-| Mantle Sepolia | 5003 | RPC (no subgraph) |
-
-The source is picked at runtime, once per network per session: the subgraph is used when it answers and is less
-than a day behind the chain, the registry contracts are read directly otherwise. The badge in the header shows
-which one is in use; hover it for the reason. A network switches to its subgraph by itself once that subgraph is
-healthy again.
-
-What differs between the two:
-
-| | Subgraph | RPC |
-|---|---|---|
-| Name search | yes | no, token ID only |
-| Created date, feedback count in the list | yes | no |
-| Feedback dates and endpoints | yes | no |
-| Feedback rows per agent | latest 100 | all |
-| Total agent count | no | yes |
-
-Over RPC the agent list needs no log scanning: token IDs are sequential, so the count is found by binary search
-on `ownerOf` and each page is one batched Multicall3 request.
-
-Registration files (`ipfs://`, `https://`, `data:` URIs) are fetched by the browser. A file hosted without CORS
-headers cannot be read and shows as "metadata unreachable"; the on-chain data is still displayed.
-
-## Tx detail
-
-Every feedback row on an agent page opens a container that asks one question: what would it have cost to fake
-this row? It reads the row's transaction, its feedback file, the payment that file cites and the reviewer's
-account, then prints one line per check with a status. Hover a line for the rule behind it.
-
-| Group | Checks |
-|---|---|
-| Transaction | sent by the reviewer (not a relayer, not the agent's owner) · calls the registry directly · one feedback per transaction · fee paid |
-| Feedback file | readable · cannot be rewritten (`data:` / IPFS / `feedbackHash` = `keccak256` of the bytes or of their canonical JSON) · restates the on-chain review · names an endpoint, tool, task or skill |
-| Proof of payment | cited · exists and did not revert · moves value from the reviewer to the agent's owner or wallet · older than the feedback · not cited by another row · amount |
-| Reviewer | not the agent itself · established wallet (nonce) · rates other agents · ratings vary (entropy) · stands by its feedback (revocations) |
-| Within this agent | authenticity weight · the reviewer's share of scored wallets · reviewer concentration (Herfindahl index) · not left right after registration · leave-one-out pull on the Filtered score |
-
-Statuses: `pass`, `warn`, `fail`, `absent` (the evidence was not offered), `unknown` (it could not be read from
-the browser — CORS, a chain that is not configured, a row older than the log scan) and `info` (a measurement, no
-verdict). The headline is a band, "6–13 of 14 checks hold": the low end counts the passes, the high end adds the
-unknowns.
-
-Rows from a subgraph carry no transaction hash; the detail finds it from the row's date (a few `getBlock` probes,
-then one `getLogs` on that window).
-
-Not computed, and why: links between a reviewer and the agent's owner through funding (needs an indexer or a
-block-explorer API, an RPC cannot answer "who funded this wallet"), wallet age, ownership transfers and URI
-changes after the reputation was earned (full-history log scans), and anything against the Validation Registry
-(not deployed yet).
-
-## Configuration
-
-Optional, in `.env.local`:
-
-```bash
-VITE_RPC_URL_<chainId>=https://…        # replace a network's public RPC
-VITE_SUBGRAPH_URL_<chainId>=https://…   # set or replace a network's subgraph
+```sh
+bun server/index.ts
+bun run start
 ```
 
-The built-in subgraph URLs are the public defaults shipped in `@blockbyvlog/agent0-sdk`; they may be rate-limited.
+The UI is http://localhost:3000 and proxies `/api` to port 3001.
 
-Networks live in `src/chains.ts` — adding one is a new entry there.
+`cp .env.example .env` is only for a Sentry DSN or a Chromatic token. The app runs without them.
 
-## Layout
+## Explorer
 
+| Page     | Route                       | What it shows                                                            |
+| -------- | --------------------------- | ------------------------------------------------------------------------ |
+| Overview | `/`                         | Network filter, status counts, average score, the three newest agents    |
+| Agents   | `/agents` and `/agents/:id` | Same filter and summary, the full roster. The id in the URL opens a row. |
+
+The network filter drives both the summary and the table on that page.
+
+## Architecture
+
+Imports only go downward. Steiger's recommended rules are all on, including `insignificant-slice`, so a slice has to be used from more than one place.
+
+```text
+app        router, providers, shell
+pages      one screen each: overview, agents
+widgets    summary (counts + average score), roster (agent table)
+features   filter-network (pick a network)
+entities   agent, network
+shared     api client, lib helpers, ui kit
 ```
-src/chains.ts          networks: RPC, registries, subgraph, explorer links
-src/abi.ts             the registry functions that are read
-src/data/types.ts      DataSource interface and shared types
-src/data/rpc.ts        DataSource over the registry contracts (viem)
-src/data/subgraph.ts   DataSource over the agent0 subgraph (GraphQL)
-src/data/index.ts      picks the source of a network
-src/data/metadata.ts   fetches and normalizes registration files
-src/data/scores.ts     off-chain scores and authenticity weights over an agent's feedback
-src/data/feedbackStats.ts  per-row checks, per-reviewer breakdown, risk signals
-src/data/txChecks.ts   rules of the tx detail: facts about one feedback row → checks
-src/data/txDetail.ts   reads those facts: transaction, feedback file, cited payment, reviewer
-src/pages/             agent list and agent detail
-src/components/        row, avatar, feedback table, tx detail, network picker, source badge
+
+A slice is imported through its `index.ts`. Cross-slice imports are relative on purpose: the pull-request diagram reads relative imports and draws those arrows. `bun run fsd` fails the build on a warning.
+
+`shared/schemas.ts` is the API contract. Change the Zod schema, run `bun run api:generate`, and call the API through `fetchAgents` or `fetchNetworks`. Do not hand-edit `shared/openapi.json` or `src/shared/api/schema.d.ts`.
+
+`server/data.ts` holds the sample roster. The API parses them with the Zod schemas before they leave the server. The UI never imports that file.
+
+Stories live in `stories/` so they stay out of the architecture diagram. Tests live next to the code. Legacy research notes live in `docs/legacy/`.
+
+## Scripts
+
+```sh
+bun run validate       # the agent finish line: static gate + api:check + build + coverage
+bun run check:static   # typecheck, lint, fmt:check, fsd, dead-code, duplicates
+bun run typecheck      # tsc --noEmit
+bun run lint           # oxlint
+bun run fmt            # oxfmt
+bun run fsd            # steiger, strict recommended rules
+bun run dead-code      # fallow: unused files, exports, dependencies
+bun run duplicates     # fallow dupes, strict, fail on any clone
+bun run api:generate   # openapi.json + schema.d.ts from Zod
+bun run test:unit      # vitest
+bun run test:coverage  # vitest with coverage floors
+bun run coverage:ratchet # raise coverage floors to the measured values
+bun run test:e2e       # playwright
+bun run test:mutate    # stryker on model/lib
+bun run storybook      # :6006
 ```
 
-`PLAN.md` holds the design notes.
+Coverage floors live in `config/coverage-floors.json` and only move up. Commits follow Conventional Commits (commitlint); pre-commit runs gitleaks plus `bun run validate`.

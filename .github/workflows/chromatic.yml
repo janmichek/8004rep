@@ -1,0 +1,27 @@
+# Visual regression on every pull request and on main
+name: Chromatic
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  chromatic:
+    runs-on: ubuntu-latest
+    env:
+      CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - uses: chromaui/action@latest
+        if: env.CHROMATIC_PROJECT_TOKEN != ''
+        with:
+          projectToken: ${{ env.CHROMATIC_PROJECT_TOKEN }}
+          storybookConfigDir: config/storybook
+          exitZeroOnChanges: true
+      - name: Explain the skip
+        if: env.CHROMATIC_PROJECT_TOKEN == ''
+        run: echo '::notice::Skipping Chromatic. Set the CHROMATIC_PROJECT_TOKEN secret to enable visual regression.'
