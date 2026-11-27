@@ -137,4 +137,31 @@ describe('fetchAgentPage', () => {
 
     await expect(fetchAgentPage({})).rejects.toThrow('8004scan answered 503');
   });
+
+  test('carries the upstream status and a valid Retry-After', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 429, headers: { 'retry-after': '120' } }))
+    );
+
+    await expect(fetchAgentPage({})).rejects.toMatchObject({
+      status: 429,
+      retryAfter: '120',
+    });
+  });
+
+  test('drops an HTTP-date Retry-After', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(null, {
+            status: 429,
+            headers: { 'retry-after': 'Wed, 21 Oct 2015 07:28:00 GMT' },
+          })
+      )
+    );
+
+    await expect(fetchAgentPage({})).rejects.toMatchObject({ retryAfter: undefined });
+  });
 });

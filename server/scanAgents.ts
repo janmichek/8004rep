@@ -56,6 +56,19 @@ type ScanAgentRow = z.infer<typeof scanAgentRowSchema>;
 
 type ScanPage = z.infer<typeof scanPageSchema>;
 
+/** An upstream failure the route can map back to a status and Retry-After header. */
+export class ScanUpstreamError extends Error {
+  readonly status: number;
+  readonly retryAfter: string | undefined;
+
+  constructor(message: string, status: number, retryAfter?: string) {
+    super(message);
+    this.name = 'ScanUpstreamError';
+    this.status = status;
+    this.retryAfter = retryAfter;
+  }
+}
+
 function addText(agent: Agent, key: 'name' | 'description' | 'imageUrl', value?: string | null) {
   if (value) agent[key] = value;
 }
@@ -105,6 +118,13 @@ export function parseAgentPage(body: ScanPage): AgentPage {
   };
 }
 
+/** Keep only a seconds value; an HTTP-date is valid upstream but not worth re-parsing here. */
+function readRetryAfter(response: Response): string | undefined {
+  const value = response.headers.get('retry-after')?.trim();
+
+  return value !== undefined && /^\d{1,6}$/.test(value) ? value : undefined;
+}
+
 /** Sorted, paginated agents from 8004scan, validated against the shared contract. */
 export async function fetchAgentPage(query: AgentsQuery): Promise<AgentPage> {
   const params = new URLSearchParams({
@@ -124,7 +144,13 @@ export async function fetchAgentPage(query: AgentsQuery): Promise<AgentPage> {
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
 
-  if (!response.ok) throw new Error(`8004scan answered ${response.status}`);
+  if (!response.ok) {
+    throw new ScanUpstreamError(
+      `8004scan answered ${response.status}`,
+      response.status,
+      readRetryAfter(response)
+    );
+  }
 
   const parsed = scanPageSchema.safeParse(await response.json().catch(() => null));
 

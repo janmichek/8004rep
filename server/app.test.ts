@@ -1,10 +1,15 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import type { AgentPage } from '../shared/schemas';
 import { agentPageSchema, networkSchema } from '../shared/schemas';
-import { app } from './app';
+import { createApp } from './app';
+import { createTtlCache } from './cache';
+import type { AgentPageFetcher } from './routes/agents';
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
+
+const app = createApp();
 
 const scanAgent = {
   token_id: '42',
@@ -25,6 +30,8 @@ const scanPage = {
   data: [scanAgent],
   meta: { pagination: { page: 2, limit: 10, total: 120, hasMore: true } },
 };
+
+const emptyPage: AgentPage = agentPageSchema.parse({ items: [], total: 0, hasMore: false });
 
 describe('GET /api/agents', () => {
   test('proxies the query to 8004scan and returns the contract page', async () => {
@@ -52,7 +59,7 @@ describe('GET /api/agents', () => {
     const body = agentPageSchema.parse(await response.json());
 
     expect(response.status).toBe(200);
-    expect(response.headers.get('cache-control')).toContain('s-maxage');
+    expect(response.headers.get('cache-control')).toContain('stale-while-revalidate');
     expect(body.items[0]?.tokenId).toBe('42');
     expect(body.total).toBe(120);
     expect(body.hasMore).toBe(true);
@@ -80,6 +87,69 @@ describe('GET /api/agents', () => {
     expect(response.status).toBe(502);
     expect(await response.json()).toEqual({ error: '8004scan could not be reached' });
   });
+
+  test('passes an upstream rate limit and Retry-After through', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 429, headers: { 'retry-after': '120' } }))
+    );
+
+    const response = await app.request('/api/agents');
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get('retry-after')).toBe('120');
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(await response.json()).toEqual({ error: '8004scan rate limit reached' });
+  });
+
+  test('omits an unusable Retry-After', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(null, {
+            status: 429,
+            headers: { 'retry-after': 'Wed, 21 Oct 2015 07:28:00 GMT' },
+          })
+      )
+    );
+
+    const response = await app.request('/api/agents');
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get('retry-after')).toBeNull();
+  });
+
+  test('serves a cached page without calling upstream again', async () => {
+    const fetchAgentPage = vi.fn<AgentPageFetcher>(async () => emptyPage);
+
+    const cachedApp = createApp({
+      fetchAgentPage,
+      agentCache: createTtlCache<AgentPage>(60_000, 10, () => 0),
+    });
+
+    const first = await cachedApp.request('/api/agents?q=atlas');
+    const second = await cachedApp.request('/api/agents?q=atlas');
+
+    expect(first.headers.get('cache-control')).toContain('stale-while-revalidate');
+    expect(second.headers.get('cache-control')).toContain('s-maxage=60');
+    expect(await second.json()).toEqual(emptyPage);
+    expect(fetchAgentPage).toHaveBeenCalledOnce();
+  });
+
+  test('shares a cache entry across parameter order', async () => {
+    const fetchAgentPage = vi.fn<AgentPageFetcher>(async () => emptyPage);
+
+    const cachedApp = createApp({
+      fetchAgentPage,
+      agentCache: createTtlCache<AgentPage>(60_000, 10, () => 0),
+    });
+
+    await cachedApp.request('/api/agents?sort=score&order=asc');
+    await cachedApp.request('/api/agents?order=asc&sort=score');
+
+    expect(fetchAgentPage).toHaveBeenCalledOnce();
+  });
 });
 
 describe('GET /api/networks', () => {
@@ -88,6 +158,7 @@ describe('GET /api/networks', () => {
     const body = networkSchema.array().parse(JSON.parse(await response.text()));
 
     expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toContain('s-maxage=86400');
     expect(body.map((network) => network.code)).toContain('BASE');
   });
 });
@@ -116,5 +187,32 @@ describe('GET /api/fetch-json', () => {
 
     expect(response.status).toBe(400);
     expect(response.headers.get('cache-control')).toBe('no-store');
+  });
+
+  test('rejects a missing url without fetching', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await app.request('/api/fetch-json');
+
+    expect(response.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('createApp dependencies', () => {
+  test('uses injected networks and relay handlers', async () => {
+    const injectedApp = createApp({
+      networks: [
+        { code: 'TEST', name: 'Test', symbol: 'T', color: 'gray', chainId: 999, testnet: true },
+      ],
+      relayResponse: async () => new Response('relayed', { status: 200 }),
+    });
+
+    const networksResponse = await injectedApp.request('/api/networks');
+    const relayResponse = await injectedApp.request('/api/fetch-json');
+
+    expect(await networksResponse.json()).toHaveLength(1);
+    expect(await relayResponse.text()).toBe('relayed');
   });
 });

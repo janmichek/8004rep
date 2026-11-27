@@ -1,36 +1,35 @@
 import { Hono } from 'hono';
-import { z } from 'zod';
-import { agentsQuerySchema, networkSchema } from '../shared/schemas';
-import { networks } from './data';
-import { relayResponse } from './fetchJson';
-import { fetchAgentPage } from './scanAgents';
+import type { AgentPage, Network } from '../shared/schemas';
+import type { TtlCache } from './cache';
+import { networks as defaultNetworks } from './data';
+import { relayResponse as defaultRelayResponse } from './fetchJson';
+import { createAgentsRoutes, type AgentPageFetcher } from './routes/agents';
+import { createNetworksRoutes } from './routes/networks';
+import { createRelayRoutes, type RelayResponse } from './routes/relay';
+import { fetchAgentPage as defaultFetchAgentPage } from './scanAgents';
 
-export const app = new Hono();
+export type AppOptions = {
+  fetchAgentPage?: AgentPageFetcher;
+  networks?: readonly Network[];
+  relayResponse?: RelayResponse;
+  agentCache?: TtlCache<AgentPage>;
+};
 
-// The list is served from 8004scan through this process, so the browser never
-// spends the upstream rate limit and the response is checked against the contract.
-app.get('/api/agents', async (c) => {
-  const query = agentsQuerySchema.safeParse(c.req.query());
+/**
+ * Builds the API with production defaults. Tests pass fakes instead of stubbing
+ * the network, and the Bun entry adds a cache the edge function deliberately omits.
+ */
+export function createApp(options: AppOptions = {}): Hono {
+  const app = new Hono();
 
-  if (!query.success) {
-    c.header('cache-control', 'no-store');
+  app.route(
+    '/api',
+    createAgentsRoutes(options.fetchAgentPage ?? defaultFetchAgentPage, options.agentCache)
+  );
 
-    return c.json({ error: 'Invalid agent query' }, 400);
-  }
+  app.route('/api', createNetworksRoutes(options.networks ?? defaultNetworks));
 
-  try {
-    const page = await fetchAgentPage(query.data);
+  app.route('/api', createRelayRoutes(options.relayResponse ?? defaultRelayResponse));
 
-    c.header('cache-control', 'public, s-maxage=30, max-age=10');
-
-    return c.json(page);
-  } catch {
-    c.header('cache-control', 'no-store');
-
-    return c.json({ error: '8004scan could not be reached' }, 502);
-  }
-});
-
-app.get('/api/networks', (c) => c.json(z.array(networkSchema).parse(networks)));
-
-app.get('/api/fetch-json', async (c) => relayResponse(c.req.query('url') ?? ''));
+  return app;
+}
