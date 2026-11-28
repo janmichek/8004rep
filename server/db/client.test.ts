@@ -38,6 +38,22 @@ function makeFactory(state: State): PostgresFactory {
   };
 }
 
+function throwingFactory(cause: Error | string): PostgresFactory {
+  return () => {
+    const raw: ReturnType<PostgresFactory> = {
+      async unsafe() {
+        throw cause;
+      },
+      async begin<T>(run: (tx: ReturnType<PostgresFactory>) => T | Promise<T>) {
+        return run(raw);
+      },
+      async end() {},
+    };
+
+    return raw;
+  };
+}
+
 describe('createSql', () => {
   it('adapts parameterized queries and closes the pool', async () => {
     const state: State = { calls: [], url: '', max: null };
@@ -67,6 +83,15 @@ describe('createSql', () => {
 
     expect(result).toBe('done');
     expect(state.calls[0]?.query).toBe('DELETE FROM feedbacks');
+  });
+
+  it('names the failing SQL statement', async () => {
+    const sql = createSql('postgres://db', 1, throwingFactory(new Error('boom')));
+
+    await expect(sql.query('SELECT $1')).rejects.toThrow('SQL failed (boom): SELECT $1');
+    await expect(
+      createSql('postgres://db', 1, throwingFactory('plain boom')).query('SELECT $1')
+    ).rejects.toThrow('SQL failed (query failed): SELECT $1');
   });
 
   it('exposes the pool sizes', () => {

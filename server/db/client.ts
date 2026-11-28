@@ -36,8 +36,13 @@ const OPTIONS = { prepare: false, idle_timeout: 20, connect_timeout: 10 } as con
 
 function wrap(raw: RawTx, root: RawSql): Sql {
   return {
-    query(text: string, params: readonly QueryParam[] = []) {
-      return raw.unsafe(text, [...params]);
+    async query(text: string, params: readonly QueryParam[] = []) {
+      try {
+        return await raw.unsafe(text, [...params]);
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : 'query failed';
+        throw new Error(`SQL failed (${message}): ${text}`, { cause });
+      }
     },
     transaction<T>(run: (tx: Sql) => Promise<T>) {
       return root.begin(async (tx) => run(wrap(tx, root)));

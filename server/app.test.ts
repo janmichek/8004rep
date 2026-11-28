@@ -373,13 +373,20 @@ describe('GET /api/reputation/spec', () => {
 
 describe('without a database', () => {
   test('reports the owned API as unavailable instead of proxying', async () => {
-    const app = createApp();
+    const previous = process.env['DATABASE_URL'];
+    delete process.env['DATABASE_URL'];
 
-    expect((await app.request('/api/agents')).status).toBe(503);
-    expect((await app.request('/api/agents/8453/42')).status).toBe(503);
-    expect((await app.request('/api/agents/8453/42/reputation')).status).toBe(503);
-    expect((await app.request('/api/networks')).status).toBe(503);
-    expect((await app.request('/api/networks/8453/stats')).status).toBe(503);
+    try {
+      const app = createApp();
+
+      expect((await app.request('/api/agents')).status).toBe(503);
+      expect((await app.request('/api/agents/8453/42')).status).toBe(503);
+      expect((await app.request('/api/agents/8453/42/reputation')).status).toBe(503);
+      expect((await app.request('/api/networks')).status).toBe(503);
+      expect((await app.request('/api/networks/8453/stats')).status).toBe(503);
+    } finally {
+      if (previous !== undefined) process.env['DATABASE_URL'] = previous;
+    }
   });
 });
 
