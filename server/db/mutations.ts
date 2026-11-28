@@ -8,7 +8,7 @@ import type {
   TransferMutation,
   UriUpdatedMutation,
 } from '../indexer/types';
-import { markDirty, num, ZERO } from './mutationSql';
+import { ensureAgent, markDirty, num, ZERO } from './mutationSql';
 import { applyResponse } from './responseMutation';
 import type { Sql } from './client';
 
@@ -93,6 +93,7 @@ async function applyMetadataSet(
   mutation: MetadataSetMutation
 ): Promise<void> {
   const tokenId = num(mutation.tokenId);
+  await ensureAgent(tx, chainId, mutation.tokenId, mutation.blockNumber);
   await tx.query(
     `INSERT INTO agent_metadata_kv
       (chain_id, token_id, metadata_key, metadata_value, block_number, tx_hash, log_index)
@@ -168,6 +169,7 @@ async function applyRevoked(
   chainId: number,
   mutation: FeedbackRevokedMutation
 ): Promise<void> {
+  await ensureAgent(tx, chainId, mutation.tokenId, mutation.blockNumber);
   await tx.query(
     `UPDATE feedbacks
      SET revoked = TRUE, revoked_block = $5, revoked_tx = $6

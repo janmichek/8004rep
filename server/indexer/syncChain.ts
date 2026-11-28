@@ -74,7 +74,7 @@ async function decodeLogs(
   return mutations;
 }
 
-type ChunkOutcome = { state: ChunkState; next: bigint };
+type ChunkOutcome = { state: ChunkState; next: bigint; hash: string | null };
 
 async function syncChunk(args: {
   options: SyncOptions;
@@ -103,7 +103,7 @@ async function syncChunk(args: {
     },
   });
 
-  return { state: onChunkSuccess(state), next: to + 1n };
+  return { state: onChunkSuccess(state), next: to + 1n, hash: lastBlock?.hash ?? null };
 }
 
 type LoopState = {
@@ -111,6 +111,7 @@ type LoopState = {
   state: ChunkState;
   chunks: number;
   attempt: number;
+  lastHash: string | null;
 };
 
 async function syncLoop(args: {
@@ -118,9 +119,10 @@ async function syncLoop(args: {
   safeHead: bigint;
   head: bigint;
   start: bigint;
+  startHash: string | null;
   cache: BlockCache;
 }): Promise<LoopState> {
-  const { options, safeHead, head, start, cache } = args;
+  const { options, safeHead, head, start, startHash, cache } = args;
   const { chain } = options;
 
   const sleep =
@@ -131,6 +133,7 @@ async function syncLoop(args: {
     state: createChunkState(chain.logsLogRange ?? chain.logRange),
     chunks: 0,
     attempt: 0,
+    lastHash: startHash,
   };
 
   while (current.from <= safeHead) {
@@ -152,6 +155,7 @@ async function syncLoop(args: {
         state: done.state,
         chunks: current.chunks + 1,
         attempt: 0,
+        lastHash: done.hash,
       };
     } catch (cause) {
       current = await handleFailure({ options, current, cause, sleep });
@@ -187,8 +191,8 @@ async function handleFailure(args: {
 
   await options.store.writeCursor({
     chainId: options.chain.chainId,
-    block: current.from,
-    hash: null,
+    block: current.from - 1n,
+    hash: current.lastHash,
     headBlock: null,
     status: 'error',
     error: failure.message,
@@ -215,6 +219,7 @@ export async function syncChain(options: SyncOptions): Promise<SyncResult> {
     safeHead,
     head,
     start: reorg.fromBlock,
+    startHash: reorg.hash,
     cache,
   });
 

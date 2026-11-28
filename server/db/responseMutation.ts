@@ -1,12 +1,13 @@
 import type { ResponseAppendedMutation } from '../indexer/types';
 import type { Sql } from './client';
-import { markDirty, num } from './mutationSql';
+import { ensureAgent, markDirty, num } from './mutationSql';
 
 export async function applyResponse(
   tx: Sql,
   chainId: number,
   mutation: ResponseAppendedMutation
 ): Promise<void> {
+  await ensureAgent(tx, chainId, mutation.tokenId, mutation.blockNumber);
   await tx.query(
     `INSERT INTO feedback_responses
       (chain_id, tx_hash, log_index, token_id, client_address, feedback_index,

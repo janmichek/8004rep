@@ -45,6 +45,7 @@ export function useAgentsFeed(args: {
       if (selectedChain) params.chain = selectedChain.chainId;
 
       if (rated) {
+        params.ratedOnly = true;
         params.sort = 'feedback';
         params.order = 'desc';
       } else if (sort) {

@@ -206,7 +206,7 @@ describe('indexerStore', () => {
       status: 'syncing',
       error: null,
     });
-    expect(db.calls).toHaveLength(8);
+    expect(db.calls).toHaveLength(9);
     expect(db.calls[0]?.params).toEqual([8453, '900']);
   });
 });

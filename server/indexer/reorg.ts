@@ -4,7 +4,7 @@ import type { ChainRpc, Cursor, IndexerStore } from './types';
 /** How far back a hash mismatch rewinds; deep enough for every supported L1 finality. */
 const REORG_DEPTH = 64n;
 
-export type ReorgResult = { fromBlock: bigint; rewound: boolean };
+export type ReorgResult = { fromBlock: bigint; hash: string | null; rewound: boolean };
 
 export function startCursor(chain: ChainRecord, stored: Cursor | null): Cursor {
   if (stored) return stored;
@@ -23,6 +23,21 @@ export function startCursor(chain: ChainRecord, stored: Cursor | null): Cursor {
  * Verifies that the last indexed block is still canonical. A hash mismatch
  * deletes everything above the rewind point before the loop re-reads it.
  */
+function unchanged(cursor: Cursor): ReorgResult {
+  return {
+    fromBlock: cursor.lastIndexedBlock + 1n,
+    hash: cursor.lastIndexedHash,
+    rewound: false,
+  };
+}
+
+function rewindPoint(chain: ChainRecord, cursor: Cursor): bigint {
+  const deepest = chain.startBlock - 1n;
+  const candidate = cursor.lastIndexedBlock - REORG_DEPTH;
+
+  return candidate < deepest ? deepest : candidate;
+}
+
 export async function rewindIfNeeded(args: {
   chain: ChainRecord;
   cursor: Cursor;
@@ -32,18 +47,14 @@ export async function rewindIfNeeded(args: {
   const { chain, cursor, rpc, store } = args;
 
   if (cursor.lastIndexedBlock < chain.startBlock || cursor.lastIndexedHash === null) {
-    return { fromBlock: cursor.lastIndexedBlock + 1n, rewound: false };
+    return unchanged(cursor);
   }
 
   const canonical = await rpc.getBlock(cursor.lastIndexedBlock);
 
-  if (canonical?.hash === cursor.lastIndexedHash) {
-    return { fromBlock: cursor.lastIndexedBlock + 1n, rewound: false };
-  }
+  if (canonical?.hash === cursor.lastIndexedHash) return unchanged(cursor);
 
-  const deepest = chain.startBlock - 1n;
-  const candidate = cursor.lastIndexedBlock - REORG_DEPTH;
-  const rewindTo = candidate < deepest ? deepest : candidate;
+  const rewindTo = rewindPoint(chain, cursor);
   const block = rewindTo >= 0n ? await rpc.getBlock(rewindTo) : null;
 
   await store.unwind(chain.chainId, rewindTo, {
@@ -55,5 +66,5 @@ export async function rewindIfNeeded(args: {
     error: null,
   });
 
-  return { fromBlock: rewindTo + 1n, rewound: true };
+  return { fromBlock: rewindTo + 1n, hash: block?.hash ?? null, rewound: true };
 }

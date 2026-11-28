@@ -160,7 +160,15 @@ async function getAgentReputation(
     now,
   });
 
-  const content = await hashEvidence(hashInputs(chainId, tokenId, feedback));
+  const content = await hashEvidence(
+    hashInputs({
+      chainId,
+      tokenId,
+      feedback,
+      self: selves,
+      tagScales: evidence.scales.map,
+    })
+  );
 
   return agentReputationResponseSchema.parse({
     chainId,

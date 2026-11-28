@@ -326,7 +326,7 @@ describe('reorg', () => {
       store,
     });
 
-    expect(result).toEqual({ fromBlock: 501n, rewound: false });
+    expect(result).toEqual({ fromBlock: 501n, hash: block?.hash ?? null, rewound: false });
   });
 
   it('rewinds on a hash mismatch', async () => {
@@ -347,8 +347,30 @@ describe('reorg', () => {
       store,
     });
 
-    expect(result).toEqual({ fromBlock: 937n, rewound: true });
+    expect(result).toEqual({ fromBlock: 937n, hash: '0x000003a8', rewound: true });
     expect(store.unwinds[0]?.aboveBlock).toBe(936n);
+  });
+
+  it('rewinds to before genesis when the cursor is shallow', async () => {
+    const chain = chainOf(8453);
+    const store = fakeStore();
+
+    const result = await rewindIfNeeded({
+      chain,
+      cursor: {
+        chainId: chain.chainId,
+        lastIndexedBlock: 10n,
+        lastIndexedHash: '0xwrong',
+        headBlock: null,
+        status: 'ok',
+        lastError: null,
+      },
+      rpc: fakeRpc(),
+      store,
+    });
+
+    expect(result).toEqual({ fromBlock: 0n, hash: null, rewound: true });
+    expect(store.unwinds[0]?.aboveBlock).toBe(-1n);
   });
 
   it('floors the rewind at the chain start block', async () => {
@@ -462,6 +484,7 @@ describe('syncChain', () => {
 
     await expect(syncChain({ chain, rpc, store })).rejects.toThrow('boom');
     expect(store.cursorWrites.at(-1)?.status).toBe('error');
+    expect(store.cursorWrites.at(-1)?.block).toBe(-1n);
   });
 
   it('continues after a reorg rewind', async () => {

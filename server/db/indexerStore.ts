@@ -77,6 +77,12 @@ const UNWIND_STEPS: readonly string[] = [
   'DELETE FROM agent_metadata_kv WHERE chain_id = $1 AND block_number > $2',
   'DELETE FROM agent_transfers WHERE chain_id = $1 AND block_number > $2',
   `UPDATE agents a
+   SET owner = NULL, burned = FALSE
+   WHERE a.chain_id = $1 AND a.registered_block > $2
+     AND NOT EXISTS (
+       SELECT 1 FROM agent_transfers t WHERE t.chain_id = $1 AND t.token_id = a.token_id
+     )`,
+  `UPDATE agents a
    SET owner = t.to_address
    FROM (
      SELECT DISTINCT ON (token_id) token_id, to_address

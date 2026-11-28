@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import type { FeedbackInput, FeedbackResponseInput } from '../../shared/reputation';
+import type { FeedbackInput, FeedbackResponseInput, TagScale } from '../../shared/reputation';
 import type { feedbackRowSchema, responseRowSchema } from './rowSchemas';
 
 type FeedbackRow = z.infer<typeof feedbackRowSchema>;
@@ -14,6 +14,7 @@ export function toInput(
 
   const input: FeedbackInput = {
     client: parsed.client_address,
+    index: Number(parsed.feedback_index),
     value: parsed.value_scaled,
     revoked: parsed.revoked,
     responses: responses.get(key) ?? [],
@@ -51,12 +52,25 @@ export function responseInputs(rows: readonly ResponseRow[]): Map<string, Feedba
 }
 
 /** The exact bytes the content hash covers: inputs, not derived scores. */
-export function hashInputs(chainId: number, tokenId: string, feedback: readonly FeedbackInput[]) {
+export type HashInputArgs = {
+  chainId: number;
+  tokenId: string;
+  feedback: readonly FeedbackInput[];
+  self: readonly string[];
+  tagScales: ReadonlyMap<string, TagScale>;
+};
+
+export function hashInputs(input: HashInputArgs) {
   return {
-    chainId,
-    tokenId,
+    chainId: input.chainId,
+    tokenId: input.tokenId,
     formulaVersion: 'rep-1.0',
-    feedback: feedback.map((row) => ({
+    self: [...input.self].toSorted(),
+    tagScales: [...input.tagScales.entries()]
+      .toSorted(([left], [right]) => left.localeCompare(right))
+      .map(([tag, scale]) => ({ tag, scale: scale.scale, span: scale.span })),
+    feedback: input.feedback.map((row) => ({
+      index: row.index ?? null,
       client: row.client,
       value: row.value,
       tag1: row.tag1 ?? null,

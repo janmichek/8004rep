@@ -168,6 +168,40 @@ describe('agentStore', () => {
     expect(result?.tagScales['starred']?.scale).toBe('five');
   });
 
+  it('includes tag scales and self addresses in the content hash', async () => {
+    const build = (span: number, owner: string) =>
+      fakeSql((query) => {
+        if (query.includes('SELECT owner, agent_wallet')) return [{ ...DETAIL_ROW, owner }];
+
+        if (query.includes('FROM feedbacks')) return [FEEDBACK_ROW];
+
+        if (query.includes('FROM feedback_responses')) return [];
+
+        if (query.includes('FROM tag_scales')) {
+          return [
+            { tag_key: 'starred', scale: 'five', span },
+            { tag_key: 'quality', scale: 'hundred', span: 100 },
+          ];
+        }
+
+        return [];
+      });
+
+    const first = await createAgentStore(build(5, DETAIL_ROW.owner)).getAgentReputation(8453, '7');
+
+    const second = await createAgentStore(build(10, DETAIL_ROW.owner)).getAgentReputation(
+      8453,
+      '7'
+    );
+
+    const third = await createAgentStore(
+      build(5, '0x4444444444444444444444444444444444444444')
+    ).getAgentReputation(8453, '7');
+
+    expect(first?.contentHash).not.toBe(second?.contentHash);
+    expect(first?.contentHash).not.toBe(third?.contentHash);
+  });
+
   it('returns null when the agent is not indexed', async () => {
     const db = fakeSql(() => []);
     await expect(createAgentStore(db).getAgentReputation(8453, '404')).resolves.toBeNull();
