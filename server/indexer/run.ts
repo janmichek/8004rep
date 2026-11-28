@@ -44,13 +44,9 @@ function rpcFor(record: ChainRecord): ChainRpc {
   return {
     getBlockNumber: () => client.getBlockNumber(),
     async getBlock(blockNumber) {
-      try {
-        const block = await client.getBlock({ blockNumber });
+      const block = await client.getBlock({ blockNumber });
 
-        return { number: block.number, hash: block.hash, timestamp: block.timestamp };
-      } catch {
-        return null;
-      }
+      return { number: block.number, hash: block.hash, timestamp: block.timestamp };
     },
     async getLogs({ address, fromBlock, toBlock }) {
       const logs = await client.getLogs({ address: [...address], fromBlock, toBlock });

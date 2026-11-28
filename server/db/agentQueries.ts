@@ -19,8 +19,13 @@ export function parseIds(raw: string | undefined): IdPair[] {
 
 export type Where = { clauses: string[]; params: QueryParam[] };
 
+/** `%` and `_` are wildcards in ILIKE; a literal search must escape them. */
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, '\\$&');
+}
+
 export function listFilters(query: AgentsQuery): Where {
-  const clauses: string[] = [];
+  const clauses: string[] = ['a.burned = FALSE'];
   const params: QueryParam[] = [];
 
   if (query.env) {
@@ -43,7 +48,7 @@ export function listFilters(query: AgentsQuery): Where {
     clauses.push(
       `(a.token_id::text = $${at} OR a.search_tsv @@ plainto_tsquery('simple', $${at + 1}) OR a.name ILIKE $${at + 2})`
     );
-    params.push(query.q, query.q, `${query.q}%`);
+    params.push(query.q, query.q, `${escapeLike(query.q)}%`);
   }
 
   if (query.ratedOnly) clauses.push('COALESCE(s.feedback_count, 0) > 0');
@@ -73,7 +78,7 @@ export function orderBy(query: AgentsQuery): string {
   const column = ORDER_COLUMNS[query.sort ?? 'registered'];
   const direction = query.order === 'asc' ? 'ASC' : 'DESC';
 
-  return `${column} ${direction} NULLS LAST, a.token_id DESC`;
+  return `${column} ${direction} NULLS LAST, a.chain_id DESC, a.token_id DESC`;
 }
 
 export function whereClause(where: Where): string {

@@ -12,10 +12,36 @@ async function readCapped(response: Response): Promise<string | null> {
   const declared = Number(response.headers.get('content-length') ?? 0);
 
   if (declared > MAX_BYTES) return null;
+  const reader = response.body?.getReader();
 
-  const body = await response.arrayBuffer();
+  if (!reader) return '';
+  const chunks: Uint8Array[] = [];
+  let total = 0;
 
-  return body.byteLength > MAX_BYTES ? null : new TextDecoder().decode(body);
+  for (;;) {
+    const { done, value } = await reader.read();
+
+    if (done) break;
+    total += value.byteLength;
+
+    if (total > MAX_BYTES) {
+      await reader.cancel();
+
+      return null;
+    }
+
+    chunks.push(value);
+  }
+
+  const body = new Uint8Array(total);
+  let offset = 0;
+
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return new TextDecoder().decode(body);
 }
 
 function redirectTarget(response: Response, current: URL): URL | null {

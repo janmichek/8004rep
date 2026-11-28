@@ -13,11 +13,13 @@ const ADDRESS_HEX = /^[0-9a-f]{40}$/;
  */
 export function decodeWalletMetadata(value: Hex): string | null {
   const raw = value.slice(2).toLowerCase();
-  const significant = raw.replace(/^0+/, '');
 
-  if (significant.length !== 40 && significant.length !== 64) return null;
+  let candidate: string | null = null;
 
-  const candidate = significant.length === 64 ? significant.slice(-40) : significant;
+  if (raw.length === 40) candidate = raw;
+  else if (raw.length === 64 && raw.startsWith('0'.repeat(24))) candidate = raw.slice(24);
+
+  if (candidate === null || candidate === '0'.repeat(40)) return null;
 
   return ADDRESS_HEX.test(candidate) ? `0x${candidate}` : null;
 }
@@ -105,7 +107,9 @@ function dispatchMutation(decoded: DecodedEvent, common: Common): Mutation | nul
             : null,
       };
     case 'NewFeedback': {
-      const scaled = Number(decoded.args.value) / 10 ** decoded.args.valueDecimals;
+      // uint8 permits absurd exponents; a value with >18 decimals is read at 18.
+      const decimals = Math.min(decoded.args.valueDecimals, 18);
+      const scaled = Number(decoded.args.value) / 10 ** decimals;
 
       return {
         ...common,
@@ -114,7 +118,7 @@ function dispatchMutation(decoded: DecodedEvent, common: Common): Mutation | nul
         client: decoded.args.clientAddress.toLowerCase(),
         feedbackIndex: decoded.args.feedbackIndex,
         valueRaw: decoded.args.value.toString(),
-        valueDecimals: decoded.args.valueDecimals,
+        valueDecimals: decimals,
         valueScaled: scaled,
         tag1: decoded.args.tag1,
         tag2: decoded.args.tag2,

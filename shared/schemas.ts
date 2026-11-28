@@ -60,7 +60,7 @@ export const agentQueryFields = {
   page: z.coerce.number().int().min(0).max(10_000).optional(),
   pageSize: z.coerce.number().int().min(1).max(100).optional(),
   /** Only agents with at least one feedback row. */
-  ratedOnly: z.coerce.boolean().optional(),
+  ratedOnly: z.stringbool().optional(),
   /** Comma-separated `chainId:tokenId` batch lookup for starred/pinned rows. */
   ids: z.string().max(4000).optional(),
 };

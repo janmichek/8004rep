@@ -68,13 +68,29 @@ const UNWIND_STEPS: readonly string[] = [
      SELECT token_id FROM feedbacks WHERE chain_id = $1 AND block_number > $2
      UNION SELECT token_id FROM feedback_responses WHERE chain_id = $1 AND block_number > $2
      UNION SELECT token_id FROM agent_transfers WHERE chain_id = $1 AND block_number > $2
+     UNION SELECT token_id FROM feedbacks WHERE chain_id = $1 AND revoked_block > $2
    )`,
   `UPDATE feedbacks
    SET revoked = FALSE, revoked_block = NULL, revoked_tx = NULL
    WHERE chain_id = $1 AND revoked_block > $2`,
   'DELETE FROM feedback_responses WHERE chain_id = $1 AND block_number > $2',
   'DELETE FROM feedbacks WHERE chain_id = $1 AND block_number > $2',
+  `UPDATE agents
+   SET metadata_fetched_at = NULL, metadata_attempts = 0,
+       metadata_retry_after = NULL, metadata_error = NULL
+   WHERE chain_id = $1 AND token_id IN (
+     SELECT token_id FROM agent_metadata_kv WHERE chain_id = $1 AND block_number > $2
+   )`,
   'DELETE FROM agent_metadata_kv WHERE chain_id = $1 AND block_number > $2',
+  `UPDATE agents a
+   SET agent_wallet = (
+     SELECT '0x' || right(encode(k.metadata_value, 'hex'), 40)
+     FROM agent_metadata_kv k
+     WHERE k.chain_id = $1 AND k.token_id = a.token_id AND k.metadata_key = 'agentWallet'
+     ORDER BY k.block_number DESC, k.log_index DESC
+     LIMIT 1
+   ), score_dirty = TRUE
+   WHERE a.chain_id = $1`,
   'DELETE FROM agent_transfers WHERE chain_id = $1 AND block_number > $2',
   `UPDATE agents a
    SET owner = NULL, burned = FALSE
@@ -82,6 +98,10 @@ const UNWIND_STEPS: readonly string[] = [
      AND NOT EXISTS (
        SELECT 1 FROM agent_transfers t WHERE t.chain_id = $1 AND t.token_id = a.token_id
      )`,
+  `DELETE FROM agents a
+   WHERE a.chain_id = $1 AND a.registered_block > $2
+     AND NOT EXISTS (SELECT 1 FROM agent_transfers t WHERE t.chain_id = $1 AND t.token_id = a.token_id)
+     AND NOT EXISTS (SELECT 1 FROM feedbacks f WHERE f.chain_id = $1 AND f.token_id = a.token_id)`,
   `UPDATE agents a
    SET owner = t.to_address
    FROM (

@@ -14,7 +14,7 @@ describe('parseIds', () => {
 describe('listFilters', () => {
   it('adds an environment chain list', () => {
     const where = listFilters({ env: 'mainnet' });
-    expect(where.clauses[0]).toContain('a.chain_id IN');
+    expect(where.clauses[1]).toContain('a.chain_id IN');
     expect(where.params.length).toBeGreaterThan(0);
   });
 
@@ -26,13 +26,17 @@ describe('listFilters', () => {
       ids: '8453:1,8453:2',
     });
 
-    expect(where.clauses).toHaveLength(4);
+    expect(where.clauses).toHaveLength(5);
     expect(where.params).toEqual([8453, 'atlas', 'atlas', 'atlas%', 8453, '1', 8453, '2']);
     expect(whereClause(where)).toContain('WHERE');
   });
 
-  it('has no WHERE clause without filters', () => {
-    expect(whereClause(listFilters({}))).toBe('');
+  it('escapes ILIKE wildcards in the prefix fallback', () => {
+    expect(listFilters({ q: '100%_x' }).params[2]).toBe('100\\%\\_x%');
+  });
+
+  it('keeps burned agents out of the list by default', () => {
+    expect(whereClause(listFilters({}))).toBe('WHERE a.burned = FALSE');
   });
 });
 

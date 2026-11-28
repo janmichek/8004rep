@@ -19,6 +19,11 @@ describe('blockedHost', () => {
     expect(blockedHost('[::1]')).toBe(true);
     expect(blockedHost('example.com')).toBe(false);
     expect(blockedHost('8.8.8.8')).toBe(false);
+    expect(blockedHost('metadata.google.internal')).toBe(true);
+    expect(blockedHost('2130706433')).toBe(true);
+    expect(blockedHost('0x7f000001')).toBe(true);
+    expect(blockedHost('017700000001')).toBe(true);
+    expect(blockedHost('intranet')).toBe(true);
   });
 });
 

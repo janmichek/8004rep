@@ -122,10 +122,30 @@ function sniffCoding(bytes: Uint8Array): Coding | undefined {
   return undefined;
 }
 
+const MAX_PAYLOAD_CHARS = 1_000_000;
+const MAX_INFLATED_BYTES = 5_000_000;
+
+function cappedStream(): TransformStream<Uint8Array, Uint8Array> {
+  let total = 0;
+
+  return new TransformStream({
+    transform(chunk, controller) {
+      total += chunk.byteLength;
+
+      if (total > MAX_INFLATED_BYTES) controller.error(new Error('metadata too large'));
+      else controller.enqueue(chunk);
+    },
+  });
+}
+
 async function inflate(bytes: Uint8Array, coding: Coding): Promise<Uint8Array> {
   const copy = new Uint8Array(bytes.byteLength);
   copy.set(bytes);
-  const stream = new Blob([copy]).stream().pipeThrough(new DecompressionStream(coding));
+
+  const stream = new Blob([copy])
+    .stream()
+    .pipeThrough(new DecompressionStream(coding))
+    .pipeThrough(cappedStream());
 
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
@@ -134,15 +154,22 @@ async function inflate(bytes: Uint8Array, coding: Coding): Promise<Uint8Array> {
  * Decodes `data:` registration URIs: base64 or percent-encoded payloads,
  * optionally gzip/deflate compressed (`;enc=gzip` or gzip magic).
  */
+function isAllowedData(params: string, payload: string): boolean {
+  if (payload.length > MAX_PAYLOAD_CHARS) return false;
+  const mediaType = (params.split(';')[0] ?? '').trim().toLowerCase();
+
+  return !mediaType || mediaType === 'application/json';
+}
+
 export async function decodeDataUri(uri: string): Promise<ParsedRegistration | null> {
   const match = /^data:([^,]*),(.*)$/is.exec(uri);
 
   if (!match) return null;
+
   const params = match[1] ?? '';
   const payload = match[2] ?? '';
-  const mediaType = (params.split(';')[0] ?? '').trim().toLowerCase();
 
-  if (mediaType && mediaType !== 'application/json') return null;
+  if (!isAllowedData(params, payload)) return null;
 
   const bytes = /;base64/i.test(params)
     ? Uint8Array.from(atob(payload), (char) => char.charCodeAt(0))

@@ -82,7 +82,13 @@ async function applyUriUpdated(
   await tx.query(
     `INSERT INTO agents (chain_id, token_id, agent_uri, registered_block)
      VALUES ($1, $2, $3, $4)
-     ON CONFLICT (chain_id, token_id) DO UPDATE SET agent_uri = EXCLUDED.agent_uri`,
+     ON CONFLICT (chain_id, token_id) DO UPDATE
+       SET agent_uri = EXCLUDED.agent_uri,
+           metadata_fetched_at = NULL,
+           metadata_attempts = 0,
+           metadata_retry_after = NULL,
+           metadata_error = NULL
+       WHERE agents.agent_uri IS DISTINCT FROM EXCLUDED.agent_uri`,
     [chainId, num(mutation.tokenId), mutation.agentUri, num(mutation.blockNumber)]
   );
 }

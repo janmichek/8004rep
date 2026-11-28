@@ -123,9 +123,35 @@ days to the first reply; self and third-party replies are counted separately.
 ## 11. Canonical inputs and `contentHash`
 
 `GET /api/agents/{chainId}/{tokenId}/reputation` returns a SHA-256 `contentHash` over canonical
-JSON: keys sorted at every level, no whitespace, with the agent id, formula version, feedback rows,
-responses and tag scales included and no derived score. A verifier can rebuild the hash from the
-same inputs without trusting this service.
+JSON: keys sorted at every level, no whitespace, with no derived score. The object is exactly:
+
+```json
+{
+  "chainId": 8453,
+  "tokenId": "1",
+  "formulaVersion": "rep-1.0",
+  "self": ["0x…owner", "0x…agentWallet"],
+  "tagScales": [{ "tag": "starred", "scale": "five", "span": 5 }],
+  "feedback": [
+    {
+      "index": 0,
+      "client": "0x…",
+      "value": 4,
+      "tag1": "starred",
+      "tag2": null,
+      "endpoint": null,
+      "feedbackURI": null,
+      "revoked": false,
+      "createdAt": 1700000000,
+      "txHash": "0x…",
+      "responses": [{ "responder": "0x…", "uri": null, "createdAt": null, "txHash": "0x…" }]
+    }
+  ]
+}
+```
+
+`self` is sorted lexically, `tagScales` is sorted by `tag`, and every absent optional value is
+`null`. A verifier can rebuild the hash from the same inputs without trusting this service.
 
 ## 12. Determinism
 

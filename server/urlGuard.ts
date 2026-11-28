@@ -10,11 +10,24 @@ const PRIVATE_IPV4 = [
   /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./,
 ];
 
+function reservedName(host: string): boolean {
+  return (
+    host === 'localhost' ||
+    host === '0.0.0.0' ||
+    host.endsWith('.local') ||
+    host.endsWith('.internal') ||
+    host.endsWith('.home.arpa')
+  );
+}
+
 /** Hosts the server must never fetch on behalf of a browser. */
 export function blockedHost(hostname: string): boolean {
   const host = hostname.replace(/^\[|\]$/g, '').toLowerCase();
 
-  if (host === 'localhost' || host.endsWith('.local') || host === '0.0.0.0') return true;
+  if (reservedName(host)) return true;
+
+  // Single-label names (including integer/hex/octal IPv4 spellings) are not public DNS names.
+  if (!host.includes('.')) return true;
 
   return PRIVATE_IPV4.some((pattern) => pattern.test(host)) || host.includes(':');
 }

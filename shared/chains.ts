@@ -102,7 +102,7 @@ export const CHAIN_CATALOG: readonly ChainRecord[] = [
     explorerUrl: 'https://etherscan.io',
     defaultRpcUrl: 'https://ethereum-rpc.publicnode.com',
     logRange: 50_000n,
-    startBlock: 0n,
+    startBlock: 24_339_871n,
     confirmations: 12,
   },
   {
@@ -149,7 +149,7 @@ export const CHAIN_CATALOG: readonly ChainRecord[] = [
     defaultLogsRpcUrl: 'https://mantle-rpc.publicnode.com',
     logRange: 10_000n,
     logsLogRange: 50_000n,
-    startBlock: 91_333_848n,
+    startBlock: 91_333_846n,
     confirmations: 20,
   },
   {
@@ -164,7 +164,7 @@ export const CHAIN_CATALOG: readonly ChainRecord[] = [
     explorerUrl: 'https://sepolia.etherscan.io',
     defaultRpcUrl: 'https://ethereum-sepolia-rpc.publicnode.com',
     logRange: 50_000n,
-    startBlock: 0n,
+    startBlock: 9_989_393n,
     confirmations: 5,
   },
   {
@@ -179,7 +179,7 @@ export const CHAIN_CATALOG: readonly ChainRecord[] = [
     explorerUrl: 'https://sepolia.basescan.org',
     defaultRpcUrl: 'https://sepolia.base.org',
     logRange: 1_000n,
-    startBlock: 36_304_146n,
+    startBlock: 36_304_145n,
     confirmations: 5,
   },
   {

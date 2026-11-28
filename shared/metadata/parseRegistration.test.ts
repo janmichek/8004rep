@@ -89,6 +89,18 @@ describe('decodeDataUri', () => {
     await expect(decodeDataUri(deflate)).resolves.toMatchObject({ name: 'Atlas' });
   });
 
+  it('caps oversized payloads before decoding', async () => {
+    await expect(
+      decodeDataUri(`data:application/json,${'a'.repeat(1_000_001)}`)
+    ).resolves.toBeNull();
+  });
+
+  it('caps inflated output', async () => {
+    const bomb = `data:application/json;base64,${base64(gzipSync('x'.repeat(6_000_000)))}`;
+
+    await expect(decodeDataUri(bomb)).rejects.toThrow('metadata too large');
+  });
+
   it('rejects other media types and malformed URIs', async () => {
     await expect(decodeDataUri('data:text/plain,hello')).resolves.toBeNull();
     await expect(decodeDataUri('https://example.com/a.json')).resolves.toBeNull();

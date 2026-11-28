@@ -90,20 +90,22 @@ async function syncChunk(args: {
   const mutations = await decodeLogs(logs, rpc, cache);
   const lastBlock = await cachedBlock(rpc, cache, to);
 
+  if (!lastBlock) throw new Error(`block ${to.toString()} unavailable`);
+
   await store.applyChunk({
     chainId: chain.chainId,
     mutations,
     cursor: {
       chainId: chain.chainId,
       block: to,
-      hash: lastBlock?.hash ?? null,
+      hash: lastBlock.hash,
       headBlock: head,
       status: 'ok',
       error: null,
     },
   });
 
-  return { state: onChunkSuccess(state), next: to + 1n, hash: lastBlock?.hash ?? null };
+  return { state: onChunkSuccess(state), next: to + 1n, hash: lastBlock.hash };
 }
 
 type LoopState = {
@@ -226,11 +228,11 @@ export async function syncChain(options: SyncOptions): Promise<SyncResult> {
   const hasCursor = result.chunks > 0 || result.from - 1n >= chain.startBlock;
   const last = hasCursor ? await cachedBlock(rpc, cache, result.from - 1n) : null;
 
-  if (hasCursor) {
+  if (hasCursor && last) {
     await store.writeCursor({
       chainId: chain.chainId,
       block: result.from - 1n,
-      hash: last?.hash ?? null,
+      hash: last.hash,
       headBlock: head,
       status: 'ok',
       error: null,

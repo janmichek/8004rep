@@ -121,6 +121,51 @@ describe('scorer', () => {
     expect(store.state.cleared).toEqual(['8453:7', '8453:7']);
   });
 
+  it('logs and stops a chain when one dirty agent fails', async () => {
+    const dirty = { chainId: 8453, tokenId: '7', owner: OWNER, agentWallet: SELF };
+
+    const store = fakeStore({
+      dirtyChains: [8453],
+      chainRows: [],
+      dirty: [dirty],
+      agentRows: [feedback()],
+      stale: [],
+    });
+
+    store.saveScore = async () => {
+      throw new Error('boom');
+    };
+
+    const logs: string[] = [];
+
+    const result = await runScorer({ store, now: 0, log: (message) => logs.push(message) });
+
+    expect(result.agents).toBe(0);
+    expect(logs[0]).toContain('score failed 8453:7: boom');
+  });
+
+  it('logs and stops the stale sweep when one agent fails', async () => {
+    const stale = { chainId: 8453, tokenId: '8', owner: OWNER, agentWallet: SELF };
+
+    const store = fakeStore({
+      dirtyChains: [],
+      chainRows: [],
+      dirty: [],
+      agentRows: [feedback()],
+      stale: [stale],
+    });
+
+    store.saveScore = async () => {
+      throw new Error('stale boom');
+    };
+
+    const logs: string[] = [];
+
+    await runScorer({ store, now: 0, log: (message) => logs.push(message) });
+
+    expect(logs[0]).toContain('stale score failed 8453:8: stale boom');
+  });
+
   it('handles an empty queue and a real report', async () => {
     const report = buildReputationReport([], { now: 0 });
     expect(report.unrated).toBe(true);

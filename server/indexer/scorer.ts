@@ -3,67 +3,26 @@ import {
   inferTagScales,
   type FeedbackInput,
   type FeedbackResponseInput,
-  type ReputationReport,
   type TagScale,
 } from '../../shared/reputation';
 
-export type ScoreFeedbackRow = {
-  chainId: number;
-  tokenId: string;
-  client: string;
-  feedbackIndex: string;
-  endpoint: string | null;
-  feedbackUri: string | null;
-  value: number;
-  tag1: string | null;
-  tag2: string | null;
-  revoked: boolean;
-  createdAt: number | null;
-  txHash: string | null;
-  responses: readonly {
-    responder: string;
-    uri: string | null;
-    createdAt: number | null;
-    txHash: string | null;
-  }[];
-};
+export type {
+  ScorableAgent,
+  ScoreFeedbackRow,
+  ScorerOptions,
+  ScorerResult,
+  ScorerStore,
+} from './scorerTypes';
 
-/** The owner/agent-wallet pair whose rows never enter a score. */
-export type SelfAddresses = { owner: string | null; agentWallet: string | null };
-
-export type ScorableAgent = SelfAddresses & { chainId: number; tokenId: string };
-
-export type ScorerStore = {
-  chainsWithDirtyAgents(): Promise<number[]>;
-  /** All feedback on a chain, joined with each agent's self addresses. */
-  chainFeedback(chainId: number): Promise<(ScoreFeedbackRow & SelfAddresses)[]>;
-  dirtyAgents(chainId: number, limit: number): Promise<ScorableAgent[]>;
-  feedbackForAgent(chainId: number, tokenId: string): Promise<ScoreFeedbackRow[]>;
-  saveTagScales(chainId: number, scales: ReadonlyMap<string, TagScale>): Promise<void>;
-  saveScore(
-    chainId: number,
-    tokenId: string,
-    report: ReputationReport,
-    scoredAt: number
-  ): Promise<void>;
-  clearDirty(chainId: number, tokenId: string): Promise<void>;
-  /** Agents whose last score is older than a day and that have feedback. */
-  staleAgents(limit: number): Promise<ScorableAgent[]>;
-};
-
-export type ScorerOptions = {
-  store: ScorerStore;
-  /** Unix seconds. */
-  now: number;
-  batchSize?: number;
-};
-
-export type ScorerResult = {
-  chains: number;
-  agents: number;
-  stale: number;
-  tags: number;
-};
+import type {
+  DrainOptions,
+  ScorableAgent,
+  ScoreFeedbackRow,
+  ScorerOptions,
+  ScorerResult,
+  ScorerStore,
+  SelfAddresses,
+} from './scorerTypes';
 
 function toInput(row: ScoreFeedbackRow): FeedbackInput {
   const responses: FeedbackResponseInput[] = row.responses.map((response) => {
@@ -159,14 +118,6 @@ async function scoreAgent(
   await store.clearDirty(agent.chainId, agent.tokenId);
 }
 
-type DrainOptions = {
-  store: ScorerStore;
-  chainId: number;
-  scales: ReadonlyMap<string, TagScale>;
-  batchSize: number;
-  now: number;
-};
-
 async function drainDirty(options: DrainOptions): Promise<number> {
   const { store, chainId, scales, batchSize, now } = options;
   let scored = 0;
@@ -174,10 +125,68 @@ async function drainDirty(options: DrainOptions): Promise<number> {
   for (;;) {
     const agents = await store.dirtyAgents(chainId, batchSize);
 
-    for (const agent of agents) await scoreAgent(store, agent, scales, now);
-    scored += agents.length;
+    for (const agent of agents) {
+      try {
+        await scoreAgent(store, agent, scales, now);
+        scored++;
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : 'scoring failed';
+        options.log?.(`score failed ${agent.chainId}:${agent.tokenId}: ${message}`);
+
+        return scored;
+      }
+    }
 
     if (agents.length < batchSize) return scored;
+  }
+}
+
+type StaleDrain = {
+  store: ScorerStore;
+  scalesByChain: Map<number, ReadonlyMap<string, TagScale>>;
+  batchSize: number;
+  now: number;
+  log?: ((message: string) => void) | undefined;
+};
+
+async function scoreStaleBatch(
+  batch: readonly ScorableAgent[],
+  args: StaleDrain
+): Promise<boolean> {
+  for (const agent of batch) {
+    let scales = args.scalesByChain.get(agent.chainId);
+
+    if (!scales) {
+      scales = await rebuildScales(args.store, agent.chainId);
+      args.scalesByChain.set(agent.chainId, scales);
+    }
+
+    try {
+      await scoreAgent(args.store, agent, scales, args.now);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'scoring failed';
+      args.log?.(`stale score failed ${agent.chainId}:${agent.tokenId}: ${message}`);
+
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function drainStale(args: StaleDrain): Promise<number> {
+  let stale = 0;
+
+  for (;;) {
+    const batch = await args.store.staleAgents(args.batchSize);
+
+    if (batch.length === 0) return stale;
+
+    const failed = await scoreStaleBatch(batch, args);
+
+    if (!failed) stale += batch.length;
+
+    if (failed || batch.length < args.batchSize) return stale;
   }
 }
 
@@ -198,31 +207,10 @@ export async function runScorer(options: ScorerOptions): Promise<ScorerResult> {
     const scales = await rebuildScales(store, chainId);
     scalesByChain.set(chainId, scales);
     tags += scales.size;
-    agents += await drainDirty({ store, chainId, scales, batchSize, now });
+    agents += await drainDirty({ store, chainId, scales, batchSize, now, log: options.log });
   }
 
-  let stale = 0;
-
-  for (;;) {
-    const batch = await store.staleAgents(batchSize);
-
-    if (batch.length === 0) break;
-
-    for (const agent of batch) {
-      let scales = scalesByChain.get(agent.chainId);
-
-      if (!scales) {
-        scales = await rebuildScales(store, agent.chainId);
-        scalesByChain.set(agent.chainId, scales);
-      }
-
-      await scoreAgent(store, agent, scales, now);
-    }
-
-    stale += batch.length;
-
-    if (batch.length < batchSize) break;
-  }
+  const stale = await drainStale({ store, scalesByChain, batchSize, now, log: options.log });
 
   return { chains: dirtyChains.length, agents, stale, tags };
 }

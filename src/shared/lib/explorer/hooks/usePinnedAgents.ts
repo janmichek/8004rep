@@ -50,20 +50,23 @@ export function usePinnedAgents(options: {
       return chain === undefined || chain.testnet === testnet;
     }
 
-    const ids = starredAgents
+    const pairs = starredAgents
       .filter((row) => inEnv(row.chainId))
-      .map((row) => `${row.chainId}:${row.id}`)
-      .join(',');
+      .map((row) => `${row.chainId}:${row.id}`);
+    const chunks: string[][] = [];
+    for (let index = 0; index < pairs.length; index += 100) {
+      chunks.push(pairs.slice(index, index + 100));
+    }
 
-    if (!ids) {
+    if (!chunks.length) {
       setPinnedRaw([]);
 
       return undefined;
     }
 
-    void fetchAgents({ ids })
-      .then((page) => {
-        if (live) setPinnedRaw(page.items);
+    void Promise.all(chunks.map((ids) => fetchAgents({ ids: ids.join(','), pageSize: 100 })))
+      .then((pages) => {
+        if (live) setPinnedRaw(pages.flatMap((page) => page.items));
       })
       .catch(() => {
         if (live) setPinnedRaw([]);

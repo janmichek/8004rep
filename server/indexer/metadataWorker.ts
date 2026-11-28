@@ -5,7 +5,7 @@ import {
   type ParsedRegistration,
 } from '../../shared/metadata/parseRegistration';
 import { relayJson } from '../fetchJson';
-import { blockedUrl } from '../urlGuard';
+import { blockedResolvedUrl, type HostResolver } from '../dnsGuard';
 
 export type PendingMetadata = {
   chainId: number;
@@ -22,7 +22,7 @@ export type MetadataStore = {
 
 export type Relay = (url: string) => Promise<{ status: number; body: string }>;
 
-type FetchOptions = { relay: Relay; ipfsGateways?: readonly string[] };
+type FetchOptions = { relay: Relay; ipfsGateways?: readonly string[]; resolveHost?: HostResolver };
 
 export type MetadataWorkerOptions = {
   store: MetadataStore;
@@ -31,6 +31,7 @@ export type MetadataWorkerOptions = {
   limit?: number;
   relay?: Relay;
   ipfsGateways?: readonly string[];
+  resolveHost?: HostResolver;
 };
 
 /** Retry ladder in minutes: 5m, 30m, 2h, 12h, 48h. */
@@ -72,10 +73,14 @@ async function relayText(url: string, relay: Relay): Promise<string> {
   return response.body;
 }
 
-async function fetchHttps(uri: string, relay: Relay): Promise<ParsedRegistration> {
+async function fetchHttps(
+  uri: string,
+  relay: Relay,
+  resolveHost: HostResolver | undefined
+): Promise<ParsedRegistration> {
   const url = new URL(uri);
 
-  if (blockedUrl(url)) throw new Error('blocked url');
+  if (await blockedResolvedUrl(url, resolveHost)) throw new Error('blocked url');
   const parsed = parseRegistrationText(await relayText(url.href, relay));
 
   if (!parsed) throw new Error('not a registration file');
@@ -111,7 +116,7 @@ async function fetchIpfs(
  */
 export async function fetchRegistration(
   uri: string,
-  options: { relay: Relay; ipfsGateways?: readonly string[] }
+  options: { relay: Relay; ipfsGateways?: readonly string[]; resolveHost?: HostResolver }
 ): Promise<ParsedRegistration> {
   if (uri.startsWith('data:')) {
     const parsed = await decodeDataUri(uri);
@@ -125,7 +130,7 @@ export async function fetchRegistration(
     return fetchIpfs(uri, options.relay, options.ipfsGateways ?? IPFS_GATEWAYS);
   }
 
-  if (uri.startsWith('https://')) return fetchHttps(uri, options.relay);
+  if (uri.startsWith('https://')) return fetchHttps(uri, options.relay, options.resolveHost);
 
   throw new Error(`unsupported URI scheme: ${uri.slice(0, 24)}`);
 }
@@ -147,6 +152,8 @@ export async function runMetadataBatch(
   let failed = 0;
 
   const fetchOptions: FetchOptions = { relay };
+
+  if (options.resolveHost) fetchOptions.resolveHost = options.resolveHost;
 
   if (options.ipfsGateways) fetchOptions.ipfsGateways = options.ipfsGateways;
 

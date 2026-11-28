@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ParsedRegistration } from '../../shared/metadata/parseRegistration';
+import type { HostResolver } from '../dnsGuard';
 import {
   fetchRegistration,
   IPFS_GATEWAYS,
@@ -10,6 +11,7 @@ import {
 } from './metadataWorker';
 
 const BODY = JSON.stringify({ name: 'Atlas', services: [] });
+const ALLOW: HostResolver = async () => ['93.184.216.34'];
 
 type Saved = { agent: PendingMetadata; parsed: ParsedRegistration };
 
@@ -62,9 +64,19 @@ describe('fetchRegistration', () => {
   it('reads https through the relay', async () => {
     const parsed = await fetchRegistration('https://agent.example/agent.json', {
       relay: async () => ({ status: 200, body: BODY }),
+      resolveHost: ALLOW,
     });
 
     expect(parsed.name).toBe('Atlas');
+  });
+
+  it('blocks a public name that resolves to a private address', async () => {
+    await expect(
+      fetchRegistration('https://localtest.me/agent.json', {
+        relay: async () => ({ status: 200, body: BODY }),
+        resolveHost: async () => ['127.0.0.1'],
+      })
+    ).rejects.toThrow('blocked url');
   });
 
   it('blocks private hosts before the relay', async () => {
@@ -134,6 +146,7 @@ describe('fetchRegistration', () => {
     await expect(
       fetchRegistration('https://agent.example/agent.json', {
         relay: async () => ({ status: 200, body: '[]' }),
+        resolveHost: ALLOW,
       })
     ).rejects.toThrow('not a registration file');
     await expect(
@@ -152,6 +165,7 @@ describe('fetchRegistration', () => {
     await expect(
       fetchRegistration('https://agent.example/agent.json', {
         relay: async () => ({ status: 502, body: 'nope' }),
+        resolveHost: ALLOW,
       })
     ).rejects.toThrow('metadata answered 502');
   });
@@ -188,6 +202,7 @@ describe('runMetadataBatch', () => {
       store,
       now: 0,
       ipfsGateways: ['https://only.example/ipfs/'],
+      resolveHost: ALLOW,
       relay: async () => ({ status: 200, body: BODY }),
     });
 

@@ -183,6 +183,8 @@ describe('eventDecoder', () => {
     expect(decodeWalletMetadata('0x')).toBeNull();
     expect(decodeWalletMetadata('0x1234')).toBeNull();
     expect(decodeWalletMetadata(`0x${'00'.repeat(32)}`)).toBeNull();
+    expect(decodeWalletMetadata(`0x${'0'.repeat(39)}1`)).toBe(`0x${'0'.repeat(39)}1`);
+    expect(decodeWalletMetadata(`0x${'1'.repeat(64)}`)).toBeNull();
   });
 
   it('does not decode a wallet for other metadata keys', () => {
@@ -351,6 +353,34 @@ describe('reorg', () => {
     expect(store.unwinds[0]?.aboveBlock).toBe(936n);
   });
 
+  it('defers the reorg check when the block is unavailable', async () => {
+    const chain = chainOf(8453);
+    const store = fakeStore();
+
+    const rpc = fakeRpc({
+      async getBlock() {
+        return null;
+      },
+    });
+
+    await expect(
+      rewindIfNeeded({
+        chain,
+        cursor: {
+          chainId: chain.chainId,
+          lastIndexedBlock: 1000n,
+          lastIndexedHash: '0xhash',
+          headBlock: null,
+          status: 'ok',
+          lastError: null,
+        },
+        rpc,
+        store,
+      })
+    ).rejects.toThrow('deferred reorg check');
+    expect(store.unwinds).toEqual([]);
+  });
+
   it('rewinds to before genesis when the cursor is shallow', async () => {
     const chain = chainOf(8453);
     const store = fakeStore();
@@ -450,6 +480,20 @@ describe('syncChain', () => {
 
     await syncChain({ chain, rpc, store, random: () => 1, sleep: async () => undefined });
     expect(failures).toBe(0);
+  });
+
+  it('fails a chunk instead of defaulting a missing block timestamp', async () => {
+    const chain = chainOf(8453);
+    const store = fakeStore();
+
+    const rpc = fakeRpc({
+      async getBlock() {
+        return null;
+      },
+    });
+
+    await expect(syncChain({ chain, rpc, store })).rejects.toThrow('unavailable');
+    expect(store.chunks).toEqual([]);
   });
 
   it('retries with the default sleep', async () => {

@@ -52,7 +52,9 @@ export async function rewindIfNeeded(args: {
 
   const canonical = await rpc.getBlock(cursor.lastIndexedBlock);
 
-  if (canonical?.hash === cursor.lastIndexedHash) return unchanged(cursor);
+  if (canonical === null) throw new Error('deferred reorg check: block unavailable');
+
+  if (canonical.hash === cursor.lastIndexedHash) return unchanged(cursor);
 
   const rewindTo = rewindPoint(chain, cursor);
   const block = rewindTo >= 0n ? await rpc.getBlock(rewindTo) : null;
