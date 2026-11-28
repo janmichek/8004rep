@@ -26,7 +26,7 @@ function flashSection(hash: string): void {
   if (!el) return;
 
   el.classList.remove('docs-flash');
-  void el.offsetWidth;
+  el.getBoundingClientRect();
   el.classList.add('docs-flash');
   window.setTimeout(() => el.classList.remove('docs-flash'), FLASH_MS);
 }

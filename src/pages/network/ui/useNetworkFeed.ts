@@ -1,3 +1,5 @@
+/* oxlint-disable react-hooks/exhaustive-deps -- a chain change intentionally restarts the window */
+/* oxlint-disable react/exhaustive-effect-dependencies -- a chain change intentionally restarts the window */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchNetworkStats } from '../../../shared/api';
 import { errorMessage, loadFeedWindow, sourceFor, useAsync } from '../../../shared/lib/explorer';
@@ -39,9 +41,9 @@ export function useNetworkFeed(chain: ChainInfo) {
   );
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- a new chain must clear the old window
     setFeed(undefined);
     void load(false);
-    // oxlint-disable-next-line react/exhaustive-deps -- a new chain restarts the window
   }, [chain.chainId]);
 
   const network = useAsync(() => fetchNetworkStats(chain.chainId), [chain.chainId]);
