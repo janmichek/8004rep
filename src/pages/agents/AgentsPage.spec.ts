@@ -1,5 +1,21 @@
 import { expect, test } from '@playwright/test';
 
+const networks = [
+  {
+    code: 'BASE',
+    name: 'Base',
+    shortName: 'Base',
+    slug: 'base',
+    symbol: 'B',
+    color: 'blue',
+    chainId: 8453,
+    testnet: false,
+    lastIndexedBlock: 10_000,
+    syncStatus: 'ok',
+    syncedAt: 1_764_000_000,
+  },
+];
+
 const listPage = {
   items: [
     {
@@ -9,9 +25,16 @@ const listPage = {
       owner: '0x1111111111111111111111111111111111111111',
       protocols: ['MCP'],
       x402: false,
-      totalScore: 91.2,
-      averageScore: 93,
+      score: 91.2,
+      ciLow: 82.4,
+      ciHigh: 95.1,
+      confidence: 'high',
+      unrated: false,
+      rawAverage: 93,
+      ratedRows: 12,
+      uniqueWallets: 6,
       feedbackCount: 18,
+      formulaVersion: 'rep-1.0',
       createdAt: 1_736_154_840,
       testnet: false,
     },
@@ -22,9 +45,16 @@ const listPage = {
       owner: '0x2222222222222222222222222222222222222222',
       protocols: ['A2A'],
       x402: true,
-      totalScore: 72.4,
-      averageScore: 80,
-      feedbackCount: 9,
+      score: null,
+      ciLow: null,
+      ciHigh: null,
+      confidence: 'low',
+      unrated: true,
+      rawAverage: null,
+      ratedRows: 0,
+      uniqueWallets: 0,
+      feedbackCount: 0,
+      formulaVersion: 'rep-1.0',
       createdAt: 1_736_241_240,
       testnet: false,
     },
@@ -33,9 +63,32 @@ const listPage = {
   hasMore: false,
 };
 
+const detail = {
+  chainId: 8453,
+  tokenId: '1',
+  name: 'Atlas Broker',
+  description: null,
+  imageUrl: null,
+  owner: null,
+  agentWallet: null,
+  agentUri: null,
+  active: null,
+  x402: false,
+  protocols: [],
+  supportedTrust: [],
+  services: [],
+  version: null,
+  registeredAt: 1_736_154_840,
+  feedbackCount: 0,
+  testnet: false,
+  tagScales: {},
+  feedback: [],
+};
+
 test('sorts the table by score and feedback through the URL', async ({ page }) => {
   const requested: URL[] = [];
 
+  await page.route(/\/api\/networks$/, (route) => route.fulfill({ json: networks }));
   await page.route(/\/api\/agents(\?|$)/, (route) => {
     requested.push(new URL(route.request().url()));
 
@@ -44,6 +97,8 @@ test('sorts the table by score and feedback through the URL', async ({ page }) =
   await page.goto('/agents/all');
 
   await expect(page.locator('.agents-table tbody tr.row-link')).toHaveCount(2);
+  await expect(page.locator('.agents-table')).toContainText('Unrated');
+  await expect(page.locator('.agents-table')).toContainText('91.2');
 
   await page.getByRole('button', { name: /Score/ }).click();
   await expect(page).toHaveURL(/sort=score/);
@@ -71,6 +126,11 @@ test('sorts the table by score and feedback through the URL', async ({ page }) =
 });
 
 test('opens and closes agent details through the URL', async ({ page }) => {
+  await page.route(/\/api\/networks$/, (route) => route.fulfill({ json: networks }));
+  await page.route(/\/api\/agents\/\d+\/\d+$/, (route) => route.fulfill({ json: detail }));
+  await page.route(/\/api\/agents(\?|$)/, (route) => route.fulfill({ json: listPage }));
+  await page.route('https://8004scan.io/**', (route) => route.fulfill({ status: 404 }));
+
   await page.goto('/');
   await expect(page).toHaveURL(/\/agents\/all/);
 

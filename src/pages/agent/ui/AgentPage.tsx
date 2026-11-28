@@ -13,7 +13,7 @@ import { AgentIdentityTab } from './AgentIdentityTab';
 import { useAgentDetail } from './useAgentDetail';
 
 export function AgentPage() {
-  const { chain, id, tokenId, agentQuery, file } = useAgentDetail();
+  const { chain, id, tokenId, agentQuery, file, tagScales } = useAgentDetail();
   const agent = agentQuery.data;
   const name = file?.name ?? `Agent #${id}`;
   const ownerAgents = useOwnerAgentCount(chain, agent?.owner);
@@ -111,6 +111,7 @@ export function AgentPage() {
         chain={chain}
         file={file}
         ownerAgentCount={ownerAgents.data}
+        tagScales={tagScales}
         overviewTop={overviewTop}
         identity={
           <AgentIdentityTab

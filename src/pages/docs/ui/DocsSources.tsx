@@ -3,14 +3,21 @@ export function DocsSources() {
     <section id="sources" className="docs-section">
       <h2>Sources</h2>
       <ul className="docs-sources">
-        <li>ERC-8004 identity and reputation registries, read over public RPC endpoints.</li>
-        <li>The agent0 public subgraphs, where the chain has one.</li>
-        <li>Registration files served by agents themselves, for services and metadata.</li>
-        <li>8004scan’s public API, used only for comparison and scan-only agents.</li>
+        <li>
+          ERC-8004 identity and reputation events, indexed on-chain into 8004rep’s PostgreSQL index.
+        </li>
+        <li>
+          Registration files resolved by the indexer through an SSRF-guarded fetcher; the browser
+          resolves files for chains that are not indexed yet.
+        </li>
+        <li>
+          The agent0 public subgraphs and RPC, used only as a fallback before a chain is synced.
+        </li>
+        <li>8004scan’s public API, kept strictly for the comparison tile and “vs 8004scan” tab.</li>
       </ul>
       <p className="docs-note">
-        The app is open source and runs entirely client-side. There is no account to create and
-        nothing to connect.
+        The explorer reads its own index; 8004scan is a comparison value, not a data source. There
+        is no account to create and nothing to connect.
       </p>
     </section>
   );

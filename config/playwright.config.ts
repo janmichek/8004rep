@@ -31,7 +31,7 @@ export default defineConfig({
     {
       command: 'bun server/index.ts',
       cwd: '..',
-      url: 'http://127.0.0.1:3001/api/agents',
+      url: 'http://127.0.0.1:3001/api/reputation/spec',
       reuseExistingServer: true,
     },
     {

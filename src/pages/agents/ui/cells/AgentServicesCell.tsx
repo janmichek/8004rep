@@ -1,7 +1,7 @@
-import type { ScanAgent } from '../../../../shared/lib/explorer';
+import type { IndexedAgent } from '../../../../shared/lib/explorer';
 
 type Props = {
-  agent: ScanAgent;
+  agent: IndexedAgent;
   services: string[];
 };
 

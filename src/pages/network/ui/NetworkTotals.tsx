@@ -5,6 +5,8 @@ export function NetworkTotals(props: {
   feedback30d: number | null | undefined;
   totalFeedback: number | null | undefined;
   ratedAgents: number | null | undefined;
+  lastIndexedBlock: number | null | undefined;
+  syncedAt: number | null | undefined;
   loading: boolean;
 }) {
   return <StatTiles tiles={networkTotalTiles(props)} />;

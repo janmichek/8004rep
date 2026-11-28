@@ -1,8 +1,8 @@
-import type { ScanAgent } from '../../../../shared/lib/explorer';
+import type { IndexedAgent } from '../../../../shared/lib/explorer';
 import { AgentAvatar, StarButton } from '../../../../shared/ui';
 
 type Props = {
-  agent: ScanAgent;
+  agent: IndexedAgent;
   name: string;
 };
 

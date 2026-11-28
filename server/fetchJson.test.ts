@@ -90,6 +90,14 @@ describe('relayJson', () => {
     await expect(relayJson('https://example.com/a')).resolves.toMatchObject({ status: 413 });
   });
 
+  test('treats an empty body as non-JSON', async () => {
+    stubFetch(async () => new Response(null, { status: 200 }));
+    await expect(relayJson('https://example.com/a')).resolves.toMatchObject({
+      status: 502,
+      body: 'Upstream did not return JSON',
+    });
+  });
+
   test('rejects a non-JSON body', async () => {
     stubFetch(async () => new Response('<html></html>', { status: 200 }));
     await expect(relayJson('https://example.com/a')).resolves.toMatchObject({

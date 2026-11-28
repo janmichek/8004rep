@@ -70,6 +70,16 @@ describe('probeUrl', () => {
     await expect(probeUrl(long)).resolves.toMatchObject({ error: 'url-too-long' });
   });
 
+  it('rejects a redirect with no location at all', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response(302))
+    );
+    await expect(probeUrl('https://probe-no-redirect.example/start')).resolves.toMatchObject({
+      error: 'bad-redirect',
+    });
+  });
+
   it('rejects a redirect without a usable location', async () => {
     vi.stubGlobal(
       'fetch',

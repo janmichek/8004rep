@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import type { ChainInfo } from '../../../lib/explorer';
 import type { AgentDetail, RegistrationFile } from '../../../lib/explorer/data/types';
+import type { TagScale } from '@shared/reputation';
 import { formatDate } from '../../../lib/explorer';
 import { useReputation } from '../../../lib/explorer/hooks/useReputation';
 import { FeedbackTab } from '../FeedbackTab';
@@ -19,6 +20,7 @@ type Props = {
   file?: RegistrationFile | null | undefined;
   /** Agents the owner holds on this chain; null when the read failed. */
   ownerAgentCount?: number | null | undefined;
+  tagScales?: Record<string, TagScale> | undefined;
   overviewTop?: ReactNode;
   identity: ReactNode;
 };
@@ -37,6 +39,7 @@ export function ReputationPanel({
   chain,
   file,
   ownerAgentCount,
+  tagScales,
   overviewTop,
   identity,
 }: Props) {
@@ -44,7 +47,8 @@ export function ReputationPanel({
     agent,
     chain,
     file,
-    ownerAgentCount
+    ownerAgentCount,
+    tagScales
   );
 
   const navigate = useNavigate();

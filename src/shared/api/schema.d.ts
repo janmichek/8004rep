@@ -20,6 +20,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/agents/{chainId}/{tokenId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAgent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{chainId}/{tokenId}/reputation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAgentReputation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/networks": {
         parameters: {
             query?: never;
@@ -28,6 +60,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["listNetworks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/networks/{chainId}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getNetworkStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reputation/spec": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getReputationSpec"];
         put?: never;
         post?: never;
         delete?: never;
@@ -54,10 +118,12 @@ export interface operations {
                 q?: string;
                 chain?: number;
                 env?: "mainnet" | "testnet";
-                sort?: "registered" | "score" | "feedback";
+                sort?: "registered" | "score" | "feedback" | "tokenId";
                 order?: "asc" | "desc";
                 page?: number;
                 pageSize?: number;
+                ratedOnly?: boolean;
+                ids?: string;
             };
             header?: never;
             path?: never;
@@ -81,14 +147,215 @@ export interface operations {
                             owner: string | null;
                             protocols: string[];
                             x402: boolean;
-                            totalScore: number;
-                            averageScore: number;
+                            score: number | null;
+                            ciLow: number | null;
+                            ciHigh: number | null;
+                            /** @enum {string} */
+                            confidence: "low" | "medium" | "high";
+                            unrated: boolean;
+                            rawAverage: number | null;
+                            ratedRows: number;
+                            uniqueWallets: number;
                             feedbackCount: number;
+                            /** @constant */
+                            formulaVersion: "rep-1.0";
                             createdAt?: number;
                             testnet: boolean;
                         }[];
                         total: number;
                         hasMore: boolean;
+                    };
+                };
+            };
+        };
+    };
+    getAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                chainId: string;
+                tokenId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Indexed agent */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        chainId: number;
+                        tokenId: string;
+                        name: string | null;
+                        description: string | null;
+                        imageUrl: string | null;
+                        owner: string | null;
+                        agentWallet: string | null;
+                        agentUri: string | null;
+                        active: boolean | null;
+                        x402: boolean;
+                        protocols: string[];
+                        supportedTrust: string[];
+                        services: {
+                            name: string;
+                            endpoint: string;
+                            version?: string;
+                        }[];
+                        version: string | null;
+                        registeredAt: number | null;
+                        feedbackCount: number;
+                        testnet: boolean;
+                        tagScales: {
+                            [key: string]: {
+                                /** @enum {string} */
+                                scale: "binary" | "unit" | "five" | "ten" | "hundred" | "signed" | "unbounded";
+                                span: number;
+                            };
+                        };
+                        feedback: {
+                            client: string;
+                            index: number;
+                            value: number;
+                            tag1: string | null;
+                            tag2: string | null;
+                            endpoint: string | null;
+                            feedbackURI: string | null;
+                            revoked: boolean;
+                            createdAt: number | null;
+                            txHash: string | null;
+                            responses: {
+                                responder: string;
+                                uri: string | null;
+                                createdAt: number | null;
+                                txHash: string | null;
+                            }[];
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    getAgentReputation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                chainId: string;
+                tokenId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description rep-1.0 report */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        chainId: number;
+                        tokenId: string;
+                        /** @constant */
+                        formulaVersion: "rep-1.0";
+                        computedAt: number;
+                        contentHash: string;
+                        tagScales: {
+                            [key: string]: {
+                                /** @enum {string} */
+                                scale: "binary" | "unit" | "five" | "ten" | "hundred" | "signed" | "unbounded";
+                                span: number;
+                            };
+                        };
+                        report: {
+                            score: number | null;
+                            interval: [
+                                number,
+                                number
+                            ] | null;
+                            /** @enum {string} */
+                            confidence: "low" | "medium" | "high";
+                            unrated: boolean;
+                            raw: number | null;
+                            rawRatings: number | null;
+                            inflation: number | null;
+                            cost: number | null;
+                            funnel: {
+                                feedback: number;
+                                ratedRows: number;
+                                wallets: number;
+                                units: number;
+                                walletsAfterCap: number;
+                            };
+                            concentration: {
+                                top1: number;
+                                top3: number;
+                                neff: number;
+                                maxInfluence: number;
+                                rawTop1: number;
+                                rawTop3: number;
+                                rawNeff: number;
+                            };
+                            contributions: {
+                                client: string;
+                                weight: number;
+                                share: number;
+                                rating: number;
+                                without: number | null;
+                            }[];
+                            waterfall: {
+                                id: string;
+                                label: string;
+                                rule: string;
+                                average: number | null;
+                                rows: number;
+                                delta: number | null;
+                            }[];
+                            counts: {
+                                total: number;
+                                revoked: number;
+                                rating: number;
+                                outcome: number;
+                                telemetry: number;
+                                metric: number;
+                                unknown: number;
+                                outOfScale: number;
+                                self: number;
+                            };
+                            byKind: {
+                                /** @enum {string} */
+                                kind: "rating" | "outcome" | "telemetry" | "metric" | "unknown";
+                                label: string;
+                                rows: number;
+                            }[];
+                            telemetry: {
+                                tag: string;
+                                label: string;
+                                rows: number;
+                                clients: number;
+                                latest: number | null;
+                                median: number | null;
+                            }[];
+                            findings: {
+                                /** @enum {string} */
+                                level: "warn" | "info";
+                                /** @enum {string} */
+                                code: "repeat" | "template" | "revocations" | "review-bomb" | "same-tx" | "burst";
+                                text: string;
+                            }[];
+                            responsiveness: {
+                                lowRatings: number;
+                                responded: number;
+                                share: number | null;
+                                medianLagDays: number | null;
+                                ownerReplies: number;
+                                thirdPartyReplies: number;
+                            };
+                        };
                     };
                 };
             };
@@ -112,12 +379,97 @@ export interface operations {
                     "application/json": {
                         code: string;
                         name: string;
+                        shortName: string;
+                        slug: string;
                         symbol: string;
                         /** @enum {string} */
                         color: "gray" | "orange" | "iris" | "blue" | "teal";
                         chainId: number;
                         testnet: boolean;
+                        lastIndexedBlock: number | null;
+                        /** @enum {string} */
+                        syncStatus: "idle" | "syncing" | "ok" | "error";
+                        syncedAt: number | null;
                     }[];
+                };
+            };
+        };
+    };
+    getNetworkStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                chainId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Network totals */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        chainId: number;
+                        totalAgents: number;
+                        ratedAgents: number;
+                        totalFeedback: number;
+                        feedback30d: number;
+                        lastIndexedBlock: number | null;
+                        syncedAt: number | null;
+                    };
+                };
+            };
+        };
+    };
+    getReputationSpec: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Published rep-1.0 specification */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        formulaVersion: "rep-1.0";
+                        params: {
+                            alpha0: number;
+                            mu0: number;
+                            unitWindowDays: number;
+                            halfLifeDays: number;
+                            fakeTarget: number;
+                        };
+                        confidenceRules: {
+                            thinWeight: number;
+                            thinWallets: number;
+                            strongWeight: number;
+                            strongNeff: number;
+                            dominantShare: number;
+                        };
+                        kinds: {
+                            /** @enum {string} */
+                            kind: "rating" | "outcome" | "telemetry" | "metric" | "unknown";
+                            label: string;
+                            rule: string;
+                        }[];
+                        steps: {
+                            id: string;
+                            label: string;
+                            rule: string;
+                        }[];
+                        specUrl: string;
+                    };
                 };
             };
         };

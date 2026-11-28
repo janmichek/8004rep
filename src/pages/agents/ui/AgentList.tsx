@@ -1,11 +1,12 @@
-import type { ScanAgent, ScanChain } from '../../../shared/lib/explorer';
+import type { IndexedAgent } from '../../../shared/lib/explorer';
+import type { Network } from '@shared/schemas';
 import { SortHeader } from '../../../shared/ui';
-import { ScanAgentRow } from './ScanAgentRow';
+import { AgentRow } from './AgentRow';
 
 type Props = {
-  pinned: ScanAgent[];
-  feed: ScanAgent[];
-  chains: Map<number, ScanChain>;
+  pinned: IndexedAgent[];
+  feed: IndexedAgent[];
+  chains: Map<number, Network>;
   registeredSort: 'asc' | 'desc' | null;
   scoreSort: 'asc' | 'desc' | null;
   feedbackSort: 'asc' | 'desc' | null;
@@ -44,14 +45,14 @@ export function AgentList({
               label="Score"
               numeric
               active={scoreSort}
-              text="8004scan's overall score for this agent."
+              text="8004rep rep-1.0 filtered score (ratings only, one vote per wallet, neutral prior)."
               onSort={() => onSort('score')}
             />
             <SortHeader
               label="Feedback"
               numeric
               active={feedbackSort}
-              text="Feedback rows 8004scan has indexed for this agent."
+              text="On-chain ERC-8004 feedback rows indexed by 8004rep."
               onSort={() => onSort('feedback')}
             />
             <th>Owner</th>
@@ -65,7 +66,7 @@ export function AgentList({
         </thead>
         <tbody>
           {pinned.map((agent) => (
-            <ScanAgentRow
+            <AgentRow
               key={`pin:${agent.chainId}:${agent.tokenId.toString()}`}
               agent={agent}
               chains={chains}
@@ -73,7 +74,7 @@ export function AgentList({
             />
           ))}
           {feed.map((agent) => (
-            <ScanAgentRow
+            <AgentRow
               key={`${agent.chainId}:${agent.tokenId.toString()}`}
               agent={agent}
               chains={chains}

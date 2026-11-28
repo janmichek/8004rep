@@ -12,9 +12,9 @@ export function DocsHow() {
         <li>
           <b>Read the registries.</b>
           <span>
-            Identity and reputation events come from the ERC-8004 contracts, with the agent0
-            subgraph filling in metadata and names where a network has one. Chains without a
-            subgraph are read over RPC only.
+            A reorg-safe indexer reads Identity and Reputation events from the ERC-8004 contracts
+            into PostgreSQL. It waits for confirmations, verifies block hashes before advancing, and
+            rewinds on a reorg. Registration files are fetched through an SSRF-guarded worker.
           </span>
         </li>
         <li>
@@ -30,7 +30,7 @@ export function DocsHow() {
           <span>
             The score is a conservative average with a neutral prior. Every input, weight, flag and
             alternative number is on the page, and the Methods tab can download the exact inputs as
-            JSON.
+            JSON. The same formula is published at <code>GET /api/reputation/spec</code>.
           </span>
         </li>
       </ol>

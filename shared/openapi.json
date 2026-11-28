@@ -50,7 +50,8 @@
               "enum": [
                 "registered",
                 "score",
-                "feedback"
+                "feedback",
+                "tokenId"
               ]
             }
           },
@@ -84,6 +85,23 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 100
+            }
+          },
+          {
+            "name": "ratedOnly",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 4000
             }
           }
         ],
@@ -133,16 +151,59 @@
                           "x402": {
                             "type": "boolean"
                           },
-                          "totalScore": {
-                            "type": "number"
+                          "score": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
                           },
-                          "averageScore": {
-                            "type": "number"
+                          "ciLow": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "ciHigh": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "confidence": {
+                            "type": "string",
+                            "enum": [
+                              "low",
+                              "medium",
+                              "high"
+                            ]
+                          },
+                          "unrated": {
+                            "type": "boolean"
+                          },
+                          "rawAverage": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "ratedRows": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "uniqueWallets": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
                           },
                           "feedbackCount": {
                             "type": "integer",
                             "minimum": 0,
                             "maximum": 9007199254740991
+                          },
+                          "formulaVersion": {
+                            "type": "string",
+                            "const": "rep-1.0"
                           },
                           "createdAt": {
                             "type": "integer",
@@ -159,9 +220,16 @@
                           "owner",
                           "protocols",
                           "x402",
-                          "totalScore",
-                          "averageScore",
+                          "score",
+                          "ciLow",
+                          "ciHigh",
+                          "confidence",
+                          "unrated",
+                          "rawAverage",
+                          "ratedRows",
+                          "uniqueWallets",
                           "feedbackCount",
+                          "formulaVersion",
                           "testnet"
                         ],
                         "additionalProperties": false
@@ -180,6 +248,843 @@
                     "items",
                     "total",
                     "hasMore"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agents/{chainId}/{tokenId}": {
+      "get": {
+        "operationId": "getAgent",
+        "parameters": [
+          {
+            "name": "chainId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tokenId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Indexed agent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "chainId": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "tokenId": {
+                      "type": "string",
+                      "pattern": "^\\d+$"
+                    },
+                    "name": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "description": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "imageUrl": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "owner": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "agentWallet": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "agentUri": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "active": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "x402": {
+                      "type": "boolean"
+                    },
+                    "protocols": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "supportedTrust": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "services": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "endpoint": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "endpoint"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "version": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "registeredAt": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "feedbackCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "testnet": {
+                      "type": "boolean"
+                    },
+                    "tagScales": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "scale": {
+                            "type": "string",
+                            "enum": [
+                              "binary",
+                              "unit",
+                              "five",
+                              "ten",
+                              "hundred",
+                              "signed",
+                              "unbounded"
+                            ]
+                          },
+                          "span": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "scale",
+                          "span"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "feedback": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "client": {
+                            "type": "string"
+                          },
+                          "index": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "value": {
+                            "type": "number"
+                          },
+                          "tag1": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "tag2": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "endpoint": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "feedbackURI": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "revoked": {
+                            "type": "boolean"
+                          },
+                          "createdAt": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "txHash": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "responses": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "responder": {
+                                  "type": "string"
+                                },
+                                "uri": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "createdAt": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "txHash": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "responder",
+                                "uri",
+                                "createdAt",
+                                "txHash"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "client",
+                          "index",
+                          "value",
+                          "tag1",
+                          "tag2",
+                          "endpoint",
+                          "feedbackURI",
+                          "revoked",
+                          "createdAt",
+                          "txHash",
+                          "responses"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "chainId",
+                    "tokenId",
+                    "name",
+                    "description",
+                    "imageUrl",
+                    "owner",
+                    "agentWallet",
+                    "agentUri",
+                    "active",
+                    "x402",
+                    "protocols",
+                    "supportedTrust",
+                    "services",
+                    "version",
+                    "registeredAt",
+                    "feedbackCount",
+                    "testnet",
+                    "tagScales",
+                    "feedback"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agents/{chainId}/{tokenId}/reputation": {
+      "get": {
+        "operationId": "getAgentReputation",
+        "parameters": [
+          {
+            "name": "chainId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tokenId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "rep-1.0 report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "chainId": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "tokenId": {
+                      "type": "string",
+                      "pattern": "^\\d+$"
+                    },
+                    "formulaVersion": {
+                      "type": "string",
+                      "const": "rep-1.0"
+                    },
+                    "computedAt": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "contentHash": {
+                      "type": "string"
+                    },
+                    "tagScales": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "scale": {
+                            "type": "string",
+                            "enum": [
+                              "binary",
+                              "unit",
+                              "five",
+                              "ten",
+                              "hundred",
+                              "signed",
+                              "unbounded"
+                            ]
+                          },
+                          "span": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "scale",
+                          "span"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "report": {
+                      "type": "object",
+                      "properties": {
+                        "score": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "interval": {
+                          "anyOf": [
+                            {
+                              "type": "array",
+                              "prefixItems": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ],
+                              "items": false,
+                              "minItems": 2,
+                              "maxItems": 2
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "confidence": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "medium",
+                            "high"
+                          ]
+                        },
+                        "unrated": {
+                          "type": "boolean"
+                        },
+                        "raw": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "rawRatings": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "inflation": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "cost": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "funnel": {
+                          "type": "object",
+                          "properties": {
+                            "feedback": {
+                              "type": "number"
+                            },
+                            "ratedRows": {
+                              "type": "number"
+                            },
+                            "wallets": {
+                              "type": "number"
+                            },
+                            "units": {
+                              "type": "number"
+                            },
+                            "walletsAfterCap": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "feedback",
+                            "ratedRows",
+                            "wallets",
+                            "units",
+                            "walletsAfterCap"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "concentration": {
+                          "type": "object",
+                          "properties": {
+                            "top1": {
+                              "type": "number"
+                            },
+                            "top3": {
+                              "type": "number"
+                            },
+                            "neff": {
+                              "type": "number"
+                            },
+                            "maxInfluence": {
+                              "type": "number"
+                            },
+                            "rawTop1": {
+                              "type": "number"
+                            },
+                            "rawTop3": {
+                              "type": "number"
+                            },
+                            "rawNeff": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "top1",
+                            "top3",
+                            "neff",
+                            "maxInfluence",
+                            "rawTop1",
+                            "rawTop3",
+                            "rawNeff"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "contributions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "client": {
+                                "type": "string"
+                              },
+                              "weight": {
+                                "type": "number"
+                              },
+                              "share": {
+                                "type": "number"
+                              },
+                              "rating": {
+                                "type": "number"
+                              },
+                              "without": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "client",
+                              "weight",
+                              "share",
+                              "rating",
+                              "without"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "waterfall": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "rule": {
+                                "type": "string"
+                              },
+                              "average": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "rows": {
+                                "type": "number"
+                              },
+                              "delta": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "label",
+                              "rule",
+                              "average",
+                              "rows",
+                              "delta"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "counts": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "number"
+                            },
+                            "revoked": {
+                              "type": "number"
+                            },
+                            "rating": {
+                              "type": "number"
+                            },
+                            "outcome": {
+                              "type": "number"
+                            },
+                            "telemetry": {
+                              "type": "number"
+                            },
+                            "metric": {
+                              "type": "number"
+                            },
+                            "unknown": {
+                              "type": "number"
+                            },
+                            "outOfScale": {
+                              "type": "number"
+                            },
+                            "self": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "total",
+                            "revoked",
+                            "rating",
+                            "outcome",
+                            "telemetry",
+                            "metric",
+                            "unknown",
+                            "outOfScale",
+                            "self"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "byKind": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "rating",
+                                  "outcome",
+                                  "telemetry",
+                                  "metric",
+                                  "unknown"
+                                ]
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "rows": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "label",
+                              "rows"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "telemetry": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "tag": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "rows": {
+                                "type": "number"
+                              },
+                              "clients": {
+                                "type": "number"
+                              },
+                              "latest": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "median": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "tag",
+                              "label",
+                              "rows",
+                              "clients",
+                              "latest",
+                              "median"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "findings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "level": {
+                                "type": "string",
+                                "enum": [
+                                  "warn",
+                                  "info"
+                                ]
+                              },
+                              "code": {
+                                "type": "string",
+                                "enum": [
+                                  "repeat",
+                                  "template",
+                                  "revocations",
+                                  "review-bomb",
+                                  "same-tx",
+                                  "burst"
+                                ]
+                              },
+                              "text": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "level",
+                              "code",
+                              "text"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "responsiveness": {
+                          "type": "object",
+                          "properties": {
+                            "lowRatings": {
+                              "type": "number"
+                            },
+                            "responded": {
+                              "type": "number"
+                            },
+                            "share": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "medianLagDays": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "ownerReplies": {
+                              "type": "number"
+                            },
+                            "thirdPartyReplies": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "lowRatings",
+                            "responded",
+                            "share",
+                            "medianLagDays",
+                            "ownerReplies",
+                            "thirdPartyReplies"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "score",
+                        "interval",
+                        "confidence",
+                        "unrated",
+                        "raw",
+                        "rawRatings",
+                        "inflation",
+                        "cost",
+                        "funnel",
+                        "concentration",
+                        "contributions",
+                        "waterfall",
+                        "counts",
+                        "byKind",
+                        "telemetry",
+                        "findings",
+                        "responsiveness"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "chainId",
+                    "tokenId",
+                    "formulaVersion",
+                    "computedAt",
+                    "contentHash",
+                    "tagScales",
+                    "report"
                   ],
                   "additionalProperties": false
                 }
@@ -208,6 +1113,12 @@
                       "name": {
                         "type": "string"
                       },
+                      "shortName": {
+                        "type": "string"
+                      },
+                      "slug": {
+                        "type": "string"
+                      },
                       "symbol": {
                         "type": "string"
                       },
@@ -226,18 +1137,288 @@
                       },
                       "testnet": {
                         "type": "boolean"
+                      },
+                      "lastIndexedBlock": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "syncStatus": {
+                        "type": "string",
+                        "enum": [
+                          "idle",
+                          "syncing",
+                          "ok",
+                          "error"
+                        ]
+                      },
+                      "syncedAt": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       }
                     },
                     "required": [
                       "code",
                       "name",
+                      "shortName",
+                      "slug",
                       "symbol",
                       "color",
                       "chainId",
-                      "testnet"
+                      "testnet",
+                      "lastIndexedBlock",
+                      "syncStatus",
+                      "syncedAt"
                     ],
                     "additionalProperties": false
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/networks/{chainId}/stats": {
+      "get": {
+        "operationId": "getNetworkStats",
+        "parameters": [
+          {
+            "name": "chainId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Network totals",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "chainId": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "totalAgents": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "ratedAgents": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "totalFeedback": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "feedback30d": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "lastIndexedBlock": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "syncedAt": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "chainId",
+                    "totalAgents",
+                    "ratedAgents",
+                    "totalFeedback",
+                    "feedback30d",
+                    "lastIndexedBlock",
+                    "syncedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reputation/spec": {
+      "get": {
+        "operationId": "getReputationSpec",
+        "responses": {
+          "200": {
+            "description": "Published rep-1.0 specification",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "formulaVersion": {
+                      "type": "string",
+                      "const": "rep-1.0"
+                    },
+                    "params": {
+                      "type": "object",
+                      "properties": {
+                        "alpha0": {
+                          "type": "number"
+                        },
+                        "mu0": {
+                          "type": "number"
+                        },
+                        "unitWindowDays": {
+                          "type": "number"
+                        },
+                        "halfLifeDays": {
+                          "type": "number"
+                        },
+                        "fakeTarget": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "alpha0",
+                        "mu0",
+                        "unitWindowDays",
+                        "halfLifeDays",
+                        "fakeTarget"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "confidenceRules": {
+                      "type": "object",
+                      "properties": {
+                        "thinWeight": {
+                          "type": "number"
+                        },
+                        "thinWallets": {
+                          "type": "number"
+                        },
+                        "strongWeight": {
+                          "type": "number"
+                        },
+                        "strongNeff": {
+                          "type": "number"
+                        },
+                        "dominantShare": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "thinWeight",
+                        "thinWallets",
+                        "strongWeight",
+                        "strongNeff",
+                        "dominantShare"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "kinds": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "rating",
+                              "outcome",
+                              "telemetry",
+                              "metric",
+                              "unknown"
+                            ]
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "rule": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "label",
+                          "rule"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "steps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "rule": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "label",
+                          "rule"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "specUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "formulaVersion",
+                    "params",
+                    "confidenceRules",
+                    "kinds",
+                    "steps",
+                    "specUrl"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }

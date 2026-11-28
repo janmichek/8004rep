@@ -1,9 +1,10 @@
-import type { ScanAgent, ScanChain } from '../../../../shared/lib/explorer';
+import type { IndexedAgent } from '../../../../shared/lib/explorer';
 import { ChainIcon } from '../../../../shared/ui';
+import type { Network } from '@shared/schemas';
 
 type Props = {
-  agent: ScanAgent;
-  chain: ScanChain | undefined;
+  agent: IndexedAgent;
+  chain: Network | undefined;
 };
 
 export function AgentChainCell({ agent, chain }: Props) {

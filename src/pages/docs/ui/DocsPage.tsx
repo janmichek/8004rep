@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouterState } from '@tanstack/react-router';
+import { DocsApi } from './DocsApi';
 import { DocsCalibration } from './DocsCalibration';
 import { DocsExamples } from './DocsExamples';
 import { DocsFooter } from './DocsFooter';
@@ -25,7 +26,7 @@ function flashSection(hash: string): void {
   if (!el) return;
 
   el.classList.remove('docs-flash');
-  void el.offsetWidth;
+  el.getBoundingClientRect();
   el.classList.add('docs-flash');
   window.setTimeout(() => el.classList.remove('docs-flash'), FLASH_MS);
 }
@@ -55,6 +56,7 @@ export function DocsPage() {
       <DocsMetrics />
       <DocsExamples />
       <DocsCalibration />
+      <DocsApi />
       <DocsLimits />
       <DocsSources />
       <DocsFooter />

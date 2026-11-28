@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { fetchAgents, type AgentListQuery } from '../../../shared/api';
-import { fetchScanChains } from '../../../shared/lib/explorer';
+import { fetchAgents, fetchNetworks, type AgentListQuery } from '../../../shared/api';
 import type { NetworkEnv } from '../../../shared/lib/explorer';
 
 const PAGE_SIZE = 25;
@@ -18,7 +17,7 @@ export function useAgentsFeed(args: {
 }) {
   const { env, page, rated, q, chainQuery, sort, order } = args;
 
-  const chainsQuery = useQuery({ queryKey: ['scan-chains'], queryFn: fetchScanChains });
+  const chainsQuery = useQuery({ queryKey: ['networks'], queryFn: fetchNetworks });
 
   const envChains = useMemo(
     () => (chainsQuery.data ?? []).filter((chain) => chain.testnet === (env === 'testnet')),
@@ -46,6 +45,7 @@ export function useAgentsFeed(args: {
       if (selectedChain) params.chain = selectedChain.chainId;
 
       if (rated) {
+        params.ratedOnly = true;
         params.sort = 'feedback';
         params.order = 'desc';
       } else if (sort) {

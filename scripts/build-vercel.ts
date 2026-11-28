@@ -1,7 +1,7 @@
 import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 
-// Builds the Vercel Build Output API tree directly. The API is one edge
+// Builds the Vercel Build Output API tree directly. The API is one Node.js
 // function; the Vite build is served as static files with an SPA fallback.
 const output = '.vercel/output';
 const fn = `${output}/functions/api.func`;
@@ -15,15 +15,21 @@ await build({
   outfile: `${fn}/index.js`,
   bundle: true,
   format: 'esm',
-  platform: 'neutral',
+  platform: 'node',
   target: 'es2022',
   minify: true,
   logLevel: 'info',
 });
 
+await writeFile(`${fn}/package.json`, `${JSON.stringify({ type: 'module' }, null, 2)}\n`);
+
 await writeFile(
   `${fn}/.vc-config.json`,
-  `${JSON.stringify({ runtime: 'edge', entrypoint: 'index.js' }, null, 2)}\n`
+  `${JSON.stringify(
+    { runtime: 'nodejs22.x', handler: 'index.js', launcherType: 'Nodejs' },
+    null,
+    2
+  )}\n`
 );
 
 await cp('build', `${output}/static`, { recursive: true });

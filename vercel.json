@@ -1,11 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "installCommand": "npm ci",
+  "buildCommand": "bun run build",
+  "outputDirectory": "build",
+  "installCommand": "bun install --frozen-lockfile",
   "functions": {
     "api/fetch-json.ts": {
+      "maxDuration": 10
+    },
+    "api/index.ts": {
       "maxDuration": 10
     },
     "api/probe.ts": {

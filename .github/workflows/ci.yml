@@ -7,10 +7,28 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: rep
+          POSTGRES_PASSWORD: rep
+          POSTGRES_DB: rep
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rep -d rep"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://rep:rep@localhost:5432/rep
+      TEST_DATABASE_URL: postgres://rep:rep@localhost:5432/rep
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
+      - run: bun run db:migrate
       - run: bun run validate
       - name: Coverage floors did not decrease
         if: github.event_name == 'pull_request'

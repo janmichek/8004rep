@@ -30,9 +30,6 @@
    :kind :dependency}
   {:from :pages.feedbacks.ui.feedbacksFacts, :to :shared.lib.explorer, :kind :dependency}
   {:from :shared.ui, :to :shared.ui.PlaceholderState, :kind :dependency}
-  {:from :pages.agents.ui.AgentList,
-   :to :pages.agents.ui.ScanAgentRow,
-   :kind :dependency}
   {:from :shared.ui.explorer.TilesSkeleton,
    :to :shared.ui.explorer.Skeleton,
    :kind :dependency}
@@ -43,7 +40,6 @@
    :to :shared.ui.explorer.SeverityIcon,
    :kind :dependency}
   {:from :shared.ui, :to :shared.ui.explorer.Segmented, :kind :dependency}
-  {:from :pages.agents.ui.ScanAgentRow, :to :shared.lib.explorer, :kind :dependency}
   {:from :shared.lib.explorer.data.feedbackStats,
    :to :shared.lib.explorer.data.types,
    :kind :dependency}
@@ -54,6 +50,9 @@
    :to :shared.lib.explorer.data.similarity,
    :kind :dependency}
   {:from :pages.reviewer.ui.ReviewerPage, :to :at.tanstack, :kind :dependency}
+  {:from :shared.lib.explorer.data.indexed,
+   :to :shared.lib.explorer.data.types,
+   :kind :dependency}
   {:from :pages.reviewer.ui.ReviewerOverview,
    :to :pages.reviewer.ui.ReviewerCharts,
    :kind :dependency}
@@ -168,6 +167,7 @@
   {:from :shared.ui.explorer.reputation.OverviewCharts,
    :to :shared.lib.explorer.data.reputation.report,
    :kind :dependency}
+  {:from :pages.agent.ui.useAgentDetail, :to :shared.api, :kind :dependency}
   {:from :shared.lib.explorer.data,
    :to :shared.lib.explorer.data.feedbackLogs,
    :kind :dependency}
@@ -308,6 +308,9 @@
   {:from :pages.owner.ui.OwnerPage,
    :to :pages.owner.ui.useOwnerClones,
    :kind :dependency}
+  {:from :pages.agents.ui.AgentRow,
+   :to :pages.agents.ui.cells.AgentOwnerCell,
+   :kind :dependency}
   {:from :pages.docs.ui.DocsPage, :to :pages.docs.ui.DocsHow, :kind :dependency}
   {:from :shared.ui.explorer.reputation.ReviewerLink,
    :to :shared.ui.marks.AddressIdenticon,
@@ -324,7 +327,6 @@
   {:from :shared.ui.explorer.reputation.MethodsFunnel,
    :to :shared.lib.explorer.data.reputation.report,
    :kind :dependency}
-  {:from :shared.api.client, :to :shared.lib.explorer, :kind :dependency}
   {:from :pages.docs.ui.DocsGlossary, :to :shared.lib.explorer, :kind :dependency}
   {:from :shared.ui.explorer.reputation.ReviewerRowView,
    :to :shared.lib.explorer,
@@ -341,6 +343,7 @@
    :to :shared.lib.explorer.data.feedbackStats,
    :kind :dependency}
   {:from :shared.ui.explorer.FeedbackRow, :to :shared.lib.explorer, :kind :dependency}
+  {:from :pages.network.ui.useNetworkFeed, :to :shared.api, :kind :dependency}
   {:from :shared.lib.explorer.hooks.useOwnerAgentCount,
    :to :shared.lib.explorer.hooks.useAsync,
    :kind :dependency}
@@ -351,6 +354,9 @@
    :to :shared.ui.explorer.Hint,
    :kind :dependency}
   {:from :pages.owners.ui.OwnersPage, :to :at.tanstack, :kind :dependency}
+  {:from :pages.agents.ui.AgentRow,
+   :to :pages.agents.ui.cells.AgentChainCell,
+   :kind :dependency}
   {:from :shared.ui.explorer.ColumnChartPlot,
    :to :shared.ui.explorer.ColumnChartSvg,
    :kind :dependency}
@@ -404,9 +410,6 @@
   {:from :shared.ui.marks.ChainIcon, :to :shared.ui.marks.hash, :kind :dependency}
   {:from :shared.ui.explorer.StatTiles,
    :to :shared.ui.explorer.TileBox,
-   :kind :dependency}
-  {:from :shared.lib.explorer.hooks.usePinnedAgents,
-   :to :shared.lib.explorer.data.scan,
    :kind :dependency}
   {:from :pages.network.ui.NetworkLoading, :to :shared.ui, :kind :dependency}
   {:from :pages.owner.ui.useOwnerAgents,
@@ -476,6 +479,7 @@
   {:from :shared.ui.explorer.feedbackListTypes,
    :to :shared.lib.explorer.data.feedbackStats,
    :kind :dependency}
+  {:from :pages.docs.ui.DocsPage, :to :pages.docs.ui.DocsApi, :kind :dependency}
   {:from :shared.lib.explorer.data.txDetail,
    :to :shared.lib.explorer.data.metadata,
    :kind :dependency}
@@ -543,9 +547,6 @@
    :kind :dependency}
   {:from :pages.reviewer, :to :pages.reviewer.ui.ReviewerPage, :kind :dependency}
   {:from :shared.ui, :to :shared.ui.explorer.FeedbackTab, :kind :dependency}
-  {:from :shared.lib.explorer.pageScope,
-   :to :shared.lib.explorer.data.scan,
-   :kind :dependency}
   {:from :shared.ui.explorer.ActivityGrid,
    :to :shared.ui.explorer.activityMath,
    :kind :dependency}
@@ -688,6 +689,7 @@
   {:from :shared.ui.explorer.reputation.methodsDownloadData,
    :to :shared.lib.explorer.data.reputation.report,
    :kind :dependency}
+  {:from :pages.starred.ui.useStarStats, :to :shared.api, :kind :dependency}
   {:from :pages.reviewer.ui.ReviewerOverview,
    :to :shared.lib.explorer,
    :kind :dependency}
@@ -722,14 +724,12 @@
   {:from :shared.ui.explorer.TileBox,
    :to :shared.ui.explorer.TileValue,
    :kind :dependency}
+  {:from :shared.api.client, :to :shared.lib.explorer.data.indexed, :kind :dependency}
   {:from :pages.network.ui.NetworkWindow,
    :to :pages.network.ui.NetworkAgents,
    :kind :dependency}
   {:from :shared.ui.explorer.reputation.MethodsDownload,
    :to :shared.lib.explorer.data.types,
-   :kind :dependency}
-  {:from :shared.lib.explorer.data.reputation.units,
-   :to :shared.lib.explorer.data.reputation.kinds,
    :kind :dependency}
   {:from :shared.ui.explorer.reputation.ReviewersTab,
    :to :shared.ui.explorer.reputation.ReviewersClusters,
@@ -843,6 +843,9 @@
    :to :shared.lib.explorer.data.types,
    :kind :implements}
   {:from :pages.owner.ui.AgentOwnerCell, :to :shared.ui, :kind :dependency}
+  {:from :pages.agents.ui.cells.AgentScoreCell,
+   :to :shared.lib.explorer,
+   :kind :dependency}
   {:from :shared.ui.explorer.TxDetail, :to :shared.lib.explorer, :kind :dependency}
   {:from :shared.ui.explorer.reputation.CompareSummary,
    :to :shared.lib.explorer.data.scan,
@@ -869,6 +872,7 @@
   {:from :shared.lib.explorer.hooks.useFeedbackDetail,
    :to :shared.lib.explorer.hooks.useAsync,
    :kind :dependency}
+  {:from :pages.agents.ui.AgentRow, :to :at.tanstack, :kind :dependency}
   {:from :pages.agent.ui.AgentPage,
    :to :pages.agent.ui.AgentIdentityTab,
    :kind :dependency}
@@ -889,9 +893,6 @@
    :kind :dependency}
   {:from :shared.ui.explorer.FeedbackReviewerCell,
    :to :shared.ui.marks.AddressIdenticon,
-   :kind :dependency}
-  {:from :pages.agents.ui.ScanAgentRow,
-   :to :pages.agents.ui.cells.AgentOwnerCell,
    :kind :dependency}
   {:from :pages.owner.ui.AgentRow, :to :pages.owner.ui.useAgentFile, :kind :dependency}
   {:from :pages.reviewers.ui.reviewerFacts, :to :shared.ui, :kind :dependency}
@@ -960,9 +961,6 @@
    :kind :dependency}
   {:from :pages.owners.ui.useOwnersWindow, :to :shared.lib.explorer, :kind :dependency}
   {:from :shared.ui, :to :shared.ui.Stat, :kind :dependency}
-  {:from :shared.lib.explorer.data.reputation.score,
-   :to :shared.lib.explorer.data.reputation.units,
-   :kind :dependency}
   {:from :shared.ui.explorer.reputation.OverviewWaterfallPanel,
    :to :shared.lib.explorer.data.reputation.report,
    :kind :dependency}
@@ -970,6 +968,7 @@
    :to :shared.lib.explorer,
    :kind :dependency}
   {:from :pages.reviewer.ui.ReviewerFeedbackRow, :to :shared.ui, :kind :dependency}
+  {:from :pages.scan.ui.ScanAgentPage, :to :shared.api, :kind :dependency}
   {:from :shared.lib.explorer.data.calibration,
    :to :shared.lib.explorer.data.reputation.report,
    :kind :dependency}
@@ -1003,6 +1002,7 @@
   {:from :shared.lib.explorer, :to :shared.lib.explorer.hooks.useSort, :kind :dependency}
   {:from :pages.starred.ui.useStarStats, :to :shared.lib.explorer, :kind :dependency}
   {:from :pages.feedbacks.ui.feedbackDetailFallback, :to :shared.ui, :kind :dependency}
+  {:from :shared.lib.explorer.hooks.usePinnedAgents, :to :shared.api, :kind :dependency}
   {:from :shared.ui.explorer.reputation.OverviewTab,
    :to :shared.ui.explorer.reputation.OverviewWaterfall,
    :kind :dependency}
@@ -1099,9 +1099,6 @@
   {:from :pages.network.ui.NetworkPage,
    :to :pages.network.ui.useNetworkFeed,
    :kind :dependency}
-  {:from :pages.agents.ui.ScanAgentRow,
-   :to :pages.agents.ui.cells.AgentIdentityCell,
-   :kind :dependency}
   {:from :shared.ui.explorer.FeedbackRepliesCell,
    :to :shared.ui.explorer.feedbackListTypes,
    :kind :dependency}
@@ -1111,6 +1108,7 @@
   {:from :pages.docs.ui.DocsCalibration,
    :to :pages.docs.ui.CalibrationTable,
    :kind :dependency}
+  {:from :pages.agents.ui.AgentRow, :to :shared.lib.explorer, :kind :dependency}
   {:from :shared.lib.explorer.hooks.usePinnedAgents,
    :to :shared.lib.explorer.useNetworkEnv,
    :kind :dependency}
@@ -1190,9 +1188,6 @@
   {:from :pages.owners.ui.OwnerLatestCell, :to :shared.ui, :kind :dependency}
   {:from :pages.agent.ui.AgentPage, :to :shared.lib.explorer, :kind :dependency}
   {:from :pages.network.ui.NetworkSuspects, :to :at.tanstack, :kind :dependency}
-  {:from :pages.agents.ui.ScanAgentRow,
-   :to :pages.agents.ui.cells.AgentServicesCell,
-   :kind :dependency}
   {:from :pages.reviewer.ui.FundingAttribution,
    :to :shared.lib.explorer,
    :kind :dependency}
@@ -1251,6 +1246,7 @@
   {:from :pages.docs.ui.DocsHero, :to :at.tanstack, :kind :dependency}
   {:from :pages.docs.ui.DocsLabels, :to :shared.ui, :kind :dependency}
   {:from :app.App, :to :at.tanstack, :kind :dependency}
+  {:from :shared.lib.explorer, :to :shared.lib.explorer.data.indexed, :kind :dependency}
   {:from :shared.ui.explorer.FeedbackTableHead,
    :to :shared.ui.explorer.Hint,
    :kind :dependency}
@@ -1343,8 +1339,8 @@
   {:from :shared.ui.explorer.reputation.MethodsParameters,
    :to :shared.lib.explorer,
    :kind :dependency}
-  {:from :shared.lib.explorer.data.reputation.report,
-   :to :shared.lib.explorer.data.reputation.score,
+  {:from :pages.agents.ui.AgentRow,
+   :to :pages.agents.ui.cells.AgentIdentityCell,
    :kind :dependency}
   {:from :shared.ui.explorer.reputation.MethodsParameters,
    :to :shared.lib.explorer.data.reputation.report,
@@ -1409,7 +1405,6 @@
   {:from :pages.reviewer.ui.ReviewerOverview,
    :to :pages.reviewer.ui.ReviewerHabitSignals,
    :kind :dependency}
-  {:from :pages.agents.ui.ScanAgentRow, :to :at.tanstack, :kind :dependency}
   {:from :pages.owner.ui.AgentServicesCell, :to :shared.lib.explorer, :kind :dependency}
   {:from :pages.agents.ui.cells.AgentIdentityCell,
    :to :shared.lib.explorer,
@@ -1446,6 +1441,9 @@
   {:from :app.routes, :to :pages.network, :kind :dependency}
   {:from :shared.ui.explorer.ActivityGrid, :to :react, :kind :dependency}
   {:from :shared.ui.explorer.FeedbackList, :to :react, :kind :dependency}
+  {:from :shared.lib.explorer.hooks.usePinnedAgents,
+   :to :shared.lib.explorer.data.indexed,
+   :kind :dependency}
   {:from :shared.lib.explorer.data.reviewerInsights,
    :to :shared.lib.explorer.chains,
    :kind :dependency}
@@ -1519,6 +1517,9 @@
   {:from :pages.reviewers.ui.reviewerFacts, :to :shared.lib.explorer, :kind :dependency}
   {:from :shared.ui.explorer.FeedbackNote, :to :react, :kind :dependency}
   {:from :pages.network.ui.NetworkWindow, :to :shared.lib.explorer, :kind :dependency}
+  {:from :pages.agents.ui.AgentRow,
+   :to :pages.agents.ui.cells.AgentScoreCell,
+   :kind :dependency}
   {:from :pages.agent.ui.EndpointProbe, :to :react, :kind :dependency}
   {:from :shared.ui.explorer.FeedbackList,
    :to :shared.lib.explorer.hooks.useSort,
@@ -1585,9 +1586,6 @@
   {:from :pages.network.ui.NetworkTotals,
    :to :pages.network.ui.networkTotalTiles,
    :kind :dependency}
-  {:from :shared.lib.explorer.data.reputation.report,
-   :to :shared.lib.explorer.data.reputation.kinds,
-   :kind :dependency}
   {:from :pages.agent.ui.AgentPage, :to :shared.ui, :kind :dependency}
   {:from :pages.network.ui.NetworkLatest, :to :shared.lib.explorer, :kind :dependency}
   {:from :shared.ui.explorer.TxDetail,
@@ -1598,9 +1596,6 @@
    :kind :dependency}
   {:from :shared.lib.explorer.pageScope,
    :to :shared.lib.explorer.chains,
-   :kind :dependency}
-  {:from :shared.lib.explorer.data.reputation.report,
-   :to :shared.lib.explorer.data.types,
    :kind :dependency}
   {:from :app.routes, :to :pages.starred, :kind :dependency}
   {:from :shared.ui.explorer.FeedbackTextCell,
@@ -1624,6 +1619,9 @@
   {:from :pages.docs.ui.DocsLabels, :to :react, :kind :dependency}
   {:from :shared.ui.explorer.reputation.OverviewTab,
    :to :shared.lib.explorer.data.types,
+   :kind :dependency}
+  {:from :pages.agents.ui.AgentRow,
+   :to :pages.agents.ui.cells.AgentServicesCell,
    :kind :dependency}
   {:from :pages.feedbacks.ui.FeedbackDetailHeader, :to :shared.ui, :kind :dependency}
   {:from :shared.ui, :to :shared.ui.RetryNotice, :kind :dependency}
@@ -1857,6 +1855,7 @@
   {:from :pages.owners.ui.OwnersPage,
    :to :pages.owners.ui.OwnersResults,
    :kind :dependency}
+  {:from :pages.agents.ui.AgentList, :to :pages.agents.ui.AgentRow, :kind :dependency}
   {:from :shared.ui.explorer.reputation.ReviewersTable,
    :to :shared.ui.explorer.reputation.ReviewersTableHead,
    :kind :dependency}
@@ -1946,9 +1945,6 @@
    :kind :dependency}
   {:from :shared.lib.explorer.hooks.usePinnedAgents, :to :react, :kind :dependency}
   {:from :app.routes, :to :pages.owner, :kind :dependency}
-  {:from :shared.lib.explorer.data.reputation.units,
-   :to :shared.lib.explorer.data.types,
-   :kind :dependency}
   {:from :shared.ui.explorer.reputation.CompareSummary,
    :to :shared.lib.explorer,
    :kind :dependency}
@@ -1960,9 +1956,6 @@
    :kind :dependency}
   {:from :shared.lib.explorer.data.trustReport,
    :to :shared.lib.explorer.format,
-   :kind :dependency}
-  {:from :pages.agents.ui.ScanAgentRow,
-   :to :pages.agents.ui.cells.AgentChainCell,
    :kind :dependency}
   {:from :shared.ui.explorer.reputation.ReviewerFlagsCell,
    :to :shared.ui.explorer.FlagChip,
@@ -2018,9 +2011,6 @@
    :to :shared.lib.explorer.hooks.useScope,
    :kind :dependency}
   {:from :pages.owner.ui.AgentFeedbackCell, :to :shared.lib.explorer, :kind :dependency}
-  {:from :pages.agents.ui.ScanAgentRow,
-   :to :pages.agents.ui.cells.AgentScoreCell,
-   :kind :dependency}
   {:from :pages.reviewers.ui.ReviewersStatus,
    :to :shared.lib.explorer,
    :kind :dependency}
@@ -2029,9 +2019,6 @@
    :kind :dependency}
   {:from :shared.ui, :to :shared.ui.QueryStatus, :kind :dependency}
   {:from :shared.ui.explorer.Hint, :to :at.tanstack, :kind :dependency}
-  {:from :shared.lib.explorer.data.reputation.report,
-   :to :shared.lib.explorer.data.reputation.units,
-   :kind :dependency}
   {:from :pages.agents.ui.useAgentsFeed, :to :at.tanstack, :kind :dependency}
   {:from :shared.lib.explorer.data.feedbackStats,
    :to :shared.lib.explorer.data.ownerScale,
@@ -2186,6 +2173,13 @@
    :level 4,
    :lang :typescript,
    :id :pages.agents.ui.AgentList}
+  {:ns "8004rep.pages.agents.ui.AgentRow",
+   :name "AgentRow",
+   :file "src/pages/agents/ui/AgentRow.tsx",
+   :ops [{:name "AgentRow", :text "AgentRow"}],
+   :level 4,
+   :lang :typescript,
+   :id :pages.agents.ui.AgentRow}
   {:ns "8004rep.pages.agents.ui.AgentsError",
    :name "AgentsError",
    :file "src/pages/agents/ui/AgentsError.tsx",
@@ -2228,13 +2222,6 @@
    :level 4,
    :lang :typescript,
    :id :pages.agents.ui.AgentsToolbar}
-  {:ns "8004rep.pages.agents.ui.ScanAgentRow",
-   :name "ScanAgentRow",
-   :file "src/pages/agents/ui/ScanAgentRow.tsx",
-   :ops [{:name "ScanAgentRow", :text "ScanAgentRow"}],
-   :level 4,
-   :lang :typescript,
-   :id :pages.agents.ui.ScanAgentRow}
   {:ns "8004rep.pages.agents.ui.agentsSearch",
    :name "AgentsSearch",
    :file "src/pages/agents/ui/agentsSearch.ts",
@@ -2305,6 +2292,13 @@
    :level 4,
    :lang :typescript,
    :id :pages.docs.ui.CalibrationTable}
+  {:ns "8004rep.pages.docs.ui.DocsApi",
+   :name "DocsApi",
+   :file "src/pages/docs/ui/DocsApi.tsx",
+   :ops [{:name "DocsApi", :text "DocsApi"}],
+   :level 4,
+   :lang :typescript,
+   :id :pages.docs.ui.DocsApi}
   {:ns "8004rep.pages.docs.ui.DocsCalibration",
    :name "DocsCalibration",
    :file "src/pages/docs/ui/DocsCalibration.tsx",
@@ -3140,7 +3134,11 @@
    :file "src/shared/api/client.ts",
    :ops
    [{:name "fetchAgents", :text "fetchAgents"}
-    {:name "fetchNetworks", :text "fetchNetworks"}],
+    {:name "fetchNetworks", :text "fetchNetworks"}
+    {:name "fetchAgentDetail", :text "fetchAgentDetail"}
+    {:name "fetchAgentReputation", :text "fetchAgentReputation"}
+    {:name "fetchNetworkStats", :text "fetchNetworkStats"}
+    {:name "fetchReputationSpec", :text "fetchReputationSpec"}],
    :level 0,
    :lang :typescript,
    :id :shared.api.client}
@@ -3148,9 +3146,14 @@
    :name "Api",
    :file "src/shared/api/index.ts",
    :ops
-   [{:name "fetchAgents", :text "fetchAgents"}
+   [{:name "fetchAgentDetail", :text "fetchAgentDetail"}
+    {:name "fetchAgentReputation", :text "fetchAgentReputation"}
+    {:name "fetchAgents", :text "fetchAgents"}
     {:name "fetchNetworks", :text "fetchNetworks"}
-    {:name "AgentListQuery", :text "AgentListQuery"}],
+    {:name "fetchNetworkStats", :text "fetchNetworkStats"}
+    {:name "fetchReputationSpec", :text "fetchReputationSpec"}
+    {:name "AgentListQuery", :text "AgentListQuery"}
+    {:name "AgentsQuery", :text "AgentsQuery"}],
    :level 0,
    :lang :typescript,
    :id :shared.api}
@@ -3205,10 +3208,6 @@
   {:ns "8004rep.shared.lib.explorer.data.contentHash",
    :name "ContentHash",
    :file "src/shared/lib/explorer/data/contentHash.ts",
-   :ops
-   [{:name "canonicalJson", :text "canonicalJson"}
-    {:name "sha256Hex", :text "sha256Hex"}
-    {:name "hashEvidence", :text "hashEvidence"}],
    :level 0,
    :lang :typescript,
    :id :shared.lib.explorer.data.contentHash}
@@ -3279,6 +3278,13 @@
    :level 0,
    :lang :typescript,
    :id :shared.lib.explorer.data}
+  {:ns "8004rep.shared.lib.explorer.data.indexed",
+   :name "Indexed",
+   :file "src/shared/lib/explorer/data/indexed.ts",
+   :ops [{:name "indexToAgent", :text "indexToAgent"}],
+   :level 0,
+   :lang :typescript,
+   :id :shared.lib.explorer.data.indexed}
   {:ns "8004rep.shared.lib.explorer.data.metadata",
    :name "Metadata",
    :file "src/shared/lib/explorer/data/metadata.ts",
@@ -3331,48 +3337,24 @@
   {:ns "8004rep.shared.lib.explorer.data.reputation.kinds",
    :name "Kinds",
    :file "src/shared/lib/explorer/data/reputation/kinds.ts",
-   :ops
-   [{:name "KIND_INFO", :text "KIND_INFO"}
-    {:name "tagKey", :text "tagKey"}
-    {:name "kindOf", :text "kindOf"}
-    {:name "inferScale", :text "inferScale"}
-    {:name "normalize", :text "normalize"}
-    {:name "inferTagScales", :text "inferTagScales"}
-    {:name "classify", :text "classify"}],
    :level 0,
    :lang :typescript,
    :id :shared.lib.explorer.data.reputation.kinds}
   {:ns "8004rep.shared.lib.explorer.data.reputation.report",
    :name "Report",
    :file "src/shared/lib/explorer/data/reputation/report.ts",
-   :ops [{:name "buildReputationReport", :text "buildReputationReport"}],
    :level 0,
    :lang :typescript,
    :id :shared.lib.explorer.data.reputation.report}
   {:ns "8004rep.shared.lib.explorer.data.reputation.score",
    :name "Score",
    :file "src/shared/lib/explorer/data/reputation/score.ts",
-   :ops
-   [{:name "THIN_WEIGHT", :text "THIN_WEIGHT"}
-    {:name "THIN_WALLETS", :text "THIN_WALLETS"}
-    {:name "STRONG_WEIGHT", :text "STRONG_WEIGHT"}
-    {:name "STRONG_NEFF", :text "STRONG_NEFF"}
-    {:name "DOMINANT_SHARE", :text "DOMINANT_SHARE"}
-    {:name "DEFAULT_SCORE_PARAMS", :text "DEFAULT_SCORE_PARAMS"}
-    {:name "betaCdf", :text "betaCdf"}
-    {:name "betaQuantile", :text "betaQuantile"}
-    {:name "filteredScore", :text "filteredScore"}],
    :level 0,
    :lang :typescript,
    :id :shared.lib.explorer.data.reputation.score}
   {:ns "8004rep.shared.lib.explorer.data.reputation.units",
    :name "Units",
    :file "src/shared/lib/explorer/data/reputation/units.ts",
-   :ops
-   [{:name "UNIT_WINDOW_DAYS", :text "UNIT_WINDOW_DAYS"}
-    {:name "HALF_LIFE_DAYS", :text "HALF_LIFE_DAYS"}
-    {:name "median", :text "median"}
-    {:name "buildRatingLayer", :text "buildRatingLayer"}],
    :level 0,
    :lang :typescript,
    :id :shared.lib.explorer.data.reputation.units}
@@ -3417,15 +3399,9 @@
    :file "src/shared/lib/explorer/data/scan.ts",
    :ops
    [{:name "parseScanScore", :text "parseScanScore"}
-    {:name "parseScanStats", :text "parseScanStats"}
-    {:name "parseScanPageTotal", :text "parseScanPageTotal"}
-    {:name "parseFeedbackGrowth", :text "parseFeedbackGrowth"}
-    {:name "parseScanChains", :text "parseScanChains"}
     {:name "parseScanAgentDetail", :text "parseScanAgentDetail"}
     {:name "fetchScanScore", :text "fetchScanScore"}
-    {:name "fetchScanAgentDetail", :text "fetchScanAgentDetail"}
-    {:name "fetchScanChainFeedback", :text "fetchScanChainFeedback"}
-    {:name "fetchScanChains", :text "fetchScanChains"}],
+    {:name "fetchScanAgentDetail", :text "fetchScanAgentDetail"}],
    :level 0,
    :lang :typescript,
    :id :shared.lib.explorer.data.scan}
@@ -3630,12 +3606,8 @@
     {:name "sourceFor", :text "sourceFor"}
     {:name "ResolvedSource", :text "ResolvedSource"}
     {:name "fetchScanAgentDetail", :text "fetchScanAgentDetail"}
-    {:name "fetchScanChainFeedback", :text "fetchScanChainFeedback"}
-    {:name "fetchScanChains", :text "fetchScanChains"}
-    {:name "ScanAgent", :text "ScanAgent"}
     {:name "ScanAgentDetail", :text "ScanAgentDetail"}
-    {:name "ScanAgentPage", :text "ScanAgentPage"}
-    {:name "ScanChain", :text "ScanChain"}
+    {:name "indexToAgent", :text "indexToAgent"}
     {:name "FLAG_INFO", :text "FLAG_INFO"}
     {:name "RowFlag", :text "RowFlag"}
     {:name "resolveAgentURI", :text "resolveAgentURI"}
