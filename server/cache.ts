@@ -35,6 +35,8 @@ export function createTtlCache<T>(
       return entry.value;
     },
     set(key, value) {
+      if (maxEntries <= 0) return;
+
       if (entries.size >= maxEntries && !entries.has(key)) {
         const oldest = entries.keys().next();
 

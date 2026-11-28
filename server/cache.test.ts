@@ -31,6 +31,15 @@ describe('createTtlCache', () => {
     expect(cache.get('agent')).toBeUndefined();
   });
 
+  test('stores nothing when it has no capacity', () => {
+    const clock = fakeClock();
+    const cache = createTtlCache<string>(1_000, 0, clock.now);
+
+    cache.set('agent', 'Atlas');
+
+    expect(cache.get('agent')).toBeUndefined();
+  });
+
   test('evicts the oldest entry when full', () => {
     const clock = fakeClock();
     const cache = createTtlCache<string>(1_000, 2, clock.now);
