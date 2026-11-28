@@ -165,7 +165,9 @@ export function AgentIdentityTab({ agent, chain, file, rawJson, ownerAgents }: P
                       </span>
                     )}
                     {service.version ? <small className="muted"> v{service.version}</small> : null}
-                    <EndpointProbe url={service.endpoint} />
+                    {/^https?:\/\//i.test(service.endpoint) ? (
+                      <EndpointProbe url={service.endpoint} />
+                    ) : null}
                   </dd>
                 </Fragment>
               ))}
