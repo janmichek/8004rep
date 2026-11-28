@@ -27,6 +27,7 @@
         "@playwright/test": "^1.65.1",
         "@storybook/react-vite": "^10.6.9",
         "@stryker-mutator/core": "^10.1.1",
+        "@stryker-mutator/vitest-runner": "10.1.1",
         "@testing-library/react": "^16.3.3",
         "@types/react": "^19.3.2",
         "@types/react-dom": "^19.3.0",
@@ -570,6 +571,8 @@
     "@stryker-mutator/instrumenter": ["@stryker-mutator/instrumenter@10.1.1", "", { "dependencies": { "@babel/core": "~8.0.0", "@babel/generator": "~8.0.0", "@babel/parser": "~8.0.0", "@babel/plugin-proposal-decorators": "~8.0.0", "@babel/plugin-transform-explicit-resource-management": "^8.0.0", "@babel/preset-react": "~8.0.0", "@babel/preset-typescript": "~8.0.0", "@babel/traverse": "~8.0.4", "@stryker-mutator/api": "10.1.1", "@stryker-mutator/util": "10.1.1", "angular-html-parser": "~10.11.0", "semver": "~7.8.0", "tslib": "2.8.1", "weapon-regex": "~2.0.0" } }, "sha512-Vyude2i8LhDciLV1q6J55KtdA7gZpRuMfZcBcmWV6hLHAvWocoPKnCKc5BlZt1mwGWkX3Olc0457I7Ue6F1WEg=="],
 
     "@stryker-mutator/util": ["@stryker-mutator/util@10.1.1", "", {}, "sha512-Z0zDzsmhoSykE1gT3DvD1knFxySgNMfBlpSSs1j87kWvjEMfeMqfLOk0bqEPRg/rTFIUNSEXLZapxePUhZmfZA=="],
+
+    "@stryker-mutator/vitest-runner": ["@stryker-mutator/vitest-runner@10.1.1", "", { "dependencies": { "@stryker-mutator/api": "10.1.1", "@stryker-mutator/util": "10.1.1", "semver": "^7.7.4", "tslib": "~2.8.0" }, "peerDependencies": { "@stryker-mutator/core": "10.1.1", "vitest": ">=2.0.0" } }, "sha512-w/OmNt1vHD4Yeacy8Rxhl2Ue/9l662iyOW8XxM4rc9huixF6IySHW3cvhTs8JnMvG9tG7vS7ZZ52wUXx7xy1IQ=="],
 
     "@tanstack/history": ["@tanstack/history@1.162.5", "", {}, "sha512-w1+YvwmTkwt5n8yUqEH3IWZ9DsmorCZW/EQ3KYHnqEgIkOZpH54NvW6/Epq3Dzb8H0ifIeYX8PExvrNLIH5FIA=="],
 

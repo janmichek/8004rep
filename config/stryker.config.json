@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@stryker-mutator/core/schema/stryker-schema.json",
-  "testRunner": "command",
-  "commandRunner": {
-    "command": "bun run test:unit"
+  "testRunner": "vitest",
+  "vitest": {
+    "configFile": "vitest.config.ts"
   },
   "mutate": ["src/**/model/**/*.ts", "src/**/lib/**/*.ts", "!src/**/*.test.ts"],
   "ignorePatterns": [".agents", ".claude", ".cursor", ".github", "docs", "examples", "/agent"],
@@ -14,6 +14,6 @@
     "break": 80
   },
   "reporters": ["clear-text"],
-  "coverageAnalysis": "off",
+  "coverageAnalysis": "perTest",
   "tempDirName": ".stryker-tmp"
 }
