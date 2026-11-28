@@ -62,48 +62,79 @@ async function applyChunk(db: Sql, chunk: ApplyChunk): Promise<void> {
   });
 }
 
-const UNWIND_STEPS: readonly string[] = [
-  `UPDATE agents SET score_dirty = TRUE
+type UnwindStep = { sql: string; usesBlock: boolean };
+
+const UNWIND_STEPS: readonly UnwindStep[] = [
+  {
+    sql: `UPDATE agents SET score_dirty = TRUE
    WHERE chain_id = $1 AND token_id IN (
      SELECT token_id FROM feedbacks WHERE chain_id = $1 AND block_number > $2
      UNION SELECT token_id FROM feedback_responses WHERE chain_id = $1 AND block_number > $2
      UNION SELECT token_id FROM agent_transfers WHERE chain_id = $1 AND block_number > $2
      UNION SELECT token_id FROM feedbacks WHERE chain_id = $1 AND revoked_block > $2
    )`,
-  `UPDATE feedbacks
+    usesBlock: true,
+  },
+  {
+    sql: `UPDATE feedbacks
    SET revoked = FALSE, revoked_block = NULL, revoked_tx = NULL
    WHERE chain_id = $1 AND revoked_block > $2`,
-  'DELETE FROM feedback_responses WHERE chain_id = $1 AND block_number > $2',
-  'DELETE FROM feedbacks WHERE chain_id = $1 AND block_number > $2',
-  `UPDATE agents
+    usesBlock: true,
+  },
+  {
+    sql: 'DELETE FROM feedback_responses WHERE chain_id = $1 AND block_number > $2',
+    usesBlock: true,
+  },
+  { sql: 'DELETE FROM feedbacks WHERE chain_id = $1 AND block_number > $2', usesBlock: true },
+  {
+    sql: `UPDATE agents
    SET metadata_fetched_at = NULL, metadata_attempts = 0,
        metadata_retry_after = NULL, metadata_error = NULL
    WHERE chain_id = $1 AND token_id IN (
      SELECT token_id FROM agent_metadata_kv WHERE chain_id = $1 AND block_number > $2
    )`,
-  'DELETE FROM agent_metadata_kv WHERE chain_id = $1 AND block_number > $2',
-  `UPDATE agents a
+    usesBlock: true,
+  },
+  {
+    sql: `UPDATE agents a
    SET agent_wallet = (
      SELECT '0x' || right(encode(k.metadata_value, 'hex'), 40)
      FROM agent_metadata_kv k
-     WHERE k.chain_id = $1 AND k.token_id = a.token_id AND k.metadata_key = 'agentWallet'
+     WHERE k.chain_id = $1 AND k.token_id = a.token_id
+       AND k.metadata_key = 'agentWallet' AND k.block_number <= $2
      ORDER BY k.block_number DESC, k.log_index DESC
      LIMIT 1
    ), score_dirty = TRUE
    WHERE a.chain_id = $1
      AND (a.agent_wallet IS NOT NULL OR a.registered_block > $2)`,
-  'DELETE FROM agent_transfers WHERE chain_id = $1 AND block_number > $2',
-  `UPDATE agents a
+    usesBlock: true,
+  },
+  {
+    sql: 'DELETE FROM agent_metadata_kv WHERE chain_id = $1 AND block_number > $2',
+    usesBlock: true,
+  },
+  {
+    sql: 'DELETE FROM agent_transfers WHERE chain_id = $1 AND block_number > $2',
+    usesBlock: true,
+  },
+  {
+    sql: `UPDATE agents a
    SET owner = NULL, burned = FALSE
    WHERE a.chain_id = $1 AND a.registered_block > $2
      AND NOT EXISTS (
        SELECT 1 FROM agent_transfers t WHERE t.chain_id = $1 AND t.token_id = a.token_id
      )`,
-  `DELETE FROM agents a
+    usesBlock: true,
+  },
+  {
+    sql: `DELETE FROM agents a
    WHERE a.chain_id = $1 AND a.registered_block > $2
      AND NOT EXISTS (SELECT 1 FROM agent_transfers t WHERE t.chain_id = $1 AND t.token_id = a.token_id)
      AND NOT EXISTS (SELECT 1 FROM feedbacks f WHERE f.chain_id = $1 AND f.token_id = a.token_id)`,
-  `UPDATE agents a
+    usesBlock: true,
+  },
+  {
+    sql: `UPDATE agents a
    SET owner = t.to_address
    FROM (
      SELECT DISTINCT ON (token_id) token_id, to_address
@@ -111,6 +142,8 @@ const UNWIND_STEPS: readonly string[] = [
      ORDER BY token_id, block_number DESC, log_index DESC
    ) t
    WHERE a.chain_id = $1 AND a.token_id = t.token_id`,
+    usesBlock: false,
+  },
 ];
 
 async function unwind(
@@ -120,8 +153,8 @@ async function unwind(
   cursor: CursorWrite
 ): Promise<void> {
   await db.transaction(async (tx) => {
-    for (const statement of UNWIND_STEPS) {
-      await tx.query(statement, [chainId, aboveBlock.toString()]);
+    for (const step of UNWIND_STEPS) {
+      await tx.query(step.sql, step.usesBlock ? [chainId, aboveBlock.toString()] : [chainId]);
     }
 
     await writeCursor(tx, cursor);
