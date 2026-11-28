@@ -104,6 +104,7 @@ bun run api:generate     # shared/openapi.json + typed client from Zod
 bun run test:unit        # vitest
 bun run test:coverage    # vitest with floors
 bun run test:e2e         # playwright
+bun run test:mutate      # stryker on the maintained core (rep-1.0, indexer, db)
 bun run coverage:ratchet # raise floors to measured coverage
 bun run db:migrate       # PostgreSQL migrations
 bun run indexer          # event indexer, metadata worker and scorer
