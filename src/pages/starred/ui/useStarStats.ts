@@ -1,28 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
 import { getAddress } from 'viem';
-import {
-  CHAINS,
-  fetchScanAgentDetail,
-  formatScore,
-  sourceFor,
-  starKey,
-  type Star,
-} from '../../../shared/lib/explorer';
+import { fetchAgents } from '../../../shared/api';
+import { CHAINS, formatScore, sourceFor, starKey, type Star } from '../../../shared/lib/explorer';
 
 /**
  * Basic stats per star, fetched once per star and kept for this visit.
- * Agents: score and feedback count from 8004scan. Owners: agents owned.
+ * Agents: `rep-1.0` score and indexed feedback count. Owners: agents owned.
  * Reviewers have no stat: counting their feedback means paging their whole history.
  */
+type IndexedAgentLike = { score: number | null; unrated: boolean; feedbackCount: number };
+
+function agentStat(agent: IndexedAgentLike): string {
+  if (agent.unrated || agent.score === null) return `Unrated · ${agent.feedbackCount} feedback`;
+
+  return `Score ${formatScore(Math.round(agent.score * 10) / 10)} · ${agent.feedbackCount} feedback`;
+}
+
 async function statFor(star: Star): Promise<string | undefined> {
   if (star.kind === 'agent') {
-    const detail = await fetchScanAgentDetail(star.chainId, BigInt(star.id)).catch(() => null);
+    const page = await fetchAgents({ ids: `${star.chainId}:${star.id}` }).catch(() => null);
+    const agent = page?.items[0];
 
-    if (!detail) return '—';
-
-    const score = formatScore(Math.round(detail.totalScore * 10) / 10);
-
-    return `Score ${score} · ${detail.feedbackCount} feedback`;
+    return agent ? agentStat(agent) : '—';
   }
 
   if (star.kind === 'owner') {

@@ -25,6 +25,8 @@ export function NetworkPage() {
           feedback30d: feed.network.data?.feedback30d,
           totalFeedback: feed.network.data?.totalFeedback,
           ratedAgents: feed.network.data?.ratedAgents,
+          lastIndexedBlock: feed.network.data?.lastIndexedBlock,
+          syncedAt: feed.network.data?.syncedAt,
           loading: feed.network.loading,
         }}
       />

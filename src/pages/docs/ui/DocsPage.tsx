@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouterState } from '@tanstack/react-router';
+import { DocsApi } from './DocsApi';
 import { DocsCalibration } from './DocsCalibration';
 import { DocsExamples } from './DocsExamples';
 import { DocsFooter } from './DocsFooter';
@@ -55,6 +56,7 @@ export function DocsPage() {
       <DocsMetrics />
       <DocsExamples />
       <DocsCalibration />
+      <DocsApi />
       <DocsLimits />
       <DocsSources />
       <DocsFooter />

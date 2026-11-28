@@ -29,7 +29,7 @@ function log(over: Partial<NewFeedbackLog> = {}): NewFeedbackLog {
     },
     blockNumber: 100n,
     logIndex: 0,
-    transactionHash: '0xabc' as Hex,
+    transactionHash: '0xabc',
     ...over,
   };
 }
@@ -83,9 +83,10 @@ describe('mapNewFeedbackLog', () => {
         },
         blockNumber: 50n,
         logIndex: 7,
-        transactionHash: '0xdef' as Hex,
+        transactionHash: '0xdef',
       })
     );
+
     expect(row).toMatchObject({
       tokenId: 221n,
       client: CLIENT,
@@ -131,6 +132,7 @@ describe('markRevoked', () => {
     const marked = markRevoked(rows, [
       { args: { agentId: 1n, clientAddress: CLIENT, feedbackIndex: 1n } },
     ]);
+
     expect(marked.map((r) => r.revoked)).toEqual([false, true]);
   });
 
@@ -138,6 +140,7 @@ describe('markRevoked', () => {
     const marked = markRevoked(rows, [
       { args: { agentId: 1n, clientAddress: CLIENT.toLowerCase() as Address, feedbackIndex: 0n } },
     ]);
+
     expect(marked[0]!.revoked).toBe(true);
   });
 
@@ -156,6 +159,7 @@ describe('mergeFeedback', () => {
         revoked: false,
       },
     ];
+
     const scanned: FeedbackEvent[] = [
       {
         tokenId: 7n,
@@ -166,9 +170,10 @@ describe('mergeFeedback', () => {
         createdAt: 1791000000,
         endpoint: 'https://a.example',
         feedbackURI: 'data:application/json,{}',
-        txHash: '0xabc' as Hex,
+        txHash: '0xabc',
       },
     ];
+
     expect(mergeFeedback(base, scanned)).toEqual([
       {
         client: CLIENT,
@@ -189,6 +194,9 @@ describe('mergeFeedback', () => {
 function testChain(): ChainInfo {
   return {
     chainId: 421614,
+    code: 'TEST',
+    symbol: 'T',
+    color: 'gray',
     name: 'Test',
     shortName: 'Test',
     slug: 'test',
@@ -196,10 +204,13 @@ function testChain(): ChainInfo {
     explorerUrl: 'https://example.com',
     scanUrl: 'https://example.com',
     rpcUrl: 'https://example.com',
+    defaultRpcUrl: 'https://example.com',
     viemChain: {} as ChainInfo['viemChain'],
-    identity: '0x0000000000000000000000000000000000000001' as Address,
-    reputation: '0x0000000000000000000000000000000000000002' as Address,
+    identity: '0x0000000000000000000000000000000000000001',
+    reputation: '0x0000000000000000000000000000000000000002',
     logRange: 10n,
+    startBlock: 0n,
+    confirmations: 5,
   };
 }
 
@@ -210,25 +221,31 @@ function fakeClient(scripts: {
   blockTime?: (block: bigint) => bigint;
 }): { client: PublicClient; calls: { getLogs: number; getBlock: number } } {
   const calls = { getLogs: 0, getBlock: 0 };
+
   const client = {
     async getBlockNumber() {
       return scripts.head ?? 100n;
     },
     async getLogs(params: { event?: { name: string }; fromBlock?: bigint; toBlock?: bigint }) {
       calls.getLogs++;
+
       // A node only returns the logs inside the requested window.
       const inWindow = (b: bigint) =>
         (params.fromBlock === undefined || b >= params.fromBlock) &&
         (params.toBlock === undefined || b <= params.toBlock);
+
       if (params.event?.name === 'FeedbackRevoked')
         return (scripts.revokedArgs ?? []).map((args) => ({ args }));
+
       return (scripts.given ?? []).filter((l) => inWindow(l.blockNumber));
     },
     async getBlock({ blockNumber }: { blockNumber: bigint }) {
       calls.getBlock++;
+
       return { timestamp: scripts.blockTime?.(blockNumber) ?? blockNumber * 10n };
     },
   } as unknown as PublicClient;
+
   return { client, calls };
 }
 
@@ -249,6 +266,7 @@ describe('scanFeedback', () => {
         }),
       ],
     });
+
     const page = await scanFeedback(client, testChain());
     expect(page.items.map((i) => i.tokenId)).toEqual([2n, 1n]);
     expect(page.items[0]!.createdAt).toBe(450);
@@ -264,6 +282,7 @@ describe('scanFeedback', () => {
       head: 1000n,
       given: [log({ blockNumber: 999n, blockTimestamp: 1791000000n })],
     });
+
     const page = await scanFeedback(client, testChain());
     expect(page.items[0]!.createdAt).toBe(1791000000);
     // 8 × 10 blocks from 1000 → oldest from 921, cursor just below it.
@@ -273,17 +292,21 @@ describe('scanFeedback', () => {
 
   it('continues from a cursor and treats blockTimestamp 0 as missing', async () => {
     const seen: string[] = [];
+
     const base = fakeClient({
       head: 1000n,
       given: [log({ blockNumber: 915n, blockTimestamp: 0n })],
     });
+
     const wrapped = {
       ...base.client,
       getLogs: (async (params: { fromBlock: bigint }) => {
         seen.push(String(params.fromBlock));
-        return base.client.getLogs(params as never);
+
+        return base.client.getLogs(params);
       }) as typeof base.client.getLogs,
     };
+
     const page = await scanFeedback(wrapped, testChain(), { cursor: '930' });
     expect(seen[0]).toBe('921');
     expect(page.items[0]!.createdAt).toBe(9150);

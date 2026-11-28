@@ -16,6 +16,6 @@ app.use('*', serveStatic({ root: './build' }));
 
 app.get('*', serveStatic({ path: './build/index.html' }));
 
-// Keep the connection open past the upstream's 10s abort so a slow 8004scan
-// becomes the proxy's 502 instead of a dropped socket.
+// Keep the connection open past an upstream metadata fetch so a slow host
+// becomes a 502 instead of a dropped socket.
 export default { port: 3001, idleTimeout: 30, fetch: app.fetch };

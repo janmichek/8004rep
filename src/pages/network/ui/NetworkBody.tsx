@@ -8,6 +8,8 @@ type NetworkData = {
   feedback30d: number | null | undefined;
   totalFeedback: number | null | undefined;
   ratedAgents: number | null | undefined;
+  lastIndexedBlock: number | null | undefined;
+  syncedAt: number | null | undefined;
   loading: boolean;
 };
 
@@ -25,16 +27,18 @@ export function NetworkBody({ chain, error, stats, feed, loading, load, network 
   return (
     <>
       <p className="lede">
-        Network totals come from 8004scan&apos;s index. The window metrics are computed from the
+        Network totals are indexed on-chain by 8004rep. The window metrics are computed from the
         feedback rows loaded here — load older rows to widen the window.
       </p>
       <h2 className="stat-heading">
-        Network totals <small>via 8004scan</small>
+        Network totals <small>indexed on-chain</small>
       </h2>
       <NetworkTotals
         feedback30d={network.feedback30d}
         totalFeedback={network.totalFeedback}
         ratedAgents={network.ratedAgents}
+        lastIndexedBlock={network.lastIndexedBlock}
+        syncedAt={network.syncedAt}
         loading={network.loading}
       />
       {error ? (

@@ -2,12 +2,11 @@ import { useNavigate } from '@tanstack/react-router';
 import {
   CHAINS,
   formatDate,
-  formatScore,
   formatTimeline,
   useIsStarred,
-  type ScanAgent,
-  type ScanChain,
+  type IndexedAgent,
 } from '../../../shared/lib/explorer';
+import type { Network } from '@shared/schemas';
 import { AgentChainCell } from './cells/AgentChainCell';
 import { AgentIdentityCell } from './cells/AgentIdentityCell';
 import { AgentOwnerCell } from './cells/AgentOwnerCell';
@@ -15,8 +14,8 @@ import { AgentScoreCell } from './cells/AgentScoreCell';
 import { AgentServicesCell } from './cells/AgentServicesCell';
 
 type Props = {
-  agent: ScanAgent;
-  chains: Map<number, ScanChain>;
+  agent: IndexedAgent;
+  chains: Map<number, Network>;
   pinned?: boolean | undefined;
 };
 
@@ -26,14 +25,12 @@ function isNestedControl(target: EventTarget | null): boolean {
   return Boolean(target.closest('a, button, input, select, textarea, label'));
 }
 
-export function ScanAgentRow({ agent, chains, pinned }: Props) {
+export function AgentRow({ agent, chains, pinned }: Props) {
   const navigate = useNavigate();
   const known = CHAINS.find((chain) => chain.chainId === agent.chainId);
   const chain = chains.get(agent.chainId);
   const name = agent.name || `Agent #${agent.tokenId.toString()}`;
   const services = agent.protocols.map((protocol) => protocol.toUpperCase());
-  const score = Math.max(0, Math.min(100, agent.totalScore));
-  const scoreLabel = formatScore(Math.round(agent.totalScore * 10) / 10);
   const createdAt = agent.createdAt ? formatTimeline(agent.createdAt) : '—';
   const createdTitle = agent.createdAt ? formatDate(agent.createdAt) : undefined;
   const starred = useIsStarred('agent', agent.chainId, agent.tokenId);
@@ -77,7 +74,7 @@ export function ScanAgentRow({ agent, chains, pinned }: Props) {
       <td className="num">#{agent.tokenId.toString()}</td>
       <AgentChainCell agent={agent} chain={chain} />
       <AgentServicesCell agent={agent} services={services} />
-      <AgentScoreCell score={score} scoreLabel={scoreLabel} />
+      <AgentScoreCell agent={agent} />
       <td className="num">{agent.feedbackCount}</td>
       <AgentOwnerCell agent={agent} known={known} />
       <td className="num" title={createdTitle}>

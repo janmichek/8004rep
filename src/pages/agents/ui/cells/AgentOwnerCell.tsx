@@ -1,9 +1,9 @@
 import { Link } from '@tanstack/react-router';
-import { shortAddress, type ChainInfo, type ScanAgent } from '../../../../shared/lib/explorer';
+import { shortAddress, type ChainInfo, type IndexedAgent } from '../../../../shared/lib/explorer';
 import { AddressIdenticon } from '../../../../shared/ui';
 
 type Props = {
-  agent: ScanAgent;
+  agent: IndexedAgent;
   known: ChainInfo | undefined;
 };
 

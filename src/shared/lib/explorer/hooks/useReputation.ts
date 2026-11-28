@@ -8,6 +8,7 @@ import { buildTrustReport } from '../data/trustReport';
 import { fetchScanScore } from '../data/scan';
 import { formatNumber, formatPercent } from '../format';
 import type { Tile } from '../../../ui/explorer/tileTypes';
+import type { TagScale } from '@shared/reputation';
 import { useAsync } from './useAsync';
 
 const CONFIDENCE_TONE: Record<ReputationReport['confidence'], Tile['tone']> = {
@@ -15,11 +16,13 @@ const CONFIDENCE_TONE: Record<ReputationReport['confidence'], Tile['tone']> = {
   medium: undefined,
   high: 'good',
 };
+
 const CONFIDENCE_STEPS: Record<ReputationReport['confidence'], number> = {
   low: 1,
   medium: 2,
   high: 3,
 };
+
 const LEVEL: Record<string, { word: string; tone: Tile['tone']; severity: number }> = {
   high: { word: 'high risk', tone: 'bad', severity: 3 },
   warn: { word: 'needs a look', tone: 'warn', severity: 2 },
@@ -31,11 +34,13 @@ export function useReputation(
   agent: AgentDetail,
   chain: ChainInfo,
   file: RegistrationFile | null | undefined,
-  ownerAgentCount?: number | null | undefined
+  ownerAgentCount?: number | null,
+  tagScales?: Record<string, TagScale>
 ) {
   const self = [agent.owner, agent.agentWallet].filter(
     (address): address is NonNullable<typeof address> => address != null
   );
+
   const stats = useMemo(
     () =>
       computeFeedbackStats(agent.feedback, {
@@ -46,14 +51,22 @@ export function useReputation(
       }),
     [agent.feedback, agent.owner, agent.agentWallet, file, ownerAgentCount]
   );
+
   const report = useMemo(
     () => buildTrustReport(agent.feedback, stats, self),
     [agent.feedback, stats, self]
   );
-  const rep = useMemo(
-    () => buildReputationReport(agent.feedback, { self }),
-    [agent.feedback, self]
+
+  const scales = useMemo(
+    () => (tagScales ? new Map(Object.entries(tagScales)) : undefined),
+    [tagScales]
   );
+
+  const rep = useMemo(
+    () => buildReputationReport(agent.feedback, scales ? { self, scales } : { self }),
+    [agent.feedback, self, scales]
+  );
+
   const scan = useAsync(
     () => fetchScanScore(chain.chainId, agent.tokenId),
     [chain.chainId, agent.tokenId]
@@ -63,13 +76,16 @@ export function useReputation(
     const onchain = agent.reputation;
     const scanScore = scan.data;
     const rawValue = onchain?.average ?? rep.raw;
+
     const rawGap =
       rawValue !== null && rawValue !== undefined && rep.score !== null
         ? rawValue - rep.score
         : null;
+
     const interval = rep.interval
       ? `80% interval ${formatNumber(rep.interval[0])}–${formatNumber(rep.interval[1])}`
       : 'too few rating units for an interval';
+
     return [
       {
         label: 'Filtered score',

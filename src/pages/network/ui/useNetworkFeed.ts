@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  errorMessage,
-  fetchScanChainFeedback,
-  loadFeedWindow,
-  sourceFor,
-  useAsync,
-} from '../../../shared/lib/explorer';
+import { fetchNetworkStats } from '../../../shared/api';
+import { errorMessage, loadFeedWindow, sourceFor, useAsync } from '../../../shared/lib/explorer';
 import type { ChainInfo, FeedWindow } from '../../../shared/lib/explorer';
 import { computeNetworkStats } from '../../../shared/lib/explorer';
 
@@ -49,7 +44,7 @@ export function useNetworkFeed(chain: ChainInfo) {
     // oxlint-disable-next-line react/exhaustive-deps -- a new chain restarts the window
   }, [chain.chainId]);
 
-  const network = useAsync(() => fetchScanChainFeedback(chain.chainId), [chain.chainId]);
+  const network = useAsync(() => fetchNetworkStats(chain.chainId), [chain.chainId]);
   const stats = useMemo(() => (feed ? computeNetworkStats(feed.items) : undefined), [feed]);
 
   return { chain, feed, stats, error, loading, load, network };

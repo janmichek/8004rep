@@ -2,7 +2,15 @@ import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
-import { agentPageSchema, agentQueryFields, networkSchema } from '../shared/schemas';
+import {
+  agentDetailResponseSchema,
+  agentPageSchema,
+  agentQueryFields,
+  agentReputationResponseSchema,
+  networkSchema,
+  networkStatsSchema,
+  reputationSpecSchema,
+} from '../shared/schemas';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 
@@ -30,6 +38,10 @@ function queryParameters() {
   }));
 }
 
+function path(name: string) {
+  return { name, in: 'path', required: true, schema: { type: 'string' } };
+}
+
 const document = {
   openapi: '3.1.0',
   info: { title: '8004rep', version: '0.1.0' },
@@ -41,10 +53,37 @@ const document = {
         responses: { 200: ok('Agents', agentPageSchema) },
       },
     },
+    '/api/agents/{chainId}/{tokenId}': {
+      get: {
+        operationId: 'getAgent',
+        parameters: [path('chainId'), path('tokenId')],
+        responses: { 200: ok('Indexed agent', agentDetailResponseSchema) },
+      },
+    },
+    '/api/agents/{chainId}/{tokenId}/reputation': {
+      get: {
+        operationId: 'getAgentReputation',
+        parameters: [path('chainId'), path('tokenId')],
+        responses: { 200: ok('rep-1.0 report', agentReputationResponseSchema) },
+      },
+    },
     '/api/networks': {
       get: {
         operationId: 'listNetworks',
         responses: { 200: ok('Networks', z.array(networkSchema)) },
+      },
+    },
+    '/api/networks/{chainId}/stats': {
+      get: {
+        operationId: 'getNetworkStats',
+        parameters: [path('chainId')],
+        responses: { 200: ok('Network totals', networkStatsSchema) },
+      },
+    },
+    '/api/reputation/spec': {
+      get: {
+        operationId: 'getReputationSpec',
+        responses: { 200: ok('Published rep-1.0 specification', reputationSpecSchema) },
       },
     },
   },

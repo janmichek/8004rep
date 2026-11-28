@@ -1,4 +1,5 @@
-import type { ScanAgentDetail as ScanAgentRecord, ScanChain } from '../../../shared/lib/explorer';
+import type { ScanAgentDetail as ScanAgentRecord } from '../../../shared/lib/explorer';
+import type { Network } from '@shared/schemas';
 import { ScanAgentHead } from './ScanAgentHead';
 import { ScanIdentityPanel } from './ScanIdentityPanel';
 import { ScanReputationPanel } from './ScanReputationPanel';
@@ -7,7 +8,7 @@ import { ScanServicesPanel } from './ScanServicesPanel';
 type Props = {
   agent: ScanAgentRecord;
   id: string;
-  network: ScanChain | undefined;
+  network: Network | undefined;
   scanUrl: string;
 };
 

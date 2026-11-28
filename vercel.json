@@ -8,6 +8,9 @@
     "api/fetch-json.ts": {
       "maxDuration": 10
     },
+    "api/index.ts": {
+      "maxDuration": 10
+    },
     "api/probe.ts": {
       "maxDuration": 10
     }

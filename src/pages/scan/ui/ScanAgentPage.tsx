@@ -1,5 +1,6 @@
 import { useParams } from '@tanstack/react-router';
-import { fetchScanAgentDetail, fetchScanChains, useAsync } from '../../../shared/lib/explorer';
+import { fetchNetworks } from '../../../shared/api';
+import { fetchScanAgentDetail, useAsync } from '../../../shared/lib/explorer';
 import { AgentHeadSkeleton, AgentQueryError } from '../../../shared/ui';
 import { ScanAgentDetail } from './ScanAgentDetail';
 
@@ -17,7 +18,7 @@ export function ScanAgentPage() {
   const chainId = parseChainId(chainIdParam);
   const tokenId = parseTokenId(id);
 
-  const chainsQuery = useAsync(fetchScanChains, []);
+  const chainsQuery = useAsync(fetchNetworks, []);
   const network = chainsQuery.data?.find((chain) => chain.chainId === chainId);
 
   const agentQuery = useAsync(async () => {
@@ -26,7 +27,7 @@ export function ScanAgentPage() {
     return fetchScanAgentDetail(chainId, tokenId);
   }, [chainId, tokenId]);
 
-  const scanUrl = `${network?.testnet ? 'https://testnet.8004scan.io' : 'https://8004scan.io'}/agents/${network?.key ?? chainId}/${id}`;
+  const scanUrl = `${network?.testnet ? 'https://testnet.8004scan.io' : 'https://8004scan.io'}/agents/${network?.slug ?? chainId}/${id}`;
 
   if (agentQuery.error) {
     return <AgentQueryError error={agentQuery.error} reload={agentQuery.reload} />;

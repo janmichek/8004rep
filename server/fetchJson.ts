@@ -6,7 +6,7 @@ const MAX_HOPS = 5;
 
 type RelayResult = { status: number; body: string; type: string };
 
-type Step = { result?: RelayResult; next?: URL };
+type Step = { result: RelayResult } | { next: URL };
 
 async function readCapped(response: Response): Promise<string | null> {
   const declared = Number(response.headers.get('content-length') ?? 0);
@@ -89,9 +89,7 @@ export async function relayJson(raw: string): Promise<RelayResult> {
 
     const step = await fetchStep(current);
 
-    if (step.result) return step.result;
-
-    if (!step.next) break;
+    if ('result' in step) return step.result;
 
     current = step.next;
   }

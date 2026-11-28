@@ -1,17 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  fetchScanChainFeedback,
-  parseFeedbackGrowth,
-  parseScanAgentDetail,
-  parseScanChains,
-  parseScanPageTotal,
-  parseScanScore,
-  parseScanStats,
-} from './scan';
-
-function jsonResponse(body: unknown): Response {
-  return { ok: true, status: 200, json: async () => body } as Response;
-}
+import { parseScanAgentDetail, parseScanScore } from './scan';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -80,108 +68,13 @@ describe('parseScanScore', () => {
   it('keeps what it can from a partial or hostile body', () => {
     expect(parseScanScore(null)).toBeNull();
     expect(parseScanScore({ total_score: 'high' })).toBeNull();
+
     const score = parseScanScore({
       total_score: 12,
       scores: { breakdown: { dimensions: { x: { score: '1', weight: 1 }, y: 7 } } },
     });
+
     expect(score).toEqual({ total: 12, dimensions: [] });
-  });
-});
-
-describe('parseScanStats', () => {
-  it('reads the ecosystem baseline', () => {
-    expect(
-      parseScanStats({
-        average_feedback_score: 92.86,
-        total_feedbacks: 4022119,
-        total_agents: 1003923,
-      })
-    ).toEqual({
-      averageFeedback: 92.86,
-      totalFeedback: 4022119,
-      totalAgents: 1003923,
-    });
-    expect(parseScanStats({ average_feedback_score: 92.86 })).toBeNull();
-  });
-});
-
-describe('parseScanPageTotal', () => {
-  it('reads the pager total from a list envelope', () => {
-    expect(parseScanPageTotal({ success: true, meta: { pagination: { total: 648682 } } })).toBe(
-      648682
-    );
-    expect(parseScanPageTotal({ success: true, meta: { pagination: {} } })).toBeNull();
-    expect(parseScanPageTotal({ success: true, data: [] })).toBeNull();
-    expect(parseScanPageTotal(null)).toBeNull();
-  });
-});
-
-describe('parseFeedbackGrowth', () => {
-  const body = {
-    period: '30d',
-    chains: [
-      { chain_id: 1, data: [{ feedbacks: 17683 }, { feedbacks: 35236 }] },
-      { chain_id: 8453, data: [{ feedbacks: 512236 }, { date: 'gap' }, { feedbacks: 648046 }] },
-    ],
-  };
-
-  it('subtracts the first cumulative point from the last', () => {
-    expect(parseFeedbackGrowth(body, 1)).toBe(17553);
-    expect(parseFeedbackGrowth(body, 8453)).toBe(135810);
-  });
-
-  it('returns null for a missing chain, too few points, or a shrunk series', () => {
-    expect(parseFeedbackGrowth(body, 999)).toBeNull();
-    expect(
-      parseFeedbackGrowth({ chains: [{ chain_id: 1, data: [{ feedbacks: 5 }] }] }, 1)
-    ).toBeNull();
-    expect(
-      parseFeedbackGrowth(
-        { chains: [{ chain_id: 1, data: [{ feedbacks: 9 }, { feedbacks: 4 }] }] },
-        1
-      )
-    ).toBeNull();
-    expect(parseFeedbackGrowth(null, 1)).toBeNull();
-  });
-});
-
-describe('fetchScanChainFeedback', () => {
-  it('reads total feedbacks, rated agents and 30-day growth', async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.includes('/feedbacks?'))
-        return jsonResponse({ success: true, data: [], meta: { pagination: { total: 648682 } } });
-      if (url.includes('/agents?'))
-        return jsonResponse({ success: true, data: [], meta: { pagination: { total: 127804 } } });
-      if (url.includes('/stats/growth/chains')) {
-        return jsonResponse({
-          chains: [{ chain_id: 8453, data: [{ feedbacks: 512236 }, { feedbacks: 648046 }] }],
-        });
-      }
-      throw new Error(`unexpected ${url}`);
-    });
-    vi.stubGlobal('fetch', fetchMock);
-    await expect(fetchScanChainFeedback(8453)).resolves.toEqual({
-      totalFeedback: 648682,
-      ratedAgents: 127804,
-      feedback30d: 135810,
-    });
-  });
-
-  it('keeps the totals that answered when one call fails', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.includes('/stats/growth/chains')) throw new Error('growth is down');
-        return jsonResponse({ success: true, data: [], meta: { pagination: { total: 7 } } });
-      })
-    );
-    await expect(fetchScanChainFeedback(8454)).resolves.toEqual({
-      totalFeedback: 7,
-      ratedAgents: 7,
-      feedback30d: null,
-    });
   });
 });
 
@@ -197,6 +90,7 @@ describe('parseScanScore unscored', () => {
       average_score: 88.75,
       total_feedbacks: 11,
     });
+
     expect(score?.total).toBe(88.75);
     expect(score?.feedback).toEqual({ average: 88.75, count: 11 });
   });
@@ -205,23 +99,6 @@ describe('parseScanScore unscored', () => {
     expect(
       parseScanScore({ total_score: 0, scores: null, average_score: 0, total_feedbacks: 11 })
     ).toBeNull();
-  });
-});
-
-describe('parseScanChains', () => {
-  it('names the networks rows can come from', () => {
-    expect(
-      parseScanChains({
-        supported_chains: [
-          { chain_id: 4663, name: 'Robinhood Chain', key: 'robinhood_mainnet', is_testnet: false },
-          { chain_id: 421614, name: 'Arbitrum Sepolia', key: 'arbitrum_sepolia', is_testnet: true },
-          { chain_id: 'x', name: 'broken', key: 'broken' },
-        ],
-      })
-    ).toEqual([
-      { chainId: 4663, name: 'Robinhood Chain', key: 'robinhood_mainnet', testnet: false },
-      { chainId: 421614, name: 'Arbitrum Sepolia', key: 'arbitrum_sepolia', testnet: true },
-    ]);
   });
 });
 
@@ -281,6 +158,7 @@ describe('parseScanAgentDetail', () => {
       ...detail,
       services: { a2a: { version: '1' }, web: detail.services.web },
     })!;
+
     expect(parsed.services).toEqual([{ name: 'web', endpoint: 'https://xylem-drainer.xyz/' }]);
     expect(parseScanAgentDetail({ ...detail, chain_id: null })).toBeNull();
     expect(parseScanAgentDetail({ ...detail, token_id: 'x' })).toBeNull();

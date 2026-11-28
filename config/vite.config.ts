@@ -41,8 +41,11 @@ export default defineConfig({
         '**/*.spec.ts',
         '**/*.d.ts',
         'src/shared/api/schema.d.ts',
-        // The Bun process entrypoint is exercised by Playwright, not Vitest.
+        'shared/openapi.json',
+        // Bun process entrypoints: exercised by Playwright / the worker, not Vitest.
         'server/index.ts',
+        'server/indexer/run.ts',
+        'server/db/migrate.ts',
         // Classic explorer port is still under test debt; keep floors on the covered surface.
         'src/shared/ui/explorer/**',
         'src/app/**',

@@ -1,4 +1,5 @@
-import type { ScanAgent, ScanAgentPage, ScanChain } from '../../../shared/lib/explorer';
+import type { IndexedAgent, IndexedAgentPage } from '../../../shared/lib/explorer';
+import type { Network } from '@shared/schemas';
 import { TableSkeleton } from '../../../shared/ui';
 import { AgentList } from './AgentList';
 import { AgentsError } from './AgentsError';
@@ -7,8 +8,8 @@ import { AgentsPager } from './AgentsPager';
 type Props = {
   error?: string | undefined;
   loading: boolean;
-  pinned: ScanAgent[];
-  feed: ScanAgent[];
+  pinned: IndexedAgent[];
+  feed: IndexedAgent[];
   hasRows: boolean;
   q: string;
   rated: boolean;
@@ -17,8 +18,8 @@ type Props = {
   order: 'asc' | 'desc';
   slug: string;
   chainQuery: number | undefined;
-  data?: ScanAgentPage | undefined;
-  chains: Map<number, ScanChain>;
+  data?: IndexedAgentPage | undefined;
+  chains: Map<number, Network>;
   registeredSort: 'asc' | 'desc' | null;
   scoreSort: 'asc' | 'desc' | null;
   feedbackSort: 'asc' | 'desc' | null;

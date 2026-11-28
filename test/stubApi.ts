@@ -1,6 +1,21 @@
 import { vi } from 'vitest';
-import { networks } from '../server/data';
 import type { AgentPage, Network } from '../shared/schemas';
+
+const networks: Network[] = [
+  {
+    code: 'BASE',
+    name: 'Base',
+    shortName: 'Base',
+    slug: 'base',
+    symbol: 'B',
+    color: 'blue',
+    chainId: 8453,
+    testnet: false,
+    lastIndexedBlock: 10_000,
+    syncStatus: 'ok',
+    syncedAt: 1_764_000_000,
+  },
+];
 
 const agentPage: AgentPage = {
   items: [
@@ -11,9 +26,16 @@ const agentPage: AgentPage = {
       owner: '0x1111111111111111111111111111111111111111',
       protocols: ['MCP'],
       x402: false,
-      totalScore: 72,
-      averageScore: 80,
+      score: 72,
+      ciLow: 64,
+      ciHigh: 80,
+      confidence: 'medium',
+      unrated: false,
+      rawAverage: 80,
+      ratedRows: 18,
+      uniqueWallets: 6,
       feedbackCount: 18,
+      formulaVersion: 'rep-1.0',
       createdAt: 1_736_154_840,
       testnet: false,
     },

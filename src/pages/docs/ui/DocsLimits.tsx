@@ -8,12 +8,12 @@ const LIMITS = [
     body: 'The registries hold no feedback to read beyond a URI. A feedback file can point to a comment, a task or a payment proof, but this app does not fetch or grade its prose.',
   },
   {
-    title: 'One window of history.',
-    body: 'RPC log scans and source caps limit how far back the page reads. When a total is larger than the rows held, the page says how many feedback the computation actually used.',
+    title: 'Index coverage varies by chain.',
+    body: 'Each chain advances at its own pace and backfills from its registry deployment. Until a chain is synced, the page falls back to the subgraph or RPC, and the response says which source it used.',
   },
   {
     title: 'Availability changes the view.',
-    body: 'If a subgraph or RPC endpoint is unavailable, the source badge says so and the data falls back or stops. Empty is not the same as zero.',
+    body: 'If the indexer, database, subgraph or RPC is unavailable, the source badge says so and the data falls back or stops. Empty is not the same as zero.',
   },
   {
     title: 'Owner scale is context, not proof.',
