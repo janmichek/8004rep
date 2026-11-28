@@ -1,5 +1,6 @@
 import { addressExplorerUrl, shortAddress, type ChainInfo } from '../../../shared/lib/explorer';
-import { AddressIdenticon, Skeleton, StarButton } from '../../../shared/ui';
+import { AddressIdenticon, StarButton } from '../../../shared/ui';
+import { OwnerCount } from './OwnerCount';
 
 type Props = {
   address: string;
@@ -19,16 +20,7 @@ export function OwnerHead({ address, chain, owned, loading, dataPresent }: Props
         <h1>{label}</h1>
         <p className="meta">
           <span className="chip">owner</span>
-          {loading || !dataPresent ? (
-            <span>
-              <Skeleton width="4.2em" height="1.35em" radius="999px" />
-            </span>
-          ) : null}
-          {!loading && dataPresent && owned !== undefined ? (
-            <span className="chip">
-              {owned} {owned === 1 ? 'agent' : 'agents'}
-            </span>
-          ) : null}
+          <OwnerCount owned={owned} loading={loading} dataPresent={dataPresent} />
           <span className="mono">{address}</span>
           <a href={addressExplorerUrl(chain, address)} target="_blank" rel="noopener noreferrer">
             Explorer ↗

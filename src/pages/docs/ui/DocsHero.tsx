@@ -66,6 +66,8 @@ export function DocsHero() {
         <a href="#sybil">Sybil checks</a>
         <a href="#rules">Rules</a>
         <a href="#metrics">Metric guide</a>
+        <a href="#examples">Examples</a>
+        <a href="#calibration">Calibration</a>
         <a href="#limits">Limits</a>
         <Link to="/agents/$slug" params={{ slug: defaultSlug }}>
           Browse agents

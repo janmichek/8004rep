@@ -1,3 +1,5 @@
+import { blockedUrl } from './urlGuard';
+
 const TIMEOUT_MS = 8_000;
 const MAX_BYTES = 256 * 1024;
 const MAX_HOPS = 5;
@@ -5,30 +7,6 @@ const MAX_HOPS = 5;
 type RelayResult = { status: number; body: string; type: string };
 
 type Step = { result?: RelayResult; next?: URL };
-
-const PRIVATE_IPV4 = [
-  /^0\./,
-  /^10\./,
-  /^127\./,
-  /^169\.254\./,
-  /^172\.(1[6-9]|2\d|3[01])\./,
-  /^192\.168\./,
-  /^198\.(18|19)\./,
-  /^(22[4-9]|2[3-5]\d)\./,
-  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./,
-];
-
-function blockedHost(hostname: string): boolean {
-  const host = hostname.replace(/^\[|\]$/g, '').toLowerCase();
-
-  if (host === 'localhost' || host.endsWith('.local') || host === '0.0.0.0') return true;
-
-  return PRIVATE_IPV4.some((pattern) => pattern.test(host)) || host.includes(':');
-}
-
-function blockedUrl(url: URL): boolean {
-  return url.protocol !== 'https:' || blockedHost(url.hostname);
-}
 
 async function readCapped(response: Response): Promise<string | null> {
   const declared = Number(response.headers.get('content-length') ?? 0);

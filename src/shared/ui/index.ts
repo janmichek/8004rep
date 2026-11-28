@@ -90,6 +90,8 @@ export { evidenceUrl } from './explorer/feedbackUrls';
 
 export { AgentHeadSkeleton } from './explorer/AgentHeadSkeleton';
 
+export { AgentQueryError } from './explorer/AgentQueryError';
+
 export { SortHeaderRow } from './explorer/SortHeaderRow';
 
 export { FeedbackTextCell } from './explorer/FeedbackTextCell';

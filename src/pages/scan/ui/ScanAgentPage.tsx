@@ -1,6 +1,6 @@
 import { useParams } from '@tanstack/react-router';
 import { fetchScanAgentDetail, fetchScanChains, useAsync } from '../../../shared/lib/explorer';
-import { AgentHeadSkeleton } from '../../../shared/ui';
+import { AgentHeadSkeleton, AgentQueryError } from '../../../shared/ui';
 import { ScanAgentDetail } from './ScanAgentDetail';
 
 function parseChainId(value: string): number | undefined {
@@ -29,14 +29,7 @@ export function ScanAgentPage() {
   const scanUrl = `${network?.testnet ? 'https://testnet.8004scan.io' : 'https://8004scan.io'}/agents/${network?.key ?? chainId}/${id}`;
 
   if (agentQuery.error) {
-    return (
-      <section className="state">
-        <p>Could not load agent: {agentQuery.error}</p>
-        <button type="button" onClick={() => agentQuery.reload()}>
-          Retry
-        </button>
-      </section>
-    );
+    return <AgentQueryError error={agentQuery.error} reload={agentQuery.reload} />;
   }
 
   if (agentQuery.loading || agentQuery.data === undefined) {

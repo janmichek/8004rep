@@ -1,4 +1,3 @@
-// @ts-nocheck
 // What a feedback value means. ERC-8004 types `value` as a bare int128, so the
 // same registry carries star ratings, pass flags, latencies in ms and revenue
 // in USD. Only ratings may be averaged into a quality score.
@@ -157,7 +156,7 @@ export function inferScale(values: number[]): { scale: Scale; span: number } {
   if (distinct.size === 1) {
     // One repeated value cannot tell 1/5 from 1/100. Use the narrowest scale
     // above binary, so a repeated 1 is 20/100 rather than a perfect 100/100.
-    const v = values[0];
+    const v = values[0]!;
     if (v < 0) {
       const span = SIGNED_SPANS.find((s) => Math.abs(v) <= s);
       return span ? { scale: 'signed', span } : { scale: 'unbounded', span: 0 };
@@ -181,7 +180,7 @@ export function inferScale(values: number[]): { scale: Scale; span: number } {
     const at = (abs.length - 1) * 0.8;
     const lo = Math.floor(at);
     const hi = Math.ceil(at);
-    const reach = abs[lo] + (abs[hi] - abs[lo]) * (at - lo);
+    const reach = abs[lo]! + (abs[hi]! - abs[lo]!) * (at - lo);
     const span = SIGNED_SPANS.find((s) => reach <= s);
     return span ? { scale: 'signed', span } : { scale: 'unbounded', span: 0 };
   }
@@ -309,16 +308,18 @@ export function classify(
   const clientScale = new Map<string, TagScale>();
   const tags: TagProfile[] = [];
   for (const [key, idxs] of byTag) {
-    const kind = kindOf(rows[idxs[0]].tag1);
+    const first = rows[idxs[0]!]!;
+    const kind = kindOf(first.tag1);
     const supplied = opts.scales?.get(key);
-    const whole = supplied ?? inferScale(idxs.map((i) => rows[i].value));
+    const whole = supplied ?? inferScale(idxs.map((i) => rows[i]!.value));
     tagScale.set(key, whole);
     const perClient = new Map<string, number[]>();
     for (const i of idxs) {
-      const c = rows[i].client.toLowerCase();
+      const row = rows[i]!;
+      const c = row.client.toLowerCase();
       const list = perClient.get(c);
-      if (list) list.push(rows[i].value);
-      else perClient.set(c, [rows[i].value]);
+      if (list) list.push(row.value);
+      else perClient.set(c, [row.value]);
     }
     let mixedScale = false;
     // A supplied scale is the agent-wide one; a reviewer slice cannot overrule it.
@@ -338,7 +339,7 @@ export function classify(
     }
     tags.push({
       tag: key,
-      label: rows[idxs[0]].tag1?.trim() || '(no tag)',
+      label: first.tag1?.trim() || '(no tag)',
       kind,
       scale: whole.scale,
       rows: idxs.length,

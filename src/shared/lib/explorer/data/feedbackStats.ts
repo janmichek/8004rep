@@ -1,6 +1,6 @@
-// @ts-nocheck
 import type { Address } from 'viem';
 import { formatScore, shortAddress } from '../format';
+import { ownerScale } from './ownerScale';
 import { classify, inferTagScales, type Kind } from './reputation/kinds';
 import { computeWeights, medianOf, type WeightReason } from './scores';
 import type { Feedback } from './types';
@@ -105,6 +105,8 @@ export type StatsContext = {
   agentWallet?: Address | null;
   /** Endpoints the registration file advertises; undefined = file not known. */
   services?: string[];
+  /** Agents this owner holds on the chain; undefined = not counted. */
+  ownerAgents?: number | undefined;
   /** Unix seconds; defaults to the clock. */
   now?: number;
 };
@@ -161,9 +163,9 @@ export function computeFeedbackStats(
   // read normalised ratings only: a $12,000 revenue row is not a rating
   // outlier next to a 90/100 review.
   const ratingIndexes = classified.flatMap((c, i) =>
-    !feedback[i].revoked && c.kind === 'rating' && c.r !== null && !isSelf(feedback[i]) ? [i] : []
+    !feedback[i]!.revoked && c.kind === 'rating' && c.r !== null && !isSelf(feedback[i]!) ? [i] : []
   );
-  const ratingByIndex = new Map(ratingIndexes.map((i) => [i, (classified[i].r as number) * 100]));
+  const ratingByIndex = new Map(ratingIndexes.map((i) => [i, (classified[i]!.r as number) * 100]));
   const ratingValues = ratingIndexes.map((i) => ratingByIndex.get(i)!);
   const spread = robustScale(ratingValues);
   const range = ratingValues.length ? Math.max(...ratingValues) - Math.min(...ratingValues) : 0;
@@ -181,23 +183,23 @@ export function computeFeedbackStats(
   });
   const ratingsByClient = new Map<string, number[]>();
   for (const i of ratingIndexes) {
-    const key = feedback[i].client.toLowerCase();
+    const key = feedback[i]!.client.toLowerCase();
     const list = ratingsByClient.get(key);
-    if (list) list.push((classified[i].r as number) * 100);
-    else ratingsByClient.set(key, [(classified[i].r as number) * 100]);
+    if (list) list.push((classified[i]!.r as number) * 100);
+    else ratingsByClient.set(key, [(classified[i]!.r as number) * 100]);
   }
 
   const rows: RowStats[] = feedback.map((f, i) => {
-    const flags: RowFlag[] = [...reasons[i]];
-    const isRating = classified[i].kind === 'rating' && classified[i].r !== null;
+    const flags: RowFlag[] = [...reasons[i]!];
+    const isRating = classified[i]!.kind === 'rating' && classified[i]!.r !== null;
     const selfRow = isSelf(f);
     const deviation =
       isRating && !selfRow && !f.revoked && spread?.scale
-        ? ((classified[i].r as number) * 100 - spread.center) / spread.scale
+        ? ((classified[i]!.r as number) * 100 - spread.center) / spread.scale
         : null;
     if (!f.revoked) {
       if (deviation !== null && Math.abs(deviation) > OUTLIER_Z) flags.push('outlier');
-      if (!selfRow && classified[i].kind === 'rating' && classified[i].r === null)
+      if (!selfRow && classified[i]!.kind === 'rating' && classified[i]!.r === null)
         flags.push('out-of-range');
       if (services && f.endpoint) {
         const endpoint = normEndpoint(f.endpoint);
@@ -206,10 +208,10 @@ export function computeFeedbackStats(
       }
     }
     return {
-      weight: weights[i],
+      weight: weights[i]!,
       flags,
-      kind: classified[i].kind,
-      rating: classified[i].r,
+      kind: classified[i]!.kind,
+      rating: classified[i]!.r,
       deviation,
       clientRows: byClient.get(f.client.toLowerCase())!.length,
     };
@@ -217,19 +219,20 @@ export function computeFeedbackStats(
 
   const reviewers: ReviewerStats[] = [...byClient.values()]
     .map((indexes) => {
-      const live = indexes.filter((i) => !feedback[i].revoked);
-      const own = live.map((i) => feedback[i].value);
-      const ownRatings = ratingsByClient.get(feedback[indexes[0]].client.toLowerCase()) ?? [];
+      const firstIndex = indexes[0]!;
+      const live = indexes.filter((i) => !feedback[i]!.revoked);
+      const own = live.map((i) => feedback[i]!.value);
+      const ownRatings = ratingsByClient.get(feedback[firstIndex]!.client.toLowerCase()) ?? [];
       const dates = indexes
-        .map((i) => feedback[i].createdAt)
+        .map((i) => feedback[i]!.createdAt)
         .filter((t): t is number => t !== undefined);
       const others = valid.length - live.length;
       const sum = own.reduce((a, b) => a + b, 0);
       const ratingSum = ownRatings.reduce((a, b) => a + b, 0);
       const otherRatings = ratingValues.length - ownRatings.length;
-      const weight = indexes.reduce((a, i) => a + weights[i], 0);
+      const weight = indexes.reduce((a, i) => a + weights[i]!, 0);
       return {
-        client: feedback[indexes[0]].client,
+        client: feedback[firstIndex]!.client,
         rows: indexes.length,
         revoked: indexes.length - live.length,
         average: average(own),
@@ -250,8 +253,8 @@ export function computeFeedbackStats(
           ratingAverage !== null && ownRatings.length > 0 && otherRatings > 0
             ? (ratingAverage * ratingValues.length - ratingSum) / otherRatings - ratingAverage
             : null,
-        flags: [...new Set(indexes.flatMap((i) => reasons[i]))].filter(
-          (flag) => flag !== 'revoked'
+        flags: [...new Set(indexes.flatMap((i) => reasons[i]!))].filter(
+          (flag): flag is Exclude<WeightReason, 'revoked'> => flag !== 'revoked'
         ),
       };
     })
@@ -267,6 +270,11 @@ export function computeFeedbackStats(
       code: 'self',
       text: `${selfRows} feedback from the agent's own owner or wallet`,
     });
+  }
+
+  const scale = ownerScale(context.ownerAgents);
+  if (scale && (scale.bracket === 'portfolio' || scale.bracket === 'mass')) {
+    signals.push({ level: scale.level, code: 'owner-scale', text: scale.rule });
   }
 
   const top = [...reviewers].sort((a, b) => b.share - a.share)[0];
@@ -311,7 +319,7 @@ export function computeFeedbackStats(
   );
   const agedRatingIndexes = (from: number, to: number): number[] =>
     ratingIndexes.filter((i) => {
-      const at = feedback[i].createdAt;
+      const at = feedback[i]!.createdAt;
       return at !== undefined && now - at >= from && now - at < to;
     });
   const lastWeek = agedRatingIndexes(0, 7 * DAY).length;

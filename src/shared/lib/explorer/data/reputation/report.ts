@@ -1,7 +1,6 @@
-// @ts-nocheck
 import type { Feedback } from '../types';
 import { KIND_INFO, type Kind } from './kinds';
-import { filteredScore, type Confidence } from './score';
+import { filteredScore, DEFAULT_SCORE_PARAMS, type Confidence } from './score';
 import {
   buildRatingLayer,
   HALF_LIFE_DAYS,
@@ -11,6 +10,21 @@ import {
 } from './units';
 
 const FORMULA_VERSION = 'rep-1.0';
+
+export type ReputationOptions = {
+  self?: readonly string[];
+  now?: number;
+  /** Prior strength in wallet units; defaults to 3. */
+  alpha0?: number;
+  /** Neutral prior mean; defaults to 0.5. */
+  mu0?: number;
+  /** Days for a unit's weight to halve; defaults to 90. */
+  halfLifeDays?: number;
+  /** Days per rating unit; defaults to 30. */
+  unitWindowDays?: number;
+  /** Target a faker aims for when pricing a fake; defaults to 0.9. */
+  fakeTarget?: number;
+};
 
 export type ReportStep = {
   id: string;
@@ -126,7 +140,7 @@ function mean(xs: number[]): number | null {
 
 function weightedMean(values: number[], weights: number[]): number | null {
   const total = weights.reduce((a, b) => a + b, 0);
-  return total > 0 ? values.reduce((a, x, i) => a + x * weights[i], 0) / total : null;
+  return total > 0 ? values.reduce((a, x, i) => a + x * weights[i]!, 0) / total : null;
 }
 
 function pct(x: number | null): number | null {
@@ -140,23 +154,26 @@ function pct(x: number | null): number | null {
  */
 export function buildReputationReport(
   feedback: Feedback[],
-  opts: { self?: readonly string[]; now?: number } = {}
+  opts: ReputationOptions = {}
 ): ReputationReport {
+  const alpha0 = opts.alpha0 ?? DEFAULT_SCORE_PARAMS.alpha0;
+  const mu0 = opts.mu0 ?? DEFAULT_SCORE_PARAMS.mu0;
+  const fakeTarget = opts.fakeTarget ?? DEFAULT_SCORE_PARAMS.target;
   const layer = buildRatingLayer(feedback, opts);
-  const score = filteredScore(layer.wallets);
+  const score = filteredScore(layer.wallets, { alpha0, mu0, target: fakeTarget });
 
   const selves = new Set((opts.self ?? []).map((a) => a.toLowerCase()));
   const valid = feedback.filter((f) => !f.revoked);
   const rawAll = mean(feedback.map((f) => f.value));
   const raw = mean(valid.map((f) => f.value));
   const ratingRowsAll = layer.classified.flatMap((c, i) =>
-    !feedback[i].revoked && c.kind === 'rating' && c.r !== null ? [c.r] : []
+    !feedback[i]!.revoked && c.kind === 'rating' && c.r !== null ? [c.r] : []
   );
   const ratingRows = layer.classified.flatMap((c, i) =>
-    !feedback[i].revoked &&
+    !feedback[i]!.revoked &&
     c.kind === 'rating' &&
     c.r !== null &&
-    !selves.has(feedback[i].client.toLowerCase())
+    !selves.has(feedback[i]!.client.toLowerCase())
       ? [c.r]
       : []
   );
@@ -234,7 +251,7 @@ export function buildReputationReport(
     { label: string; rows: number; clients: Set<string>; values: { value: number; at?: number }[] }
   >();
   layer.classified.forEach((c, i) => {
-    const f = feedback[i];
+    const f = feedback[i]!;
     if (f.revoked || c.kind !== 'telemetry') return;
     let hit = telemetry.get(c.tag);
     if (!hit) {
@@ -243,20 +260,22 @@ export function buildReputationReport(
     }
     hit.rows++;
     hit.clients.add(f.client.toLowerCase());
-    hit.values.push({ value: f.value, at: f.createdAt });
+    hit.values.push(
+      f.createdAt === undefined ? { value: f.value } : { value: f.value, at: f.createdAt }
+    );
   });
 
   const ratingIdx = layer.classified.flatMap((c, i) =>
-    !feedback[i].revoked &&
+    !feedback[i]!.revoked &&
     c.kind === 'rating' &&
     c.r !== null &&
-    !selves.has(feedback[i].client.toLowerCase())
+    !selves.has(feedback[i]!.client.toLowerCase())
       ? [i]
       : []
   );
   const perClientRows = new Map<string, number>();
   for (const i of ratingIdx) {
-    const key = feedback[i].client.toLowerCase();
+    const key = feedback[i]!.client.toLowerCase();
     perClientRows.set(key, (perClientRows.get(key) ?? 0) + 1);
   }
   const maxWalletRows = Math.max(0, ...perClientRows.values());
@@ -269,7 +288,7 @@ export function buildReputationReport(
     });
   }
   const extremes = ratingIdx.filter(
-    (i) => (layer.classified[i].r as number) >= 0.99 || (layer.classified[i].r as number) <= 0.01
+    (i) => (layer.classified[i]!.r as number) >= 0.99 || (layer.classified[i]!.r as number) <= 0.01
   );
   if (ratingIdx.length >= 5 && extremes.length / ratingIdx.length >= 0.7) {
     findings.push({
@@ -280,7 +299,7 @@ export function buildReputationReport(
   }
   const perTx = new Map<string, number>();
   for (const i of ratingIdx) {
-    const hash = feedback[i].txHash;
+    const hash = feedback[i]!.txHash;
     if (hash) perTx.set(hash, (perTx.get(hash) ?? 0) + 1);
   }
   const groupedRows = [...perTx.values()].reduce((a, n) => a + n, 0);
@@ -296,7 +315,7 @@ export function buildReputationReport(
 
   const perDay = new Map<number, number>();
   for (const i of ratingIdx) {
-    const at = feedback[i].createdAt;
+    const at = feedback[i]!.createdAt;
     if (at !== undefined) {
       const day = Math.floor(at / 86400);
       perDay.set(day, (perDay.get(day) ?? 0) + 1);
@@ -304,7 +323,7 @@ export function buildReputationReport(
   }
   const maxDayRows = Math.max(0, ...perDay.values());
   const activeDays = perDay.size;
-  const datedRatingRows = ratingIdx.filter((i) => feedback[i].createdAt !== undefined).length;
+  const datedRatingRows = ratingIdx.filter((i) => feedback[i]!.createdAt !== undefined).length;
   const burstRatio =
     activeDays > 1 && datedRatingRows >= 10 ? maxDayRows / (datedRatingRows / activeDays) : null;
   if (burstRatio !== null && burstRatio >= 5) {
@@ -314,7 +333,7 @@ export function buildReputationReport(
       text: `${maxDayRows} of ${datedRatingRows} dated ratings landed on one day (${burstRatio.toFixed(1)}× the active-day average); a burst is not steady demand.`,
     });
   }
-  const lows = ratingIdx.filter((i) => (layer.classified[i].r as number) <= 0.2);
+  const lows = ratingIdx.filter((i) => (layer.classified[i]!.r as number) <= 0.2);
   if (lows.length >= 3 && lows.length / ratingIdx.length >= 0.5) {
     findings.push({
       level: 'warn',
@@ -330,13 +349,13 @@ export function buildReputationReport(
     });
   }
 
-  const lowIdx = ratingIdx.filter((i) => (layer.classified[i].r as number) <= 0.5);
+  const lowIdx = ratingIdx.filter((i) => (layer.classified[i]!.r as number) <= 0.5);
   const responders = feedback.flatMap((f, i) => (lowIdx.includes(i) ? (f.responses ?? []) : []));
   const ownerReplies = responders.filter((r) =>
     (opts.self ?? []).some((a) => a.toLowerCase() === r.responder.toLowerCase())
   ).length;
   const lags = lowIdx.flatMap((i) => {
-    const f = feedback[i];
+    const f = feedback[i]!;
     // Time to the first answer, not to every later reply: a second reply does
     // not make the owner slower to respond.
     const first = (f.responses ?? [])
@@ -347,9 +366,9 @@ export function buildReputationReport(
   });
   const responsiveness: Responsiveness = {
     lowRatings: lowIdx.length,
-    responded: new Set(lowIdx.filter((i) => (feedback[i].responses ?? []).length > 0)).size,
+    responded: new Set(lowIdx.filter((i) => (feedback[i]!.responses ?? []).length > 0)).size,
     share: lowIdx.length
-      ? lowIdx.filter((i) => (feedback[i].responses ?? []).length > 0).length / lowIdx.length
+      ? lowIdx.filter((i) => (feedback[i]!.responses ?? []).length > 0).length / lowIdx.length
       : null,
     medianLagDays: median(lags),
     ownerReplies,
@@ -387,11 +406,11 @@ export function buildReputationReport(
   return {
     formulaVersion: FORMULA_VERSION,
     params: {
-      unitWindowDays: UNIT_WINDOW_DAYS,
-      halfLifeDays: HALF_LIFE_DAYS,
-      alpha0: 3,
-      mu0: 0.5,
-      fakeTarget: 0.9,
+      unitWindowDays: opts.unitWindowDays ?? UNIT_WINDOW_DAYS,
+      halfLifeDays: opts.halfLifeDays ?? HALF_LIFE_DAYS,
+      alpha0,
+      mu0,
+      fakeTarget,
     },
     score: pct(score.value),
     interval: score.interval ? [score.interval[0] * 100, score.interval[1] * 100] : null,
@@ -428,7 +447,7 @@ export function buildReputationReport(
     byKind: KIND_ORDER.map((kind) => ({
       kind,
       label: KIND_INFO[kind].label,
-      rows: layer.classified.filter((c, i) => !feedback[i].revoked && c.kind === kind).length,
+      rows: layer.classified.filter((c, i) => !feedback[i]!.revoked && c.kind === kind).length,
     })),
     telemetry: [...telemetry.entries()]
       .map(([tag, t]) => {

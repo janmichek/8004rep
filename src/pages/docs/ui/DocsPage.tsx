@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouterState } from '@tanstack/react-router';
+import { DocsCalibration } from './DocsCalibration';
+import { DocsExamples } from './DocsExamples';
 import { DocsFooter } from './DocsFooter';
 import { DocsGlossary } from './DocsGlossary';
 import { DocsHero } from './DocsHero';
@@ -51,6 +53,8 @@ export function DocsPage() {
       <DocsHow />
       <DocsRules />
       <DocsMetrics />
+      <DocsExamples />
+      <DocsCalibration />
       <DocsLimits />
       <DocsSources />
       <DocsFooter />

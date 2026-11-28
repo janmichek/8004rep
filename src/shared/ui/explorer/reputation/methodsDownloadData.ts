@@ -1,7 +1,8 @@
 import type { Feedback } from '../../../lib/explorer/data/types';
 import type { ReputationReport } from '../../../lib/explorer/data/reputation/report';
+import { hashEvidence } from '../../../lib/explorer/data/contentHash';
 
-export function downloadInputs(rep: ReputationReport, feedback: Feedback[]) {
+export async function downloadInputs(rep: ReputationReport, feedback: Feedback[]) {
   const inputs = {
     formulaVersion: rep.formulaVersion,
     params: rep.params,
@@ -37,7 +38,9 @@ export function downloadInputs(rep: ReputationReport, feedback: Feedback[]) {
     })),
   };
 
-  const blob = new Blob([JSON.stringify(inputs, null, 2)], { type: 'application/json' });
+  const file = { ...inputs, contentHash: await hashEvidence(inputs) };
+
+  const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

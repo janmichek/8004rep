@@ -31,6 +31,7 @@ export function OwnersTable({ owners, slug, showNetworks }: Props) {
               active={rows.state('agents')}
               onSort={() => rows.toggle('agents')}
             />
+            <th>Scale</th>
             {showNetworks ? <th>Networks</th> : null}
             <SortHeader
               label="Newest agent"

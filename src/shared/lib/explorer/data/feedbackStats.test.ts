@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, expect, it } from 'vitest';
 import type { Address } from 'viem';
 import { computeFeedbackStats } from './feedbackStats';
@@ -43,17 +42,17 @@ describe('computeFeedbackStats reviews', () => {
   it('names the reason behind each discounted weight', () => {
     const feedback = [row(A, 90), row(A, 90), row(C, 80, { revoked: true })];
     const { rows } = computeFeedbackStats(feedback, { now: NOW });
-    expect(rows[1].flags).toEqual(['duplicate']);
-    expect(rows[2].flags).toEqual(['revoked']);
+    expect(rows[1]!.flags).toEqual(['duplicate']);
+    expect(rows[2]!.flags).toEqual(['revoked']);
   });
 
   it('marks a rating far from the rest as an outlier with its robust z', () => {
     const feedback = [80, 82, 84, 86, 88, 90, 10].map((v) => row(A, v, { tag1: 'starred' }));
     const { rows } = computeFeedbackStats(feedback, { now: NOW });
-    expect(rows[6].flags).toContain('outlier');
-    expect(rows[6].flags).not.toContain('out-of-range');
-    expect(rows[6].deviation as number).toBeLessThan(-3.5);
-    expect(rows[2].flags).not.toContain('outlier');
+    expect(rows[6]!.flags).toContain('outlier');
+    expect(rows[6]!.flags).not.toContain('out-of-range');
+    expect(rows[6]!.deviation as number).toBeLessThan(-3.5);
+    expect(rows[2]!.flags).not.toContain('outlier');
   });
 
   it('does not call a revenue row off-scale or an outlier', () => {
@@ -63,9 +62,9 @@ describe('computeFeedbackStats reviews', () => {
       row(C, 250, { tag1: 'responseTime' }),
     ];
     const { rows } = computeFeedbackStats(feedback, { now: NOW });
-    expect(rows[5].flags).not.toContain('out-of-range');
-    expect(rows[5].flags).not.toContain('outlier');
-    expect(rows[6].flags).not.toContain('out-of-range');
+    expect(rows[5]!.flags).not.toContain('out-of-range');
+    expect(rows[5]!.flags).not.toContain('outlier');
+    expect(rows[6]!.flags).not.toContain('out-of-range');
   });
 
   it('flags an off-scale rating against its inferred scale', () => {
@@ -76,7 +75,7 @@ describe('computeFeedbackStats reviews', () => {
       ],
       { now: NOW }
     );
-    expect(rows[5].flags).toContain('out-of-range');
+    expect(rows[5]!.flags).toContain('out-of-range');
   });
 
   it('does not judge spread on fewer than five reviews', () => {
@@ -135,17 +134,17 @@ describe('computeFeedbackStats reviewers', () => {
       first: NOW - 50 * DAY,
       last: NOW - 10 * DAY,
     });
-    expect(first.share).toBeCloseTo(2 / 3, 5);
+    expect(first!.share).toBeCloseTo(2 / 3, 5);
     // raw average 60; without A only B's 0 remains.
-    expect(first.shiftWithout).toBeCloseTo(-60, 5);
-    expect(second.client).toBe(B);
-    expect(second.shiftWithout).toBeCloseTo(30, 5);
+    expect(first!.shiftWithout).toBeCloseTo(-60, 5);
+    expect(second!.client).toBe(B);
+    expect(second!.shiftWithout).toBeCloseTo(30, 5);
   });
 
   it('has no leave-one-out shift for a sole reviewer', () => {
     const [only] = computeFeedbackStats([row(A, 50), row(A, 70)], { now: NOW }).reviewers;
-    expect(only.shiftWithout).toBeNull();
-    expect(only.share).toBe(1);
+    expect(only!.shiftWithout).toBeNull();
+    expect(only!.share).toBe(1);
   });
 });
 
@@ -241,9 +240,18 @@ describe('computeFeedbackStats signals', () => {
       row(C, 400, { tag1: 'starred' }),
     ];
     const stats = computeFeedbackStats(feedback, { agentWallet: OWNER, now: NOW });
-    expect(stats.signals[0].code).toBe('self');
-    expect(stats.signals[0].level).toBe('high');
+    expect(stats.signals[0]!.code).toBe('self');
+    expect(stats.signals[0]!.level).toBe('high');
     expect(stats.signals.some((s) => s.code === 'off-scale')).toBe(true);
     expect(stats.coverage).toEqual({ total: 3, dated: 1, withTx: 1, withUri: 1, withEndpoint: 1 });
+  });
+
+  it('adds owner scale as context without changing the rows', () => {
+    const feedback = [row(A, 90, { tag1: 'starred' }), row(B, 80, { tag1: 'starred' })];
+    const stats = computeFeedbackStats(feedback, { ownerAgents: 50, now: NOW });
+    expect(stats.signals).toContainEqual(
+      expect.objectContaining({ code: 'owner-scale', level: 'warn' })
+    );
+    expect(stats.rows.map((r) => r.weight)).toEqual([1, 1]);
   });
 });

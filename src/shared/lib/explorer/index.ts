@@ -33,6 +33,13 @@ export type {
 } from './data/types';
 export { FLAG_INFO, type RowFlag } from './data/feedbackStats';
 export { resolveAgentURI, toDisplayUrl } from './data/metadata';
+export {
+  findMetadataClones,
+  registrationCompleteness,
+  type MetadataCloneGroup,
+} from './data/metadata';
+export { ownerScale } from './data/ownerScale';
+export { probeEndpoint, type EndpointProbe } from './data/probe';
 export { GLOSSARY_GROUPS } from './data/glossary';
 export { METRIC_GROUPS } from './data/metricsGuide';
 export { LABEL_INFO, type ReviewerLabel, type ReviewerProfile } from './data/reviewerProfile';
@@ -87,4 +94,5 @@ export { getScores } from './data/rpc';
 export { buildReviewerProfile } from './data/reviewerProfile';
 export { fetchFunding, type Funding } from './data/funding';
 export { useFeedbackDetail } from './hooks/useFeedbackDetail';
+export { useOwnerAgentCount } from './hooks/useOwnerAgentCount';
 export { useScrollToHash } from './hooks/useScrollToHash';

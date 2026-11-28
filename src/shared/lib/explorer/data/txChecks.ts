@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Address, Hex } from 'viem';
 import { formatAmount, formatDate, formatDuration, formatScore, shortAddress } from '../format';
 import { FLAG_INFO, type FeedbackStats } from './feedbackStats';
@@ -83,13 +82,13 @@ export type FileFacts = {
   uri: string;
   scheme: UriScheme;
   /** keccak256 of the bytes served; undefined when they could not be fetched. */
-  contentHash?: Hex;
+  contentHash?: Hex | undefined;
   /** keccak256 of the file's canonical JSON (keys sorted, no whitespace): what SDKs commit to. */
-  canonicalHash?: Hex;
+  canonicalHash?: Hex | undefined;
   /** The parsed file; undefined when unreachable or not JSON. */
   json?: unknown;
   /** Why the bytes or the JSON are missing. */
-  error?: string;
+  error?: string | undefined;
 };
 
 export type PaymentProof = {
@@ -116,14 +115,16 @@ export type PaymentFacts = {
   /** Chain the proof names (defaults to the feedback's chain). */
   chainId: number;
   /** Undefined when the chain is not configured or the lookup failed (see `error`). */
-  tx?: {
-    found: boolean;
-    reverted?: boolean;
-    blockNumber?: bigint;
-    timestamp?: number;
-    transfers: Transfer[];
-  };
-  error?: string;
+  tx?:
+    | {
+        found: boolean;
+        reverted?: boolean;
+        blockNumber?: bigint;
+        timestamp?: number;
+        transfers: Transfer[];
+      }
+    | undefined;
+  error?: string | undefined;
   /** Rows of other reviewers on this agent whose file cites the same payment. */
   reusedByOthers: number;
   /** Other rows of the same reviewer that cite it (one call rated on several tags is legitimate). */
@@ -217,14 +218,14 @@ function selfRole(address: string, ctx: TxDetailContext): string | null {
 
 /** `proofOfPayment` of a feedback file; null when the file cites no payment. */
 export function readPaymentProof(json: unknown): PaymentProof | null {
-  if (!isRecord(json) || !isRecord(json.proofOfPayment)) return null;
-  const proof = json.proofOfPayment;
+  if (!isRecord(json) || !isRecord(json['proofOfPayment'])) return null;
+  const proof = json['proofOfPayment'];
   const chainId = Number(
-    typeof proof.chainId === 'string' ? bareAddress(proof.chainId) : proof.chainId
+    typeof proof['chainId'] === 'string' ? bareAddress(proof['chainId']) : proof['chainId']
   );
-  const fromAddress = str(proof.fromAddress);
-  const toAddress = str(proof.toAddress);
-  const txHash = str(proof.txHash);
+  const fromAddress = str(proof['fromAddress']);
+  const toAddress = str(proof['toAddress']);
+  const txHash = str(proof['txHash']);
   return {
     ...(fromAddress ? { fromAddress } : {}),
     ...(toAddress ? { toAddress } : {}),
@@ -247,7 +248,7 @@ function formatTransfer(transfer: Transfer, nativeSymbol: string): string {
 
 function txChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
   const { tx } = facts;
-  const row = ctx.feedback[ctx.index];
+  const row = ctx.feedback[ctx.index]!;
   if (!tx) {
     return [
       {
@@ -348,18 +349,18 @@ function interactionOf(row: Feedback, json: unknown): string[] {
       }
     }
     if (isRecord(a2a)) {
-      const task = str(a2a.taskId);
-      const context = str(a2a.contextId);
+      const task = str(a2a['taskId']);
+      const context = str(a2a['contextId']);
       if (task) named.push(`A2A task ${task}`);
       if (context) named.push(`A2A context ${context}`);
-      if (Array.isArray(a2a.skills) && a2a.skills.length)
-        named.push(`A2A ${plural(a2a.skills.length, 'skill')}`);
+      if (Array.isArray(a2a['skills']) && a2a['skills'].length)
+        named.push(`A2A ${plural(a2a['skills'].length, 'skill')}`);
     }
-    if (isRecord(oasf) && Array.isArray(oasf.skills) && oasf.skills.length) {
-      named.push(`OASF ${plural(oasf.skills.length, 'skill')}`);
+    if (isRecord(oasf) && Array.isArray(oasf['skills']) && oasf['skills'].length) {
+      named.push(`OASF ${plural(oasf['skills'].length, 'skill')}`);
     }
   }
-  const endpoint = row.endpoint ?? (isRecord(json) ? str(json.endpoint) : undefined);
+  const endpoint = row.endpoint ?? (isRecord(json) ? str(json['endpoint']) : undefined);
   if (endpoint) named.push(`endpoint ${endpoint}`);
   return named;
 }
@@ -373,7 +374,7 @@ function compareFields(json: Record<string, unknown>, row: Feedback, ctx: TxDeta
     else differ.push(`${field} (file says ${shown})`);
   };
 
-  const registry = str(json.agentRegistry);
+  const registry = str(json['agentRegistry']);
   if (registry) {
     const [, chainId] = registry.split(':');
     note(
@@ -382,15 +383,19 @@ function compareFields(json: Record<string, unknown>, row: Feedback, ctx: TxDeta
       registry
     );
   }
-  if (typeof json.agentId === 'number' || str(json.agentId)) {
-    note('agentId', String(json.agentId).trim() === ctx.tokenId.toString(), String(json.agentId));
+  if (typeof json['agentId'] === 'number' || str(json['agentId'])) {
+    note(
+      'agentId',
+      String(json['agentId']).trim() === ctx.tokenId.toString(),
+      String(json['agentId'])
+    );
   }
-  const client = str(json.clientAddress);
+  const client = str(json['clientAddress']);
   if (client)
     note('clientAddress', same(bareAddress(client), row.client), shortAddress(bareAddress(client)));
-  if (typeof json.value === 'number' || str(json.value)) {
-    const decimals = Number(json.valueDecimals ?? 0);
-    const value = Number(json.value) / 10 ** (Number.isFinite(decimals) ? decimals : 0);
+  if (typeof json['value'] === 'number' || str(json['value'])) {
+    const decimals = Number(json['valueDecimals'] ?? 0);
+    const value = Number(json['value']) / 10 ** (Number.isFinite(decimals) ? decimals : 0);
     note('value', Math.abs(value - row.value) < 1e-9, formatScore(value));
   }
   for (const tag of ['tag1', 'tag2'] as const) {
@@ -398,14 +403,14 @@ function compareFields(json: Record<string, unknown>, row: Feedback, ctx: TxDeta
     if (value) note(tag, value === row[tag], value);
   }
   // The endpoint only lives in the event log; a row read without it cannot be compared.
-  const endpoint = str(json.endpoint);
+  const endpoint = str(json['endpoint']);
   if (endpoint && row.endpoint) note('endpoint', endpoint === row.endpoint, endpoint);
   return { agree, differ };
 }
 
 function fileChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
   const { file, tx } = facts;
-  const row = ctx.feedback[ctx.index];
+  const row = ctx.feedback[ctx.index]!;
   const named = interactionOf(row, file?.json);
   const unlisted = ctx.stats.rows[ctx.index]?.flags.includes('unlisted-endpoint');
   const interaction: Check = {
@@ -548,7 +553,7 @@ function fileChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
 
 function paymentChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
   const { file, payment, tx } = facts;
-  const row = ctx.feedback[ctx.index];
+  const row = ctx.feedback[ctx.index]!;
   const cited: Check = {
     id: 'pay-cited',
     label: 'Cites a payment',
@@ -712,7 +717,7 @@ export function entropyBits(values: number[]): number {
 
 function reviewerChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
   const { reviewer } = facts;
-  const row = ctx.feedback[ctx.index];
+  const row = ctx.feedback[ctx.index]!;
   const role = selfRole(row.client, ctx);
   const checks: Check[] = [
     {
@@ -812,7 +817,7 @@ function reviewerChecks(facts: TxDetailFacts, ctx: TxDetailContext): Check[] {
           : distinct === 1
             ? {
                 status: 'warn',
-                detail: `All ${values.length} reviews give the same value (${formatScore(values[0])}).`,
+                detail: `All ${values.length} reviews give the same value (${formatScore(values[0]!)}).`,
               }
             : {
                 status: 'pass',
@@ -843,7 +848,7 @@ export function herfindahl(shares: number[]): number {
 }
 
 function agentChecks(ctx: TxDetailContext): Check[] {
-  const row = ctx.feedback[ctx.index];
+  const row = ctx.feedback[ctx.index]!;
   const rowStats = ctx.stats.rows[ctx.index];
   const checks: Check[] = [];
 
@@ -995,7 +1000,7 @@ function agentChecks(ctx: TxDetailContext): Check[] {
     // Leave-one-out on the legacy weighted score, kept for the variant designs.
     const weights = ctx.stats.rows.map((r) => r.weight);
     const total = weights.reduce((a, b) => a + b, 0);
-    const sum = ctx.feedback.reduce((a, f, i) => a + weights[i] * f.value, 0);
+    const sum = ctx.feedback.reduce((a, f, i) => a + weights[i]! * f.value, 0);
     const rest = total - weight;
     const influence = {
       id: 'agent-influence',

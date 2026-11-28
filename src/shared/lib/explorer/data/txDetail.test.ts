@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, expect, it } from 'vitest';
 import {
   encodeAbiParameters,
@@ -245,7 +244,7 @@ describe('transfersOf', () => {
       abi: erc20Abi,
       eventName: 'Transfer',
       args: { from: A, to: B },
-    }) as Hex[];
+    }) as [Hex, Hex, Hex];
     const nft = log(USDC, [signature, from, to, `0x${'00'.repeat(31)}07`], '0x');
     expect(transfersOf({ from: A, to: B, value: 0n }, [nft])).toEqual([]);
   });

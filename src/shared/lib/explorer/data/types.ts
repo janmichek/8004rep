@@ -1,15 +1,15 @@
-// @ts-nocheck
 import type { Address, Hex } from 'viem';
 
-export type Service = { name: string; endpoint: string; version?: string };
+export type Service = { name: string; endpoint: string; version?: string | undefined };
 
 /** Normalized ERC-8004 registration file (the JSON behind an agent's URI). */
 export type RegistrationFile = {
-  name?: string;
-  description?: string;
-  image?: string;
-  active?: boolean;
-  x402Support?: boolean;
+  name?: string | undefined;
+  description?: string | undefined;
+  image?: string | undefined;
+  active?: boolean | undefined;
+  x402Support?: boolean | undefined;
+  version?: string | undefined;
   services: Service[];
   supportedTrust: string[];
   /** The source JSON, for the raw view. */

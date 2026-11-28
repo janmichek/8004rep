@@ -3,22 +3,30 @@ import { Link } from '@tanstack/react-router';
 import {
   addressExplorerUrl,
   formatDate,
+  ownerScale,
+  registrationCompleteness,
   shortAddress,
   toDisplayUrl,
 } from '../../../shared/lib/explorer';
 import type { AgentDetail, ChainInfo, RegistrationFile } from '../../../shared/lib/explorer';
 import { AddressIdenticon, Disclosure } from '../../../shared/ui';
+import { EndpointProbe } from './EndpointProbe';
 
 type Props = {
   agent: AgentDetail;
   chain: ChainInfo;
   file: RegistrationFile | null | undefined;
   rawJson?: string | undefined;
+  /** Agents the owner holds on this chain; null when the read failed. */
+  ownerAgents?: number | null | undefined;
 };
 
-export function AgentIdentityTab({ agent, chain, file, rawJson }: Props) {
+export function AgentIdentityTab({ agent, chain, file, rawJson, ownerAgents }: Props) {
   const uriLink =
     agent.agentURI && !/^data:/i.test(agent.agentURI) ? toDisplayUrl(agent.agentURI) : undefined;
+
+  const scale = ownerScale(ownerAgents);
+  const registration = registrationCompleteness(file);
 
   return (
     <>
@@ -41,6 +49,14 @@ export function AgentIdentityTab({ agent, chain, file, rawJson }: Props) {
               ) : (
                 <span className="muted">—</span>
               )}
+              {scale && scale.bracket !== 'single' ? (
+                <span
+                  className={`chip ${scale.level === 'warn' ? 'warn' : ''}`}
+                  title={scale.rule}
+                >
+                  {scale.label} · {scale.agents}
+                </span>
+              ) : null}
             </dd>
             <dt>Agent wallet</dt>
             <dd>
@@ -98,6 +114,30 @@ export function AgentIdentityTab({ agent, chain, file, rawJson }: Props) {
         </section>
 
         <section className="panel">
+          <h3>Registration</h3>
+          {file === undefined ? (
+            <p className="muted">Loading registration file…</p>
+          ) : (
+            <>
+              <p className="muted">
+                {registration.passed} of {registration.total} fields usable. This is profile
+                quality, not a score input.
+              </p>
+              <dl>
+                {registration.checks.map((check) => (
+                  <Fragment key={check.id}>
+                    <dt>
+                      <span className={`chip ${check.ok ? 'ok' : ''}`}>{check.label}</span>
+                    </dt>
+                    <dd className={check.ok ? '' : 'muted'}>{check.detail}</dd>
+                  </Fragment>
+                ))}
+              </dl>
+            </>
+          )}
+        </section>
+
+        <section className="panel">
           <h3>Services</h3>
           {!file?.services.length ? (
             <p className="muted">No services advertised.</p>
@@ -125,6 +165,7 @@ export function AgentIdentityTab({ agent, chain, file, rawJson }: Props) {
                       </span>
                     )}
                     {service.version ? <small className="muted"> v{service.version}</small> : null}
+                    <EndpointProbe url={service.endpoint} />
                   </dd>
                 </Fragment>
               ))}

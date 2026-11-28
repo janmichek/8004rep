@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {
   BaseError,
   ContractFunctionRevertedError,
@@ -88,11 +87,11 @@ export function zipFeedback([
 ]: AllFeedback): Feedback[] {
   return clients.map((client, i) => ({
     client,
-    index: Number(indexes[i]),
-    value: scaled(values[i], decimals[i]),
-    ...(tag1s[i] ? { tag1: tag1s[i] } : {}),
-    ...(tag2s[i] ? { tag2: tag2s[i] } : {}),
-    revoked: revoked[i],
+    index: Number(indexes[i] ?? 0),
+    value: scaled(values[i] ?? 0n, decimals[i] ?? 0),
+    ...(tag1s[i] ? { tag1: tag1s[i]! } : {}),
+    ...(tag2s[i] ? { tag2: tag2s[i]! } : {}),
+    revoked: revoked[i] ?? false,
   }));
 }
 
@@ -156,7 +155,7 @@ export async function getScores(
   const summaries = await Promise.all(
     tokenIds.map((tokenId, i) => {
       const clients = perAgent[i];
-      if (clients === null) return null;
+      if (clients === null || clients === undefined) return null;
       if (clients.length === 0) return { count: 0, average: 0 } as ReputationSummary;
       const capped = clients.length > MAX_SUMMARY_CLIENTS;
       const subset = capped ? clients.slice(0, MAX_SUMMARY_CLIENTS) : clients;
@@ -170,7 +169,7 @@ export async function getScores(
         sum
           ? {
               count: Number(sum[0]),
-              average: scaled(sum[1], sum[2]),
+              average: scaled(sum[1] ?? 0n, sum[2] ?? 0),
               ...(capped ? { capped: true } : {}),
             }
           : null
@@ -179,7 +178,7 @@ export async function getScores(
   );
   const scores = new Map<bigint, ReputationSummary>();
   summaries.forEach((summary, i) => {
-    if (summary) scores.set(tokenIds[i], summary);
+    if (summary) scores.set(tokenIds[i]!, summary);
   });
   return scores;
 }

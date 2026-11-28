@@ -30,7 +30,8 @@ const LEVEL: Record<string, { word: string; tone: Tile['tone']; severity: number
 export function useReputation(
   agent: AgentDetail,
   chain: ChainInfo,
-  file: RegistrationFile | null | undefined
+  file: RegistrationFile | null | undefined,
+  ownerAgentCount?: number | null | undefined
 ) {
   const self = [agent.owner, agent.agentWallet].filter(
     (address): address is NonNullable<typeof address> => address != null
@@ -41,8 +42,9 @@ export function useReputation(
         owner: agent.owner,
         agentWallet: agent.agentWallet,
         ...(file ? { services: file.services.map((service) => service.endpoint) } : {}),
+        ...(ownerAgentCount != null ? { ownerAgents: ownerAgentCount } : {}),
       }),
-    [agent.feedback, agent.owner, agent.agentWallet, file]
+    [agent.feedback, agent.owner, agent.agentWallet, file, ownerAgentCount]
   );
   const report = useMemo(
     () => buildTrustReport(agent.feedback, stats, self),

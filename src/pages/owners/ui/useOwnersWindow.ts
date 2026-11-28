@@ -36,8 +36,8 @@ export function useOwnersWindow(slug: string) {
   }
 
   const headers = scope.all
-    ? ['Owner', 'Agents', 'Networks', 'Newest agent']
-    : ['Owner', 'Agents', 'Newest agent'];
+    ? ['Owner', 'Agents', 'Scale', 'Networks', 'Newest agent']
+    : ['Owner', 'Agents', 'Scale', 'Newest agent'];
 
   return { scope, owners, facts, note, headers, failed, error, loading, load };
 }

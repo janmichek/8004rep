@@ -3,8 +3,10 @@ import type { AgentPage, Network } from '../shared/schemas';
 import type { TtlCache } from './cache';
 import { networks as defaultNetworks } from './data';
 import { relayResponse as defaultRelayResponse } from './fetchJson';
+import { probeUrl as defaultProbeUrl, type ProbeResult } from './probe';
 import { createAgentsRoutes, type AgentPageFetcher } from './routes/agents';
 import { createNetworksRoutes } from './routes/networks';
+import { createProbeRoutes } from './routes/probe';
 import { createRelayRoutes, type RelayResponse } from './routes/relay';
 import { fetchAgentPage as defaultFetchAgentPage } from './scanAgents';
 
@@ -12,6 +14,7 @@ export type AppOptions = {
   fetchAgentPage?: AgentPageFetcher;
   networks?: readonly Network[];
   relayResponse?: RelayResponse;
+  probe?: (raw: string) => Promise<ProbeResult>;
   agentCache?: TtlCache<AgentPage>;
 };
 
@@ -30,6 +33,8 @@ export function createApp(options: AppOptions = {}): Hono {
   app.route('/api', createNetworksRoutes(options.networks ?? defaultNetworks));
 
   app.route('/api', createRelayRoutes(options.relayResponse ?? defaultRelayResponse));
+
+  app.route('/api', createProbeRoutes(options.probe ?? defaultProbeUrl));
 
   return app;
 }

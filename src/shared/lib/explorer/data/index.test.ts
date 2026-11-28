@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, expect, it } from 'vitest';
 import type { PublicClient } from 'viem';
 import { resolveSource } from './index';
