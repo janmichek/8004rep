@@ -9,9 +9,10 @@ import { runScorer } from '../indexer/scorer';
 
 /**
  * Integration checks against the compose Postgres. Skipped unless
- * `DATABASE_URL` is set, so `bun run test:unit` stays hermetic.
+ * `TEST_DATABASE_URL` is set, so `bun run test:unit` never touches the
+ * application database in `DATABASE_URL`.
  */
-const databaseUrl = process.env['DATABASE_URL'];
+const databaseUrl = process.env['TEST_DATABASE_URL'];
 const integration = databaseUrl ? describe : describe.skip;
 const db = databaseUrl ? createSql(databaseUrl, 2) : null;
 const OWNER = '0x1111111111111111111111111111111111111111';
