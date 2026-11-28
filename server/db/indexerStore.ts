@@ -90,7 +90,8 @@ const UNWIND_STEPS: readonly string[] = [
      ORDER BY k.block_number DESC, k.log_index DESC
      LIMIT 1
    ), score_dirty = TRUE
-   WHERE a.chain_id = $1`,
+   WHERE a.chain_id = $1
+     AND (a.agent_wallet IS NOT NULL OR a.registered_block > $2)`,
   'DELETE FROM agent_transfers WHERE chain_id = $1 AND block_number > $2',
   `UPDATE agents a
    SET owner = NULL, burned = FALSE
