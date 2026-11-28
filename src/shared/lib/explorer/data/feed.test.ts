@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, expect, it, vi } from 'vitest';
 import type { Address, Hex } from 'viem';
 import { loadFeedWindow, type FeedWindow } from './feed';

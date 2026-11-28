@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, expect, it } from 'vitest';
 import type { Address, Hex } from 'viem';
 import { dailyColumns, valueHistogram } from './chartData';
@@ -58,14 +57,14 @@ describe('responses', () => {
       { client: addr(1), index: 3, value: 90, revoked: false },
     ];
     const out = attachResponses(rows, map);
-    expect(out[0].responses!.map((r) => r.uri)).toEqual(['ipfs://a', 'ipfs://b']);
-    expect(out[1].responses).toBeUndefined();
+    expect(out[0]!.responses!.map((r) => r.uri)).toEqual(['ipfs://a', 'ipfs://b']);
+    expect(out[1]!.responses).toBeUndefined();
   });
 
   it('carries an indexed review’s responses through mergeFeedback', () => {
     const bare: Feedback[] = [{ client: addr(1), index: 1, value: 50, revoked: false }];
-    const indexed: Feedback[] = [{ ...bare[0], responses: [{ responder: addr(2) }] }];
-    expect(mergeFeedback(bare, indexed)[0].responses).toEqual([{ responder: addr(2) }]);
+    const indexed: Feedback[] = [{ ...bare[0]!, responses: [{ responder: addr(2) }] }];
+    expect(mergeFeedback(bare, indexed)[0]!.responses).toEqual([{ responder: addr(2) }]);
   });
 });
 
@@ -182,12 +181,17 @@ describe('computeNetworkStats', () => {
     const s = computeNetworkStats(rows);
     expect(s).toMatchObject({ rows: 12, agents: 4, reviewers: 6, revoked: 1 });
     expect(s.perfectShare).toBeCloseTo(9 / 11, 9);
-    expect(s.topAgents[0]).toMatchObject({ tokenId: 10n, agentName: 'Ten', rows: 4, reviewers: 4 });
+    expect(s.topAgents[0]!).toMatchObject({
+      tokenId: 10n,
+      agentName: 'Ten',
+      rows: 4,
+      reviewers: 4,
+    });
     expect(s.lookalikes).toHaveLength(1);
     // Agent 10 has one more reviewer: 3/4 = 0.75 overlap, under the line.
-    expect(s.lookalikes[0].agents.map((a) => a.tokenId)).toEqual([11n, 12n]);
-    expect(s.lookalikes[0].reviewers).toHaveLength(3);
-    expect(s.lookalikes[0].similarity).toBe(1);
+    expect(s.lookalikes[0]!.agents.map((a) => a.tokenId)).toEqual([11n, 12n]);
+    expect(s.lookalikes[0]!.reviewers).toHaveLength(3);
+    expect(s.lookalikes[0]!.similarity).toBe(1);
   });
 
   it('averages an agent’s normalised ratings and ignores revoked-only reviewers', () => {
@@ -198,8 +202,8 @@ describe('computeNetworkStats', () => {
       ev(addr(4), 1, 80, { tag1: 'starred', revoked: true }),
     ];
     const s = computeNetworkStats(rows);
-    expect(s.topAgents[0]).toMatchObject({ rows: 4, reviewers: 3 });
-    expect(s.topAgents[0].average).toBeCloseTo(52.5);
+    expect(s.topAgents[0]!).toMatchObject({ rows: 4, reviewers: 3 });
+    expect(s.topAgents[0]!.average).toBeCloseTo(52.5);
     expect(s.average).toBeCloseTo(52.5);
   });
 
@@ -211,8 +215,8 @@ describe('computeNetworkStats', () => {
     ];
     const s = computeNetworkStats(rows);
     expect(s.average).toBeCloseTo(20);
-    expect(s.topAgents[0].average).toBeCloseTo(20);
-    expect(s.topAgents[0].reviewers).toBe(1);
+    expect(s.topAgents[0]!.average).toBeCloseTo(20);
+    expect(s.topAgents[0]!.reviewers).toBe(1);
   });
 
   it('drops the registered agent wallet’s self-review too', () => {
@@ -224,8 +228,8 @@ describe('computeNetworkStats', () => {
     ];
     const s = computeNetworkStats(rows);
     expect(s.average).toBeCloseTo(20);
-    expect(s.topAgents[0].average).toBeCloseTo(20);
-    expect(s.topAgents[0].reviewers).toBe(1);
+    expect(s.topAgents[0]!.average).toBeCloseTo(20);
+    expect(s.topAgents[0]!.reviewers).toBe(1);
     expect(s.reviewers).toBe(1);
   });
 
@@ -262,7 +266,7 @@ describe('chart data', () => {
   it('bins values into tenths, with overflow bins only when needed', () => {
     const cols = valueHistogram([0, 9.9, 10, 100, 100]);
     expect(cols).toHaveLength(10);
-    expect(cols[0].segments[0].value).toBe(2);
+    expect(cols[0]!.segments[0]!.value).toBe(2);
     expect(cols[9]).toMatchObject({ label: '90–100', segments: [{ key: 'count', value: 2 }] });
     expect(valueHistogram([-5, 150]).map((c) => c.label)).toEqual([
       '< 0',
@@ -292,7 +296,7 @@ describe('chart data', () => {
         { key: 'b', value: 1 },
       ],
     ]);
-    expect(cols[2].title).toBe('1970-01-03 · 2 feedback · 1 A, 1 B');
+    expect(cols[2]!.title).toBe('1970-01-03 · 2 feedback · 1 A, 1 B');
     const long = dailyColumns(
       [{ t: 0 }, { t: 200 * DAY }],
       (i) => i.t,
@@ -301,7 +305,7 @@ describe('chart data', () => {
       {}
     );
     expect(long).toHaveLength(29);
-    expect(long[0].title).toMatch(/^Week of/);
+    expect(long[0]!.title).toMatch(/^Week of/);
   });
 });
 

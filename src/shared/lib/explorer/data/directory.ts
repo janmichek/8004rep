@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Address } from 'viem';
 import { inferTagScales, type TagScale } from './reputation/kinds';
 import { buildReviewerProfile, type ReviewerProfile } from './reviewerProfile';
@@ -48,7 +47,7 @@ export function ownerDirectory(agents: AgentSummary[]): OwnerEntry[] {
   return [...byOwner.values()]
     .map(({ owner, perChain }) => {
       const chains = [...perChain.entries()].sort((a, b) => b[1].count - a[1].count || a[0] - b[0]);
-      const [mainChainId, main] = chains[0];
+      const [mainChainId, main] = chains[0]!;
       return {
         owner,
         agents: chains.reduce((sum, [, c]) => sum + c.count, 0),
@@ -87,7 +86,7 @@ export function reviewerDirectory(rows: FeedbackEvent[]): ReviewerProfile[] {
     );
   }
   return [...byClient.values()]
-    .map((group) => buildReviewerProfile(group[0].client, group, { scalesByAgent }))
+    .map((group) => buildReviewerProfile(group[0]!.client, group, { scalesByAgent }))
     .sort((a, b) => b.rows - a.rows);
 }
 

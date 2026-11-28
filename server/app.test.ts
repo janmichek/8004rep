@@ -216,3 +216,43 @@ describe('createApp dependencies', () => {
     expect(await relayResponse.text()).toBe('relayed');
   });
 });
+
+describe('GET /api/probe', () => {
+  test('returns the probe result as JSON', async () => {
+    const probeApp = createApp({
+      probe: async () => ({
+        ok: true,
+        status: 200,
+        latencyMs: 12,
+        contentType: 'application/json',
+        finalUrl: 'https://example.com',
+        checkedAt: 1,
+      }),
+    });
+
+    const response = await probeApp.request(
+      `/api/probe?url=${encodeURIComponent('https://example.com')}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true, status: 200, latencyMs: 12 });
+  });
+
+  test('answers 400 when the URL is blocked', async () => {
+    const probeApp = createApp({
+      probe: async () => ({
+        ok: false,
+        status: null,
+        latencyMs: null,
+        contentType: null,
+        finalUrl: 'http://127.0.0.1',
+        checkedAt: 1,
+        error: 'blocked-url',
+      }),
+    });
+
+    const response = await probeApp.request('/api/probe?url=http://127.0.0.1');
+
+    expect(response.status).toBe(400);
+  });
+});

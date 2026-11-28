@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { formatScore, shortAddress } from '../format';
 import type { FeedbackStats } from './feedbackStats';
 import { computeScores, computeWeights } from './scores';
@@ -45,7 +44,7 @@ const STEPS: { id: Exclude<WaterfallStepId, 'all'>; label: string; rule: string 
 
 function weightedMean(values: number[], weights: number[]): number | null {
   const total = weights.reduce((a, b) => a + b, 0);
-  return total > 0 ? values.reduce((a, x, i) => a + x * weights[i], 0) / total : null;
+  return total > 0 ? values.reduce((a, x, i) => a + x * weights[i]!, 0) / total : null;
 }
 
 /**
@@ -72,11 +71,11 @@ export function scoreWaterfall(
 
   const { reasons, factors } = computeWeights(feedback, self);
   const factorOf: Record<(typeof STEPS)[number]['id'], (i: number) => number> = {
-    revoked: (i) => (feedback[i].revoked ? 0 : 1),
-    self: (i) => (reasons[i].includes('self') ? 0 : 1),
-    duplicate: (i) => factors[i].dup,
-    burst: (i) => factors[i].burst,
-    pattern: (i) => factors[i].trust,
+    revoked: (i) => (feedback[i]!.revoked ? 0 : 1),
+    self: (i) => (reasons[i]!.includes('self') ? 0 : 1),
+    duplicate: (i) => factors[i]!.dup,
+    burst: (i) => factors[i]!.burst,
+    pattern: (i) => factors[i]!.trust,
   };
 
   for (const step of STEPS) {

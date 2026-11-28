@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, expect, it } from 'vitest';
 import type { Address, Hex, PublicClient } from 'viem';
 import type { ChainInfo } from '../chains';
@@ -139,7 +138,7 @@ describe('markRevoked', () => {
     const marked = markRevoked(rows, [
       { args: { agentId: 1n, clientAddress: CLIENT.toLowerCase() as Address, feedbackIndex: 0n } },
     ]);
-    expect(marked[0].revoked).toBe(true);
+    expect(marked[0]!.revoked).toBe(true);
   });
 
   it('leaves reviews alone without revocations', () => {
@@ -252,8 +251,8 @@ describe('scanFeedback', () => {
     });
     const page = await scanFeedback(client, testChain());
     expect(page.items.map((i) => i.tokenId)).toEqual([2n, 1n]);
-    expect(page.items[0].createdAt).toBe(450);
-    expect(page.items[1].createdAt).toBe(200);
+    expect(page.items[0]!.createdAt).toBe(450);
+    expect(page.items[1]!.createdAt).toBe(200);
     expect(calls.getBlock).toBeGreaterThan(0);
     // 8 windows of 10 from block 50 reach the floor: no cursor, `since` is block 0's time.
     expect(page.cursor).toBeUndefined();
@@ -266,7 +265,7 @@ describe('scanFeedback', () => {
       given: [log({ blockNumber: 999n, blockTimestamp: 1791000000n })],
     });
     const page = await scanFeedback(client, testChain());
-    expect(page.items[0].createdAt).toBe(1791000000);
+    expect(page.items[0]!.createdAt).toBe(1791000000);
     // 8 × 10 blocks from 1000 → oldest from 921, cursor just below it.
     expect(page.cursor).toBe('920');
     expect(page.since).toBeDefined();
@@ -287,7 +286,7 @@ describe('scanFeedback', () => {
     };
     const page = await scanFeedback(wrapped, testChain(), { cursor: '930' });
     expect(seen[0]).toBe('921');
-    expect(page.items[0].createdAt).toBe(9150);
+    expect(page.items[0]!.createdAt).toBe(9150);
   });
 
   it('returns an empty page below the floor', async () => {

@@ -1,8 +1,8 @@
-// @ts-nocheck
 import type { Address } from 'viem';
 import { inferTagScales, type TagScale } from './reputation/kinds';
 import { buildRatingLayer } from './reputation/units';
 import { buildReviewerProfile, suspicionOf, type ReviewerLabel } from './reviewerProfile';
+import { jaccardSets } from './similarity';
 import type { FeedbackEvent } from './types';
 
 /** Jaccard similarity of reviewer sets at or above which two agents look alike. */
@@ -72,12 +72,8 @@ function groupBy<T>(items: T[], keyOf: (item: T) => string): Map<string, T[]> {
   return map;
 }
 
-export function jaccard(a: Set<string>, b: Set<string>): number {
-  let shared = 0;
-  for (const x of a) if (b.has(x)) shared++;
-  const union = a.size + b.size - shared;
-  return union ? shared / union : 0;
-}
+/** Jaccard similarity of two reviewer sets. Kept as the network-local name. */
+export const jaccard = jaccardSets;
 
 /** Statistics over a window of a network's feedback feed. */
 export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkStats {
@@ -103,7 +99,7 @@ export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkSt
   // network mean that mixes 5-star reviews, uptime and revenue is not a score.
   const ratedOf = (group: FeedbackEvent[]): number[] =>
     buildRatingLayer(group, { self: selvesOf(group) }).classified.flatMap((c, i) =>
-      !group[i].revoked && !isSelf(group[i]) && c.kind === 'rating' && c.r !== null
+      !group[i]!.revoked && !isSelf(group[i]!) && c.kind === 'rating' && c.r !== null
         ? [c.r * 100]
         : []
     );
@@ -124,9 +120,9 @@ export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkSt
     .map((group) => {
       const agentRatings = ratedOf(group);
       return {
-        tokenId: group[0].tokenId,
+        tokenId: group[0]!.tokenId,
         ...(group.find((r) => r.agentName)?.agentName
-          ? { agentName: group.find((r) => r.agentName)!.agentName }
+          ? { agentName: group.find((r) => r.agentName)!.agentName! }
           : {}),
         rows: group.length,
         reviewers: new Set(
@@ -146,9 +142,9 @@ export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkSt
 
   const suspects: SuspectReviewer[] = [...byClient.values()]
     .map((group) => {
-      const profile = buildReviewerProfile(group[0].client, group, { scalesByAgent });
+      const profile = buildReviewerProfile(group[0]!.client, group, { scalesByAgent });
       return {
-        client: group[0].client,
+        client: group[0]!.client,
         rows: profile.rows,
         agents: profile.agents,
         average: profile.ratingAverage,
@@ -163,7 +159,7 @@ export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkSt
   const sets = [...byAgent.entries()]
     .map(([key, group]) => ({
       key,
-      tokenId: group[0].tokenId,
+      tokenId: group[0]!.tokenId,
       agentName: group.find((r) => r.agentName)?.agentName,
       reviewers: new Set(
         group.filter((r) => !r.revoked && !isSelf(r)).map((r) => r.client.toLowerCase())
@@ -174,8 +170,8 @@ export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkSt
   const find = (k: string): string => (parent.get(k) === k ? k : find(parent.get(k)!));
   for (let i = 0; i < sets.length; i++) {
     for (let j = i + 1; j < sets.length; j++) {
-      if (jaccard(sets[i].reviewers, sets[j].reviewers) >= LOOKALIKE_SIMILARITY) {
-        const [a, b] = [find(sets[i].key), find(sets[j].key)];
+      if (jaccard(sets[i]!.reviewers, sets[j]!.reviewers) >= LOOKALIKE_SIMILARITY) {
+        const [a, b] = [find(sets[i]!.key), find(sets[j]!.key)];
         if (a !== b) parent.set(b, a);
       }
     }
@@ -184,7 +180,7 @@ export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkSt
   const lookalikes: LookalikeGroup[] = [...groups.entries()]
     .filter(([, members]) => members.length >= 2)
     .map(([, members]) => {
-      const shared = [...members[0].reviewers].filter((r) =>
+      const shared = [...members[0]!.reviewers].filter((r) =>
         members.every((m) => m.reviewers.has(r))
       );
       return {
@@ -192,7 +188,7 @@ export function computeNetworkStats(rows: FeedbackEvent[], topN = 10): NetworkSt
           tokenId: m.tokenId,
           ...(m.agentName ? { agentName: m.agentName } : {}),
         })),
-        reviewers: shared.map((r) => byClient.get(r)![0].client),
+        reviewers: shared.map((r) => byClient.get(r)![0]!.client),
         // Weakest pair in the group; chained groups can dip below the threshold end to end.
         similarity: Math.min(
           ...members.flatMap((m, i) =>

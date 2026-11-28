@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { WalletRating } from './units';
 
 /** Prior strength in wallet units: three independent, unverified wallets. */
@@ -14,6 +13,19 @@ export const STRONG_NEFF = 5;
 export const DOMINANT_SHARE = 0.3;
 /** Target a faker aims for when pricing a fake (90/100). */
 const FAKE_TARGET = 0.9;
+
+/** The defaults behind every published score. Calibration varies these. */
+export const DEFAULT_SCORE_PARAMS = {
+  alpha0: ALPHA0,
+  mu0: MU0,
+  target: FAKE_TARGET,
+} as const;
+
+export type FilteredScoreOptions = {
+  alpha0?: number;
+  mu0?: number;
+  target?: number;
+};
 
 export type Confidence = 'low' | 'medium' | 'high';
 
@@ -47,8 +59,8 @@ function logGamma(z: number): number {
   ];
   if (z < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * z)) - logGamma(1 - z);
   const x = z - 1;
-  let a = coef[0];
-  for (let i = 1; i < coef.length; i++) a += coef[i] / (x + i);
+  let a = coef[0]!;
+  for (let i = 1; i < coef.length; i++) a += coef[i]! / (x + i);
   const t = x + 7.5;
   return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
 }
@@ -110,7 +122,7 @@ export function betaQuantile(p: number, a: number, b: number): number {
 /** Filtered score with a Beta interval, confidence, and the cost of forcing it up. */
 export function filteredScore(
   wallets: readonly WalletRating[],
-  opts: { alpha0?: number; mu0?: number; target?: number } = {}
+  opts: FilteredScoreOptions = {}
 ): FilteredScore {
   const alpha0 = opts.alpha0 ?? ALPHA0;
   const mu0 = opts.mu0 ?? MU0;

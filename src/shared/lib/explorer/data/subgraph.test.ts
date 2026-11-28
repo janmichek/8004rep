@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Address } from 'viem';
 import type { ChainInfo } from '../chains';
@@ -116,7 +115,7 @@ describe('listAgents owner filter', () => {
       pageSize: 1,
       owner: '0xAbCdEF0000000000000000000000000000000000' as Address,
     });
-    const body = JSON.parse((fetch.mock.calls[0][1] as { body: string }).body) as {
+    const body = JSON.parse((fetch.mock.calls[0]![1] as { body: string }).body) as {
       variables: { where: { owner: string }; first: number; skip: number };
     };
     expect(body.variables.where.owner).toBe('0xabcdef0000000000000000000000000000000000');
@@ -145,7 +144,7 @@ describe('listAgents owner filter', () => {
       sort: 'tokenId',
       order: 'asc',
     });
-    const body = JSON.parse((fetch.mock.calls[0][1] as { body: string }).body) as {
+    const body = JSON.parse((fetch.mock.calls[0]![1] as { body: string }).body) as {
       variables: { orderBy: string; orderDirection: string };
     };
     expect(body.variables).toMatchObject({ orderBy: 'agentId', orderDirection: 'asc' });

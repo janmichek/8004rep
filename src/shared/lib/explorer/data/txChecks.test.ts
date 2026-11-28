@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, expect, it } from 'vitest';
 import type { Address, Hex } from 'viem';
 import { computeFeedbackStats } from './feedbackStats';

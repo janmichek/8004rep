@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, expect, it } from 'vitest';
 import type { Address } from 'viem';
 import type { Feedback } from '../types';
@@ -34,9 +33,9 @@ describe('rating units', () => {
     ];
     const layer = buildRatingLayer(fb, { now: NOW });
     expect(layer.units).toHaveLength(1);
-    expect(layer.units[0].r).toBeCloseTo(1);
-    expect(layer.wallets[0].weight).toBeLessThanOrEqual(1);
-    expect(layer.wallets[0].weight).toBeCloseTo(2 ** (-1 / 90), 5);
+    expect(layer.units[0]!.r).toBeCloseTo(1);
+    expect(layer.wallets[0]!.weight).toBeLessThanOrEqual(1);
+    expect(layer.wallets[0]!.weight).toBeCloseTo(2 ** (-1 / 90), 5);
   });
 
   it('gives one reviewer 1,000 spaced ratings one full vote at most', () => {
@@ -45,7 +44,7 @@ describe('rating units', () => {
     );
     const layer = buildRatingLayer(fb, { now: NOW });
     expect(layer.wallets).toHaveLength(1);
-    expect(layer.wallets[0].weight).toBeLessThanOrEqual(1);
+    expect(layer.wallets[0]!.weight).toBeLessThanOrEqual(1);
     const score = filteredScore(layer.wallets);
     expect(score.totalWeight).toBeCloseTo(1);
     expect(score.top1).toBe(1);
@@ -164,7 +163,7 @@ describe('filtered score', () => {
     expect(report.raw).toBeCloseTo(90);
     expect(report.waterfall[0]).toMatchObject({ id: 'all', average: 80, rows: 3 });
     expect(report.waterfall[1]).toMatchObject({ id: 'revoked', average: 90, rows: 2 });
-    expect(report.waterfall[1].delta).toBeCloseTo(10);
+    expect(report.waterfall[1]!.delta).toBeCloseTo(10);
   });
 
   it('shows the self-review step instead of dropping it inside the unit step', () => {
@@ -206,8 +205,8 @@ describe('filtered score', () => {
       row(addr(1), 100, { tag1: 'starred', createdAt: start + DAY }),
       row(addr(1), 0, { tag1: 'starred', createdAt: start + 29 * DAY }),
     ];
-    const a = buildRatingLayer(rows, { now }).units[0];
-    const b = buildRatingLayer([...rows].reverse(), { now }).units[0];
+    const a = buildRatingLayer(rows, { now }).units[0]!;
+    const b = buildRatingLayer([...rows].reverse(), { now }).units[0]!;
     expect(a.time).toBeCloseTo(b.time, 10);
     expect(a.ageDays).toBeCloseTo(15, 5);
     expect(a.time).toBeCloseTo(2 ** (-15 / 90), 5);
@@ -216,7 +215,7 @@ describe('filtered score', () => {
   it('decays against the clock, not the newest review on an abandoned agent', () => {
     const old = Math.floor(Date.now() / 1000) - 730 * DAY;
     const layer = buildRatingLayer([row(addr(1), 100, { tag1: 'starred', createdAt: old })]);
-    expect(layer.wallets[0].weight).toBeLessThan(0.1);
+    expect(layer.wallets[0]!.weight).toBeLessThan(0.1);
   });
 
   it('reports each wallet share and exact leave-one-out pull', () => {
@@ -225,7 +224,8 @@ describe('filtered score', () => {
       row(addr(2), 50, { tag1: 'starred', createdAt: NOW }),
     ];
     const report = buildReputationReport(fb, { now: NOW });
-    const [top, low] = report.contributions;
+    const top = report.contributions[0]!;
+    const low = report.contributions[1]!;
     expect(top.client.toLowerCase()).toBe(addr(1));
     expect(top.share).toBeCloseTo(0.5);
     // Prior (3 × 0.5) plus one 100 and one 50: 3/5 = 0.6. Without the top

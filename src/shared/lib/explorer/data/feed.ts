@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { DataSource, FeedbackEvent, FeedbackQuery } from './types';
 
 export type FeedWindow = {

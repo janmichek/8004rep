@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Feedback } from '../types';
 import { classify, inferTagScales, type Classified, type TagProfile } from './kinds';
 
@@ -8,6 +7,15 @@ const DAY = 86400;
 export const UNIT_WINDOW_DAYS = 30;
 /** A unit's weight halves every this many days. */
 export const HALF_LIFE_DAYS = 90;
+
+export type RatingLayerOptions = {
+  self?: readonly string[];
+  now?: number;
+  /** Days per rating unit; defaults to {@link UNIT_WINDOW_DAYS}. */
+  unitWindowDays?: number;
+  /** Days for a unit's weight to halve; defaults to {@link HALF_LIFE_DAYS}. */
+  halfLifeDays?: number;
+};
 
 export type RatingUnit = {
   client: string;
@@ -62,7 +70,7 @@ export function median(xs: number[]): number | null {
   if (xs.length === 0) return null;
   const s = [...xs].sort((a, b) => a - b);
   const mid = Math.floor(s.length / 2);
-  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+  return s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2;
 }
 
 /**
@@ -70,10 +78,9 @@ export function median(xs: number[]): number | null {
  * enter: latency, uptime, revenue, pass flags and unknown tags are counted and
  * shown, never averaged into the score.
  */
-export function buildRatingLayer(
-  feedback: Feedback[],
-  opts: { self?: readonly string[]; now?: number } = {}
-): RatingLayer {
+export function buildRatingLayer(feedback: Feedback[], opts: RatingLayerOptions = {}): RatingLayer {
+  const unitWindowDays = opts.unitWindowDays ?? UNIT_WINDOW_DAYS;
+  const halfLifeDays = opts.halfLifeDays ?? HALF_LIFE_DAYS;
   const selves = new Set((opts.self ?? []).map((a) => a.toLowerCase()));
   // Infer scales from rows that can actually be scored. A self-review must not
   // redefine the tag's scale and change every other wallet's normalized rating.
@@ -100,7 +107,7 @@ export function buildRatingLayer(
   const units: RatingUnit[] = [];
   const byKey = new Map<string, { unit: RatingUnit; ratings: number[]; times: number[] }>();
   classified.forEach((c, i) => {
-    const f = feedback[i];
+    const f = feedback[i]!;
     if (f.revoked) {
       counts.revoked++;
       return;
@@ -116,7 +123,7 @@ export function buildRatingLayer(
     const bucket =
       f.createdAt === undefined
         ? ('undated' as const)
-        : Math.floor(f.createdAt / (UNIT_WINDOW_DAYS * DAY));
+        : Math.floor(f.createdAt / (unitWindowDays * DAY));
     const key = `${f.client.toLowerCase()}|${c.tag}|${bucket}`;
     let hit = byKey.get(key);
     if (!hit) {
@@ -147,7 +154,7 @@ export function buildRatingLayer(
     const at = median(hit.times);
     if (at !== null) {
       hit.unit.ageDays = Math.max(0, (now - at) / DAY);
-      hit.unit.time = 2 ** (-hit.unit.ageDays / HALF_LIFE_DAYS);
+      hit.unit.time = 2 ** (-hit.unit.ageDays / halfLifeDays);
     }
   }
 

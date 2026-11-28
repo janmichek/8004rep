@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { formatDate } from '../format';
 
 const DAY = 86400;
@@ -18,7 +17,7 @@ export function valueHistogram(values: number[], unit = 'feedback'): Column[] {
     if (v < 0) below++;
     else if (v > 100) above++;
     // 100 belongs to the last bin, 90–100.
-    else bins[Math.min(9, Math.floor(v / 10))].count++;
+    else bins[Math.min(9, Math.floor(v / 10))]!.count++;
   }
   const plural = (n: number) => `${n} ${unit}`;
   const columns: Column[] = bins.map((b, i) => ({
@@ -65,7 +64,7 @@ export function dailyColumns<T>(
   const slots = Math.floor((last - first) / step) + 1;
   const counts = Array.from({ length: slots }, () => new Map<string, number>());
   for (const d of dated) {
-    const slot = counts[Math.floor((d.day - first) / step)];
+    const slot = counts[Math.floor((d.day - first) / step)]!;
     slot.set(d.kind, (slot.get(d.kind) ?? 0) + 1);
   }
   return counts.map((count, i) => {

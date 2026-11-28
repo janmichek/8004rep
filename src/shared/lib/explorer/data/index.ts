@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { PublicClient } from 'viem';
 import type { ChainInfo } from '../chains';
 import { errorMessage, formatDuration } from '../format';

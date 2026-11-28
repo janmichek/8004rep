@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Address } from 'viem';
 import { classify, type TagScale } from './reputation/kinds';
 import type { FeedbackEvent } from './types';
@@ -103,7 +102,7 @@ export function peakWithin(times: number[], span: number): number {
   let best = 0;
   let start = 0;
   for (let end = 0; end < sorted.length; end++) {
-    while (sorted[end] - sorted[start] > span) start++;
+    while (sorted[end]! - sorted[start]! > span) start++;
     best = Math.max(best, end - start + 1);
   }
   return best;
@@ -146,9 +145,9 @@ export function buildReviewerProfile(
       );
       ratingValues.push(...agentRatings);
       const name = group.find((r) => r.agentName)?.agentName;
-      const chainId = group[0].chainId;
+      const chainId = group[0]!.chainId;
       return {
-        tokenId: group[0].tokenId,
+        tokenId: group[0]!.tokenId,
         ...(chainId !== undefined ? { chainId } : {}),
         ...(name ? { agentName: name } : {}),
         rows: group.length,

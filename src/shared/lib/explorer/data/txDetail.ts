@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {
   erc20Abi,
   keccak256,
@@ -234,7 +233,7 @@ async function loadTx(
 
 export function schemeOf(uri: string): UriScheme {
   const match = /^(data|ipfs|https|http):/i.exec(uri.trim());
-  return match ? (match[1].toLowerCase() as UriScheme) : 'other';
+  return match ? (match[1]!.toLowerCase() as UriScheme) : 'other';
 }
 
 /**
@@ -360,7 +359,7 @@ async function countReuse(hash: Hex, client: Address, others: Feedback[]) {
     if (file.status !== 'fulfilled' || file.value == null) return;
     comparedFiles++;
     if (readPaymentProof(file.value)?.txHash?.toLowerCase() !== hash.toLowerCase()) return;
-    if (sameAddress(withFile[i].client, client)) reusedBySame++;
+    if (sameAddress(withFile[i]!.client, client)) reusedBySame++;
     else reusedByOthers++;
   });
   return { comparedFiles, reusedByOthers, reusedBySame };

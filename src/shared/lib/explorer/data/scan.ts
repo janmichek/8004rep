@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * 8004scan's public API: one host for every network, CORS open, no key.
  * Not `www.`: that host answers with a redirect that carries no CORS header.
@@ -113,7 +112,76 @@ const LABELS: Record<string, string> = {
   momentum: 'Momentum',
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+/**
+ * Loose shape of 8004scan JSON. Named fields keep property reads readable;
+ * `any` values are validated by `num`, `str` or `Array.isArray` before they
+ * reach an exported type. Unknown fields stay bracket-only.
+ */
+type ScanJson = Record<string, any> & {
+  total_score?: any;
+  average_score?: any;
+  average_feedback_score?: any;
+  total_feedbacks?: any;
+  total_agents?: any;
+  scores?: any;
+  breakdown?: any;
+  dimensions?: any;
+  score?: any;
+  weight?: any;
+  engagement?: any;
+  details?: any;
+  feedback_count?: any;
+  feedback_weight?: any;
+  leaderboard_policy?: any;
+  score_band?: any;
+  floor?: any;
+  ceiling?: any;
+  weights?: any;
+  proof?: any;
+  support?: any;
+  proof_score?: any;
+  support_score?: any;
+  merit_score?: any;
+  evidence_tier?: any;
+  integrity_tier?: any;
+  algorithm?: any;
+  version?: any;
+  last_scored_at?: any;
+  meta?: any;
+  pagination?: any;
+  total?: any;
+  chains?: any;
+  chain_id?: any;
+  data?: any;
+  feedbacks?: any;
+  supported_chains?: any;
+  name?: any;
+  key?: any;
+  is_testnet?: any;
+  token_id?: any;
+  created_at?: any;
+  supported_protocols?: any;
+  services?: any;
+  endpoint?: any;
+  supported_trust_models?: any;
+  description?: any;
+  image_url?: any;
+  owner_address?: any;
+  agent_wallet?: any;
+  x402_supported?: any;
+  is_active?: any;
+  success?: any;
+  agent?: any;
+  user_address?: any;
+  value?: any;
+  is_revoked?: any;
+  tag1?: any;
+  tag2?: any;
+  feedback_uri?: any;
+  hasMore?: any;
+};
+
+function isRecord(value: unknown): value is ScanJson {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
@@ -232,7 +300,7 @@ export function parseScanPageTotal(body: unknown): number | null {
 export function parseFeedbackGrowth(body: unknown, chainId: number): number | null {
   if (!isRecord(body) || !Array.isArray(body.chains)) return null;
   const chain = body.chains.find(
-    (row): row is Record<string, unknown> => isRecord(row) && num(row.chain_id) === chainId
+    (row): row is ScanJson => isRecord(row) && num(row.chain_id) === chainId
   );
   if (!chain || !Array.isArray(chain.data)) return null;
   const totals = chain.data.flatMap((row) => {
@@ -240,7 +308,7 @@ export function parseFeedbackGrowth(body: unknown, chainId: number): number | nu
     return feedbacks === undefined ? [] : [feedbacks];
   });
   if (totals.length < 2) return null;
-  const change = totals[totals.length - 1] - totals[0];
+  const change = totals[totals.length - 1]! - totals[0]!;
   return change >= 0 ? change : null;
 }
 

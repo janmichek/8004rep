@@ -3,6 +3,7 @@ import type { MouseEvent } from 'react';
 import {
   chainById,
   isNestedControl,
+  ownerScale,
   shortAddress,
   type OwnerEntry,
 } from '../../../shared/lib/explorer';
@@ -19,6 +20,7 @@ type Props = {
 export function OwnerRow({ owner, slug, showNetworks }: Props) {
   const navigate = useNavigate();
   const targetSlug = chainById(owner.latest.chainId)?.slug ?? slug;
+  const scale = ownerScale(owner.agents);
 
   function open(event?: MouseEvent<HTMLTableRowElement>): void {
     if (event && isNestedControl(event.target)) return;
@@ -50,6 +52,13 @@ export function OwnerRow({ owner, slug, showNetworks }: Props) {
         </span>
       </td>
       <td className="num">{owner.agents}</td>
+      <td>
+        {scale ? (
+          <span className={`chip ${scale.level === 'warn' ? 'warn' : ''}`} title={scale.rule}>
+            {scale.label}
+          </span>
+        ) : null}
+      </td>
       {showNetworks ? <OwnerNetworksCell chainIds={owner.chainIds} /> : null}
       <OwnerLatestCell latest={owner.latest} slug={targetSlug} showNetworks={showNetworks} />
     </tr>

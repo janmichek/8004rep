@@ -1,13 +1,14 @@
 import {
   AgentAvatar,
   AgentHeadSkeleton,
+  AgentQueryError,
   ChainIcon,
   ChainName,
   ReputationPanel,
   Skeleton,
   StarButton,
 } from '../../../shared/ui';
-import { agentScanUrl } from '../../../shared/lib/explorer';
+import { agentScanUrl, useOwnerAgentCount } from '../../../shared/lib/explorer';
 import { AgentIdentityTab } from './AgentIdentityTab';
 import { useAgentDetail } from './useAgentDetail';
 
@@ -15,16 +16,10 @@ export function AgentPage() {
   const { chain, id, tokenId, agentQuery, file } = useAgentDetail();
   const agent = agentQuery.data;
   const name = file?.name ?? `Agent #${id}`;
+  const ownerAgents = useOwnerAgentCount(chain, agent?.owner);
 
   if (agentQuery.error) {
-    return (
-      <section className="state">
-        <p>Could not load agent: {agentQuery.error}</p>
-        <button type="button" onClick={() => void agentQuery.reload()}>
-          Retry
-        </button>
-      </section>
-    );
+    return <AgentQueryError error={agentQuery.error} reload={agentQuery.reload} />;
   }
 
   if (agentQuery.loading || agent === undefined) {
@@ -46,6 +41,7 @@ export function AgentPage() {
 
   const fileLoading = file === undefined;
   const rawJson = file ? JSON.stringify(file.raw, null, 2) : undefined;
+
   const overviewTop = fileLoading ? (
     <div className="skeleton-stack description" aria-busy="true">
       <span className="sr-only">Loading registration file</span>
@@ -114,8 +110,17 @@ export function AgentPage() {
         agent={agent}
         chain={chain}
         file={file}
+        ownerAgentCount={ownerAgents.data}
         overviewTop={overviewTop}
-        identity={<AgentIdentityTab agent={agent} chain={chain} file={file} rawJson={rawJson} />}
+        identity={
+          <AgentIdentityTab
+            agent={agent}
+            chain={chain}
+            file={file}
+            rawJson={rawJson}
+            ownerAgents={ownerAgents.data}
+          />
+        }
       />
     </>
   );

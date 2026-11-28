@@ -1,11 +1,14 @@
 import { UnknownNetworkState } from '../../../shared/ui';
+import { OwnerClonePanel } from './OwnerClonePanel';
 import { OwnerHead } from './OwnerHead';
 import { OwnerStatus } from './OwnerStatus';
 import { OwnerTiles } from './OwnerTiles';
 import { useOwnerAgents } from './useOwnerAgents';
+import { useOwnerClones } from './useOwnerClones';
 
 export function OwnerPage() {
   const owner = useOwnerAgents();
+  const clones = useOwnerClones(owner.data?.items);
 
   if (!owner.address) {
     return (
@@ -36,6 +39,8 @@ export function OwnerPage() {
           chainName={owner.chain.name}
         />
       ) : null}
+
+      <OwnerClonePanel groups={clones.clones} slug={owner.chain.slug} />
 
       <OwnerStatus owner={owner} chain={owner.chain} address={owner.address} />
     </>

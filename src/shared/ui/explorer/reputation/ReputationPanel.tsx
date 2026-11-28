@@ -1,50 +1,55 @@
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import type { ChainInfo } from '../../../lib/explorer';
 import type { AgentDetail, RegistrationFile } from '../../../lib/explorer/data/types';
-import { formatDate, shortAddress } from '../../../lib/explorer';
+import { formatDate } from '../../../lib/explorer';
 import { useReputation } from '../../../lib/explorer/hooks/useReputation';
-import { AddressIdenticon } from '../../marks/AddressIdenticon';
 import { FeedbackTab } from '../FeedbackTab';
 import { TabBar } from '../TabBar';
 import { StatTiles } from '../StatTiles';
 import { CompareTab } from './CompareTab';
 import { MethodsTab } from './MethodsTab';
 import { OverviewTab } from './OverviewTab';
+import { ReviewerLink } from './ReviewerLink';
 import { ReviewersTab } from './ReviewersTab';
 
 type Props = {
   agent: AgentDetail;
   chain: ChainInfo;
   file?: RegistrationFile | null | undefined;
+  /** Agents the owner holds on this chain; null when the read failed. */
+  ownerAgentCount?: number | null | undefined;
   overviewTop?: ReactNode;
   identity: ReactNode;
 };
 
-export function ReputationPanel({ agent, chain, file, overviewTop, identity }: Props) {
-  const { self, stats, report, rep, scan, tiles, tabs } = useReputation(agent, chain, file);
-  const navigate = useNavigate();
-
-  const reviewerLink = (address: string) => (
-    <Link
-      to="/reviewers/$slug/$address"
-      params={{ slug: chain.slug, address }}
-      className="address-mark mono"
-      title={address}
-    >
-      <AddressIdenticon address={address} />
-      {shortAddress(address)}
-    </Link>
-  );
-
-  const openDetail = (index: number) => {
+function openFeedback(navigate: ReturnType<typeof useNavigate>, slug: string, tokenId: bigint) {
+  return (index: number) => {
     void navigate({
       to: '/agents/$slug/$id/feedback/$index',
-      params: { slug: chain.slug, id: agent.tokenId.toString(), index: String(index) },
+      params: { slug, id: tokenId.toString(), index: String(index) },
     });
   };
+}
 
-  const empty = <p className="muted">No feedback yet.</p>;
+export function ReputationPanel({
+  agent,
+  chain,
+  file,
+  ownerAgentCount,
+  overviewTop,
+  identity,
+}: Props) {
+  const { self, stats, report, rep, scan, tiles, tabs } = useReputation(
+    agent,
+    chain,
+    file,
+    ownerAgentCount
+  );
+
+  const navigate = useNavigate();
+  const reviewerLink = (address: string) => <ReviewerLink address={address} slug={chain.slug} />;
+  const openDetail = openFeedback(navigate, chain.slug, agent.tokenId);
 
   const panels = {
     overview:
@@ -64,7 +69,7 @@ export function ReputationPanel({ agent, chain, file, overviewTop, identity }: P
       ),
     feedback:
       agent.feedback.length === 0 ? (
-        empty
+        <p className="muted">No feedback yet.</p>
       ) : (
         <FeedbackTab
           agent={agent}

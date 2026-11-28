@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, expect, it } from 'vitest';
 import { ContractFunctionRevertedError, type Address, type PublicClient } from 'viem';
 import { identityAbi, newFeedbackEvent, reputationAbi } from '../abi';
@@ -220,8 +219,8 @@ describe('listFeedback metadata', () => {
     const page = await source.listFeedback({});
     expect(page.items).toHaveLength(1);
     expect(page.items[0]).toMatchObject({ tokenId: 1n, value: 90 });
-    expect(page.items[0].agentOwner).toBeUndefined();
-    expect(page.items[0].agentWallet).toBe(WALLET);
+    expect(page.items[0]!.agentOwner).toBeUndefined();
+    expect(page.items[0]!.agentWallet).toBe(WALLET);
   });
 
   it('keeps the owner when the agent-wallet lookup fails', async () => {
@@ -233,8 +232,8 @@ describe('listFeedback metadata', () => {
       })
     );
     const page = await source.listFeedback({});
-    expect(page.items[0].agentOwner).toBe(OWNER);
-    expect(page.items[0].agentWallet).toBeUndefined();
+    expect(page.items[0]!.agentOwner).toBe(OWNER);
+    expect(page.items[0]!.agentWallet).toBeUndefined();
   });
 });
 

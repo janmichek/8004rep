@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Address, PublicClient } from 'viem';
 import type { ChainInfo } from '../chains';
 import { errorMessage } from '../format';
@@ -76,6 +75,7 @@ export async function loadReviewerInsights(
     Array.from({ length: Math.min(CONCURRENCY, addresses.length) }, async () => {
       while (next < addresses.length) {
         const address = addresses[next++];
+        if (!address) return;
         onEach(await loadReviewerInsight(chain, client, source, address));
       }
     })

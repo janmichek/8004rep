@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Address, Hex, PublicClient } from 'viem';
 import { feedbackRevokedEvent, newFeedbackEvent, responseAppendedEvent } from '../abi';
 import type { ChainInfo } from '../chains';
@@ -157,7 +156,7 @@ async function pool<T>(tasks: Array<() => Promise<T>>, limit: number): Promise<T
   const workers = Array.from({ length: Math.min(limit, tasks.length) }, async () => {
     while (next < tasks.length) {
       const current = next++;
-      results[current] = await tasks[current]();
+      results[current] = await tasks[current]!();
     }
   });
   await Promise.all(workers);
@@ -237,7 +236,7 @@ export async function scanFeedback(
     SCAN_CONCURRENCY
   );
 
-  const oldestFrom = windows[windows.length - 1].from;
+  const oldestFrom = windows[windows.length - 1]!.from;
   return {
     items,
     ...(oldestFrom > floor ? { cursor: (oldestFrom - 1n).toString() } : {}),

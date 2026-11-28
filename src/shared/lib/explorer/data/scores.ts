@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Feedback } from './types';
 
 export type ScoreOptions = {
@@ -82,7 +81,7 @@ export function medianOf(xs: number[]): number | null {
   if (!xs.length) return null;
   const s = [...xs].sort((a, b) => a - b);
   const mid = Math.floor(s.length / 2);
-  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+  return s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2;
 }
 
 function trimmedMean(xs: number[], frac = 0.1): number | null {
@@ -149,7 +148,7 @@ export function computeWeights(
   });
   const monotonousClients = new Set<string>();
   for (const [c, idxs] of byClient) {
-    const vals = new Set(idxs.map((i) => feedback[i].value));
+    const vals = new Set(idxs.map((i) => feedback[i]!.value));
     if (idxs.length >= 3 && vals.size === 1) monotonousClients.add(c);
   }
 
@@ -166,12 +165,12 @@ export function computeWeights(
   });
   const duplicateKeep = new Set<number>();
   for (const group of dupGroups.values()) {
-    let keep = group[0];
+    let keep = group[0]!;
     for (const i of group) {
-      const t = feedback[i].createdAt;
-      const kept = feedback[keep].createdAt;
-      const idx = feedback[i].index;
-      const keptIdx = feedback[keep].index;
+      const t = feedback[i]!.createdAt;
+      const kept = feedback[keep]!.createdAt;
+      const idx = feedback[i]!.index;
+      const keptIdx = feedback[keep]!.index;
       // Feeds arrive newest-first, so an undated first row stays the keeper
       // unless a later row has a date that proves it is newer. Dates that tie
       // (or are both missing) fall back to the per-client feedback index.
@@ -196,12 +195,12 @@ export function computeWeights(
   feedback.forEach((f, i) => {
     if (f.revoked) {
       weights[i] = 0;
-      reasons[i].push('revoked');
+      reasons[i]!.push('revoked');
       return;
     }
     if (selves.has(f.client.toLowerCase())) {
       weights[i] = 0;
-      reasons[i].push('self');
+      reasons[i]!.push('self');
       flaggedSelf++;
       return;
     }
@@ -209,23 +208,23 @@ export function computeWeights(
     if (!duplicateKeep.has(i)) {
       wDup = 0;
       flaggedDuplicates++;
-      reasons[i].push('duplicate');
+      reasons[i]!.push('duplicate');
     }
     // Burst: same-client live rows within ±24h of this row.
     let wBurst = 1;
     if (f.createdAt !== undefined) {
       const c = f.client.toLowerCase();
       const n = byClient.get(c)!.filter((j) => {
-        const t = feedback[j].createdAt;
+        const t = feedback[j]!.createdAt;
         return t !== undefined && Math.abs(t - (f.createdAt as number)) <= DAY;
       }).length;
       wBurst = Math.exp(-Math.max(0, n - 2));
-      if (n > 2) reasons[i].push('burst');
+      if (n > 2) reasons[i]!.push('burst');
     }
     const c = f.client.toLowerCase();
     const count = byClient.get(c)!.length;
     const wTrust = monotonousClients.has(c) ? 0.4 : count > 5 ? 0.7 : 1;
-    if (wTrust < 1) reasons[i].push(monotonousClients.has(c) ? 'monotonous' : 'hyperactive');
+    if (wTrust < 1) reasons[i]!.push(monotonousClients.has(c) ? 'monotonous' : 'hyperactive');
     factors[i] = { dup: wDup, burst: wBurst, trust: wTrust };
     weights[i] = wDup * wBurst * wTrust;
   });
@@ -260,23 +259,23 @@ export function computeScores(feedback: Feedback[], opts: ScoreOptions = {}): Sc
   // Shape statistics use rows that can actually move the score. A self row
   // weighs 0 and must not widen the range, shift the median or count as a
   // positive score.
-  const scoredIdx = validIdx.filter(({ i }) => weights[i] > 0);
+  const scoredIdx = validIdx.filter(({ i }) => weights[i]! > 0);
   const xs = scoredIdx.map(({ f }) => f.value);
-  const ws = scoredIdx.map(({ i }) => weights[i]);
+  const ws = scoredIdx.map(({ i }) => weights[i]!);
   const W = ws.reduce((a, b) => a + b, 0);
 
   const clients = new Set(validIdx.map(({ f }) => f.client.toLowerCase()));
   const distinctClients = clients.size;
 
   const raw = mean(validIdx.map(({ f }) => f.value));
-  const weighted = W > 0 ? ws.reduce((a, w, k) => a + w * xs[k], 0) / W : null;
+  const weighted = W > 0 ? ws.reduce((a, w, k) => a + w * xs[k]!, 0) / W : null;
   const median = medianOf(xs);
   const trimmed = trimmedMean(xs);
 
   const variance =
     weighted === null || W === 0
       ? null
-      : ws.reduce((a, w, k) => a + w * (xs[k] - (weighted as number)) ** 2, 0) / W;
+      : ws.reduce((a, w, k) => a + w * (xs[k]! - (weighted as number)) ** 2, 0) / W;
 
   const sd = variance === null ? null : Math.sqrt(variance);
   const lcb =
@@ -302,14 +301,14 @@ export function computeScores(feedback: Feedback[], opts: ScoreOptions = {}): Sc
     let num = 0;
     let den = 0;
     for (const { f, i } of dated) {
-      const u = weights[i] * Math.exp(-lambda * Math.max(0, tNow - (f.createdAt as number)));
+      const u = weights[i]! * Math.exp(-lambda * Math.max(0, tNow - (f.createdAt as number)));
       num += u * f.value;
       den += u;
     }
     // Undated rows keep their plain weight so they still count.
     for (const { f, i } of validIdx.filter(({ f }) => f.createdAt === undefined)) {
-      num += weights[i] * f.value;
-      den += weights[i];
+      num += weights[i]! * f.value;
+      den += weights[i]!;
     }
     timeWeighted = den > 0 ? num / den : null;
   } else {
@@ -325,7 +324,7 @@ export function computeScores(feedback: Feedback[], opts: ScoreOptions = {}): Sc
       for (const { f, i } of dated) {
         const age = tNow - (f.createdAt as number);
         if (age >= from && age < to) {
-          const u = weights[i] * Math.exp(-lambda * Math.max(0, age));
+          const u = weights[i]! * Math.exp(-lambda * Math.max(0, age));
           num += u * f.value;
           den += u;
         }
@@ -370,7 +369,7 @@ export function computeScores(feedback: Feedback[], opts: ScoreOptions = {}): Sc
     const perClient = new Map<string, number>();
     for (const { f, i } of validIdx) {
       const c = f.client.toLowerCase();
-      perClient.set(c, (perClient.get(c) ?? 0) + weights[i]);
+      perClient.set(c, (perClient.get(c) ?? 0) + weights[i]!);
     }
     let h = 0;
     for (const wc of perClient.values()) {
@@ -388,7 +387,7 @@ export function computeScores(feedback: Feedback[], opts: ScoreOptions = {}): Sc
     const tag = f.tag1 || '(no tag)';
     if (!tagGroups.has(tag)) tagGroups.set(tag, { xs: [], ws: [] });
     tagGroups.get(tag)!.xs.push(f.value);
-    tagGroups.get(tag)!.ws.push(weights[i]);
+    tagGroups.get(tag)!.ws.push(weights[i]!);
   });
   const perTag: TagScore[] = [...tagGroups.entries()]
     .map(([tag, g]) => {
@@ -396,7 +395,8 @@ export function computeScores(feedback: Feedback[], opts: ScoreOptions = {}): Sc
       return {
         tag,
         count: g.xs.length,
-        average: wSum > 0 ? g.xs.reduce((a, x, k) => a + x * g.ws[k], 0) / wSum : (mean(g.xs) ?? 0),
+        average:
+          wSum > 0 ? g.xs.reduce((a, x, k) => a + x * g.ws[k]!, 0) / wSum : (mean(g.xs) ?? 0),
       };
     })
     .sort((a, b) => b.count - a.count);

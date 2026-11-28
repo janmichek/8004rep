@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Address } from 'viem';
 import type { ChainInfo } from '../chains';
 import type {
@@ -37,7 +36,7 @@ export async function gql<T>(
     errors?: { message?: string }[];
   } | null;
   // Graph endpoints report failures in the body, sometimes with a non-200 status.
-  if (body?.errors?.length) throw new Error(body.errors[0].message ?? 'Subgraph query failed');
+  if (body?.errors?.length) throw new Error(body.errors[0]!.message ?? 'Subgraph query failed');
   if (!res.ok || !body?.data) throw new Error(`Subgraph responded with HTTP ${res.status}`);
   return body.data;
 }

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, expect, it } from 'vitest';
 import { classify, inferScale, kindOf, normalize, tagKey } from './kinds';
 
@@ -78,7 +77,7 @@ describe('classify', () => {
     const { rows: out, tags } = classify(rows);
     expect(out.map((r) => r.kind)).toEqual(['rating', 'rating', 'telemetry', 'metric', 'outcome']);
     expect(out.filter((r) => r.r !== null)).toHaveLength(2);
-    expect(out[0].r).toBeCloseTo(0.9);
+    expect(out[0]!.r).toBeCloseTo(0.9);
     expect(tags.find((t) => t.tag === 'starred')).toMatchObject({
       kind: 'rating',
       scale: 'hundred',
@@ -102,7 +101,7 @@ describe('classify', () => {
       })),
     ];
     const { rows: out, tags } = classify(rows);
-    expect(tags[0].mixedScale).toBe(true);
+    expect(tags[0]!.mixedScale).toBe(true);
     // The 0–4 reviewer is read on 0–5, the 0–80 one on 0–100.
     expect(out[0]).toMatchObject({ scale: 'five', span: 5 });
     expect(out[5]).toMatchObject({ scale: 'hundred', span: 100 });
@@ -124,9 +123,9 @@ describe('classify', () => {
       })),
     ];
     const { rows: out, tags } = classify(rows);
-    expect(tags[0].mixedScale).toBe(false);
+    expect(tags[0]!.mixedScale).toBe(false);
     expect(out[8]).toMatchObject({ scale: 'hundred', span: 100 });
-    expect(out[8].r).toBeCloseTo(0.01);
+    expect(out[8]!.r).toBeCloseTo(0.01);
   });
 
   it('requires a client to cover half of a narrower scale before overriding', () => {
@@ -145,9 +144,9 @@ describe('classify', () => {
       })),
     ];
     const { rows: out, tags } = classify(rows);
-    expect(tags[0].mixedScale).toBe(false);
-    expect(out[8].scale).toBe('hundred');
-    expect(out[8].r).toBeCloseTo(0.02);
+    expect(tags[0]!.mixedScale).toBe(false);
+    expect(out[8]!.scale).toBe('hundred');
+    expect(out[8]!.r).toBeCloseTo(0.02);
   });
 
   it('keeps an out-of-scale rating in the list but out of the score', () => {
@@ -161,8 +160,8 @@ describe('classify', () => {
       { client: '0xf', tag1: 'starred', value: 400, revoked: false },
     ];
     const { rows: out } = classify(rows);
-    expect(out[8].scale).toBe('hundred');
-    expect(out[8].r).toBeNull();
+    expect(out[8]!.scale).toBe('hundred');
+    expect(out[8]!.r).toBeNull();
   });
 
   it('ignores revoked rows when inferring a scale', () => {

@@ -84,8 +84,9 @@ test('opens and closes agent details through the URL', async ({ page }) => {
   await expect(page.getByRole('tab', { name: 'Identity' })).toBeVisible();
   await page.getByRole('tab', { name: 'Identity' }).click();
   await expect(page.getByRole('heading', { name: 'Identity' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Registration' })).toBeVisible();
 
-  await page.getByRole('link', { name: 'Agents' }).click();
+  await page.getByRole('link', { name: 'Agents', exact: true }).click();
   await expect(page).toHaveURL(/\/agents\/base$/);
   await expect(page.locator('.agents-table tbody tr.row-link').first()).toBeVisible({
     timeout: 20_000,

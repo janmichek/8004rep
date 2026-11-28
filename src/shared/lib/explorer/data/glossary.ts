@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Cast and vocabulary for the Docs page. Stable `id`s are page anchors:
  *   { name: 'docs', hash: `#${id}` }

@@ -1,13 +1,16 @@
-// @ts-nocheck
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   fetchJsonUri,
   fetchUriBytes,
+  findMetadataClones,
+  metadataTokens,
   normalizeRegistrationFile,
+  registrationCompleteness,
   resolveAgentURI,
   resolveFeedbackText,
   toDisplayUrl,
 } from './metadata';
+import type { RegistrationFile } from './types';
 
 function jsonResponse(body: unknown, ok = true): Response {
   return { ok, status: ok ? 200 : 500, json: async () => body } as Response;
@@ -220,7 +223,7 @@ describe('CORS relay', () => {
       .mockResolvedValueOnce(jsonResponse({ comment: 'ok' }));
     vi.stubGlobal('fetch', fetchMock);
     expect(await fetchJsonUri('https://cors.example/f.json')).toEqual({ comment: 'ok' });
-    expect(String(fetchMock.mock.calls[1][0])).toContain(
+    expect(String(fetchMock.mock.calls[1]![0])).toContain(
       'api/fetch-json?url=https%3A%2F%2Fcors.example%2Ff.json'
     );
   });
@@ -288,5 +291,83 @@ describe('fetchUriBytes', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 } as Response));
     await expect(fetchUriBytes('ar://abc')).rejects.toThrow('Unsupported URI scheme');
     await expect(fetchUriBytes('https://files.example/missing.json')).rejects.toThrow('HTTP 404');
+  });
+});
+
+function file(overrides: Partial<RegistrationFile> = {}): RegistrationFile {
+  return {
+    name: 'Atlas',
+    description:
+      'A market-making agent that quotes ERC-20 pairs and reports fills over an MCP endpoint.',
+    version: '1.2.0',
+    services: [{ name: 'MCP', endpoint: 'https://atlas.example/mcp' }],
+    supportedTrust: ['reputation'],
+    raw: {},
+    ...overrides,
+  };
+}
+
+describe('registrationCompleteness', () => {
+  it('passes all four checks for a complete file', () => {
+    expect(registrationCompleteness(file())).toMatchObject({ passed: 4, total: 4 });
+  });
+
+  it('names the missing fields', () => {
+    const result = registrationCompleteness(
+      file({
+        description: 'short',
+        version: undefined,
+        services: [{ name: 'X', endpoint: 'ftp://x' }],
+      })
+    );
+    expect(result.passed).toBe(1);
+    expect(result.checks.filter((check) => !check.ok).map((check) => check.id)).toEqual([
+      'description',
+      'services',
+      'version',
+    ]);
+  });
+
+  it('returns four failures when no file loaded', () => {
+    expect(registrationCompleteness(null)).toMatchObject({ passed: 0, total: 4 });
+  });
+});
+
+describe('metadata clones', () => {
+  const clone = file({
+    name: 'Atlas One',
+    description: 'Quotes ERC-20 pairs on Base with an MCP endpoint.',
+  });
+  const same = file({
+    name: 'Atlas Two',
+    description: 'Quotes ERC-20 pairs on Base with an MCP endpoint.',
+  });
+  const other = file({
+    name: 'Borealis',
+    description: 'Rents GPU capacity by the hour and publishes a signed receipt.',
+    services: [{ name: 'A2A', endpoint: 'https://borealis.example/card' }],
+  });
+
+  it('turns a file into content tokens', () => {
+    expect([...metadataTokens(clone)].length).toBeGreaterThan(3);
+  });
+
+  it('groups near-identical files and leaves the different one out', () => {
+    const groups = findMetadataClones([
+      { tokenId: 1n, file: clone },
+      { tokenId: 2n, file: same },
+      { tokenId: 3n, file: other },
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.tokenIds.map(String)).toEqual(['1', '2']);
+  });
+
+  it('ignores agents without a file', () => {
+    expect(
+      findMetadataClones([
+        { tokenId: 1n, file: clone },
+        { tokenId: 2n, file: null },
+      ])
+    ).toEqual([]);
   });
 });

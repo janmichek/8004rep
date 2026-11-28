@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, expect, it } from 'vitest';
 import type { Address } from 'viem';
 import {
@@ -104,7 +103,7 @@ describe('buildReviewerProfile', () => {
   it('groups rows that carry no chain by token alone, and leaves the chain off', () => {
     const profile = buildReviewerProfile(A, [row(80, { tokenId: 7n }), row(60, { tokenId: 7n })]);
     expect(profile.agents).toBe(1);
-    expect('chainId' in profile.perAgent[0]).toBe(false);
+    expect('chainId' in profile.perAgent[0]!).toBe(false);
     expect(profile.chainIds).toEqual([]);
   });
 
@@ -120,7 +119,7 @@ describe('buildReviewerProfile', () => {
 
   it('names the agent from whichever row carries a name', () => {
     const profile = buildReviewerProfile(A, [row(80), row(80, { agentName: 'Scribe' })]);
-    expect(profile.perAgent[0].agentName).toBe('Scribe');
+    expect(profile.perAgent[0]!.agentName).toBe('Scribe');
   });
 
   it('orders chains by how many rows came from each, then by chain id', () => {

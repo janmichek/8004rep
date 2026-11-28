@@ -30,6 +30,7 @@
     "coverage:ratchet": "bun run test:coverage && bun scripts/ratchet-coverage.ts",
     "test:e2e": "playwright test --config config/playwright.config.ts",
     "test:mutate": "bun scripts/link-typescript5.ts && stryker run config/stryker.config.json",
+    "calibrate": "bun scripts/calibrate-reputation.ts",
     "storybook": "storybook dev -p 6006 -c config/storybook",
     "chromatic": "chromatic --exit-zero-on-changes"
   },

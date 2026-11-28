@@ -1,10 +1,11 @@
-// @ts-nocheck
 /**
  * The vocabulary of the explorer. Every entry has a stable `id` so a number in
  * the app can link back to the paragraph that defines it:
  *   { name: 'docs', hash: `#${id}` }
  * Keep ids stable; they are part of the page's addresses.
  */
+
+import { MASS_OWNER_AGENTS, PORTFOLIO_OWNER_AGENTS } from './ownerScale';
 
 export type GuideMetric = {
   /** Stable anchor id. Never rename without keeping the old one as an alias. */
@@ -130,6 +131,69 @@ export const METRIC_GROUPS: GuideGroup[] = [
           'No rating rows fit any scale. Telemetry and outcomes are shown, but no score is invented.',
         rule: 'Shown when the agent has zero rating units. Reasons may include out-of-scale values or only non-rating tags.',
         where: 'Filtered score tile, Methods tab and the reputation headline.',
+      },
+    ],
+  },
+  {
+    id: 'context',
+    title: 'Context around the score',
+    intro:
+      'These signals sit next to the score without changing it. They answer “what kind of registration is this?” rather than “how good is it?”, so a complete profile cannot buy a reputation and a missing one cannot erase it.',
+    metrics: [
+      {
+        id: 'registration-completeness',
+        name: 'Registration completeness',
+        summary:
+          'Four checkable parts of the registration file: name, description, services and version.',
+        rule: 'Name is non-empty; description is 40+ characters; every advertised service endpoint is http(s) or ipfs; version is present. Passed fields are shown on the Identity tab.',
+        where: 'Identity tab, Registration panel.',
+        caveat:
+          'Complete metadata is easy to generate. It says the file is usable, not that the agent is honest or alive.',
+      },
+      {
+        id: 'owner-scale',
+        name: 'Owner scale',
+        summary: 'How many agents one owner holds on the chain.',
+        rule: `2–9 is a small owner, ${PORTFOLIO_OWNER_AGENTS}–${MASS_OWNER_AGENTS - 1} a portfolio, ${MASS_OWNER_AGENTS}+ a mass registrant. The count comes from the identity registry’s balanceOf.`,
+        where: 'Agent Identity tab, Owners table, owner page.',
+        caveat:
+          'Platforms and marketplaces legitimately run many agents. A high count is context for the reader, not proof of spam, and it never changes the filtered score.',
+      },
+      {
+        id: 'metadata-clone',
+        name: 'Metadata clone',
+        summary: 'Agents whose registration text is near-identical.',
+        rule: 'Tokens from name, description, services and trust models; two agents are linked at Jaccard similarity ≥ 0.8. Groups are the connected components.',
+        where: 'Owner page, Registration clones panel.',
+        caveat:
+          'A shared template is normal for a platform. Identical files from unrelated owners are the interesting case; this panel only sees the owner page’s current agents.',
+      },
+      {
+        id: 'liveness',
+        name: 'Endpoint liveness',
+        summary: 'Whether an advertised service answers at all.',
+        rule: 'A user-triggered GET through the API reports status, time to headers and content type. Redirects are followed up to three hops, every hop checked against private hosts; the body is cancelled.',
+        where: 'Identity tab, Check button next to each service.',
+        caveat:
+          'A 200 means the endpoint answered, not that it works. The probe does not call the service or validate its response body.',
+      },
+      {
+        id: 'content-hash',
+        name: 'Evidence hash',
+        summary: 'A SHA-256 over the exact inputs behind the score.',
+        rule: 'The downloaded JSON carries a contentHash block. Hash the canonical JSON (sorted keys, no whitespace) of the same object with contentHash removed to reproduce it.',
+        where: 'Methods tab, Download inputs (JSON).',
+        caveat:
+          'The hash proves the file was not edited after download. It does not prove the on-chain rows were honest.',
+      },
+      {
+        id: 'calibration',
+        name: 'Calibration',
+        summary: 'How much the ranking moves when the score parameters change.',
+        rule: 'Runs the same agents under seven parameter sets and reports tier counts plus Spearman rank correlation against the current defaults. `bun run calibrate [export.json]`.',
+        where: 'Docs calibration section; `bun run calibrate`.',
+        caveat:
+          'The bundled demo is synthetic and shows the method. Run it on a real export before treating a threshold as stable.',
       },
     ],
   },

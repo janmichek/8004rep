@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Address, Hex } from 'viem';
 import type { ChainInfo } from '../chains';
 
@@ -34,7 +33,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function txsOf(body: unknown): ExplorerTx[] {
-  return isRecord(body) && Array.isArray(body.result) ? body.result.filter(isRecord) : [];
+  return isRecord(body) && Array.isArray(body['result']) ? body['result'].filter(isRecord) : [];
 }
 
 /**

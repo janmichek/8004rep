@@ -7,6 +7,9 @@
   "functions": {
     "api/fetch-json.ts": {
       "maxDuration": 10
+    },
+    "api/probe.ts": {
+      "maxDuration": 10
     }
   }
 }

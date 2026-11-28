@@ -250,6 +250,35 @@ footer {
   color: var(--accent);
 }
 
+/* User-triggered endpoint liveness check. */
+.probe {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.probe button {
+  padding: 1px 8px;
+  font-size: 12px;
+}
+
+.probe-result {
+  font-size: 12px;
+}
+
+.probe-ok {
+  color: var(--ok);
+}
+
+.probe-warn {
+  color: var(--warn);
+}
+
+.probe-bad {
+  color: var(--bad);
+}
+
 /* Review flags: one hue and one Lucide icon per rule. */
 
 .flag-chip {
